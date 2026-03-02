@@ -81,4 +81,18 @@ const deleteVenue = async (req, res) => {
     }
 };
 
-module.exports = { createVenue, getAllVenues, getVenueById, deleteVenue };
+const approveVenue = async (req, res) => {
+    try {
+        const venue = await Venue.findByIdAndUpdate(
+            req.params.id,
+            { isApproved: true },
+            { new: true }
+        );
+        if (!venue) return res.status(404).json({ message: 'Venue not found' });
+        res.status(200).json({ message: 'Venue approved', venue });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+module.exports = { createVenue, getAllVenues, getVenueById, deleteVenue, approveVenue };
