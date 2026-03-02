@@ -4,6 +4,8 @@ import Register from './pages/Register';
 import BookerDashboard from './pages/BookerDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import VenueDetail from './pages/VenueDetail';
+import MyBookings from './pages/MyBookings';
 
 function App() {
     return (
@@ -13,8 +15,10 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/booker/dashboard" element={<BookerDashboard />} />
+                <Route path="/booker/my-bookings" element={<MyBookings />} />
                 <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/venue/:id" element={<VenueDetail />} />
             </Routes>
         </BrowserRouter>
     );
