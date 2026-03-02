@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-const API = 'http://localhost:3000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const getToken = () => localStorage.getItem('token');
 
 export const createBooking = async (bookingData) => {
-    const response = await axios.post(`${API}/bookings/create`, bookingData, {
+    const response = await axios.post(`${API}/bookings`, bookingData, {
         headers: { Authorization: `Bearer ${getToken()}` }
     });
     return response.data;

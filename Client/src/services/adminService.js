@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = 'http://localhost:3000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const getToken = () => localStorage.getItem('token');
 
@@ -19,7 +19,7 @@ export const approveVenue = async (venueId) => {
 };
 
 export const getAllVenuesAdmin = async () => {
-    const response = await axios.get(`${API}/venues/all`, {
+    const response = await axios.get(`${API}/venues/admin/all`, {
         headers: { Authorization: `Bearer ${getToken()}` }
     });
     return response.data;
