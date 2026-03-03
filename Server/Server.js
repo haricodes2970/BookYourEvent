@@ -7,15 +7,8 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'https://spontaneous-pixie-eb33b8.netlify.app'
-
-    ],
-    credentials: true
+  origin: "*"
 }));
 app.use(express.json());
 
