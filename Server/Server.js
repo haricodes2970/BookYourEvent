@@ -12,8 +12,8 @@ app.use(cors({
     origin: [
         'http://localhost:5173',
         'http://localhost:3000',
-        'https://bookyourevent.vercel.app',
-        /\.vercel\.app$/
+        'https://spontaneous-pixie-eb33b8.netlify.app'
+
     ],
     credentials: true
 }));
