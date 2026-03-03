@@ -1,5 +1,8 @@
 const nodemailer = require('nodemailer');
 
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -19,7 +22,7 @@ const sendOTPEmail = async (email, name, otp) => {
             <p style="color: #888; font-size: 12px; margin-top: 0;">EASY. BOOK. ENJOY.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
             <p style="color: #333;">Hi <strong>${name}</strong>,</p>
-            <p style="color: #555;">Welcome! Use the OTP below to verify your email. It expires in <strong>10 minutes</strong>.</p>
+            <p style="color: #555;">Use the OTP below to verify your email. It expires in <strong>10 minutes</strong>.</p>
             <div style="text-align: center; margin: 32px 0;">
                 <span style="font-size: 40px; font-weight: bold; letter-spacing: 12px; color: #1e4d5c;">${otp}</span>
             </div>

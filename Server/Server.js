@@ -8,23 +8,22 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: "*"
+    origin: [
+        'http://localhost:5173',
+        'https://bookyourevent.netlify.app'
+    ],
+    credentials: true
 }));
-    
+
 app.use(express.json());
 
-// Connect to Database
 connectDB();
 
-// Health Check Route
 app.get('/', (req, res) => {
     res.json({ message: 'BookYourEvent Server is Running' });
 });
 
-// Routes (we wire these soon)
-// Routes
 app.use('/api/auth', require('./routes/AuthRouter'));
-// app.use('/api/auth', require('./routes/AuthRouter'));
 app.use('/api/venues', require('./routes/VenueRouter'));
 app.use('/api/bookings', require('./routes/BookingRouter'));
 app.use('/api/reviews', require('./routes/ReviewRouter'));
