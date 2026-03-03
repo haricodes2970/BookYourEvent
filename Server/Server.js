@@ -8,7 +8,15 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://bookyourevent.vercel.app',
+        /\.vercel\.app$/
+    ],
+    credentials: true
+}));
 app.use(express.json());
 
 // Connect to Database
