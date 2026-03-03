@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser } from '../services/authService';
+import { registerUser, verifyOTP } from '../services/authService';
 
 const Background = () => (
     <>
@@ -46,14 +46,17 @@ const Navbar = () => (
 );
 
 const Register = () => {
+    const [step, setStep] = useState(1); // 1 = form, 2 = otp
     const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '', role: 'booker' });
+    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleSubmit = async (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
         setError('');
         if (formData.password !== formData.confirmPassword) {
@@ -63,9 +66,25 @@ const Register = () => {
         setLoading(true);
         try {
             await registerUser(formData);
-            navigate('/login');
+            setStep(2);
+            setSuccess(`OTP sent to ${formData.email}`);
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await verifyOTP(formData.email, otp);
+            setSuccess('Email verified! Redirecting to login...');
+            setTimeout(() => navigate('/login'), 2000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Verification failed');
         } finally {
             setLoading(false);
         }
@@ -77,56 +96,92 @@ const Register = () => {
             <Navbar />
             <div className="relative z-10 flex-1 flex items-center justify-center px-4 pb-24">
                 <div className="w-full" style={{ maxWidth: '420px' }}>
-                    <div className="rounded-2xl p-8 shadow-2xl" style={{ background: 'rgba(255,252,245,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(200,185,160,0.4)' }}>
+                    <div className="rounded-2xl p-8 shadow-2xl"
+                        style={{ background: 'rgba(255,252,245,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(200,185,160,0.4)' }}>
 
                         <div className="flex justify-center mb-4">
-                            <img src="/logo.png" alt="BYE Logo" className="h-20 w-20 rounded-full object-cover shadow-md" onError={(e)=>{e.target.style.display='none'}}/>
+                            <img src="/logo.png" alt="BYE Logo" className="h-20 w-20 rounded-full object-cover shadow-md"
+                                onError={(e)=>{e.target.style.display='none'}}/>
                         </div>
 
-                        <h2 className="text-3xl font-bold text-slate-800 text-center mb-1">Create Account</h2>
-                        <p className="text-center text-slate-500 text-sm italic mb-5">EASY. BOOK. ENJOY.</p>
+                        {/* Step 1 — Registration Form */}
+                        {step === 1 && (
+                            <>
+                                <h2 className="text-3xl font-bold text-slate-800 text-center mb-1">Create Account</h2>
+                                <p className="text-center text-slate-500 text-sm italic mb-5">EASY. BOOK. ENJOY.</p>
 
-                        {error && (
-                            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm text-center">{error}</div>
+                                {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+
+                                <form onSubmit={handleRegister} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name"
+                                            className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
+                                        <input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone"
+                                            className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
+                                    </div>
+                                    <div className="relative">
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email"
+                                            className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 pr-8 focus:outline-none focus:border-slate-600 transition text-sm" required/>
+                                        <span className="absolute right-2 top-2 text-slate-400 text-sm">✉</span>
+                                    </div>
+                                    <select name="role" value={formData.role} onChange={handleChange}
+                                        className="w-full border-b-2 border-slate-300 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-slate-600 transition text-sm">
+                                        <option value="booker">I want to Book a Venue</option>
+                                        <option value="venueOwner">I want to List my Venue</option>
+                                    </select>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password"
+                                            className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
+                                        <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm"
+                                            className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
+                                    </div>
+                                    <button type="submit" disabled={loading}
+                                        className="w-full py-3 rounded-lg font-semibold text-white transition mt-1"
+                                        style={{ background: loading ? '#7a9aaa' : '#1e4d5c' }}>
+                                        {loading ? 'Sending OTP...' : 'Create Account'}
+                                    </button>
+                                </form>
+
+                                <p className="text-center text-slate-500 text-sm mt-4">
+                                    Already have an account?{' '}
+                                    <Link to="/login" className="font-bold text-slate-700 hover:text-slate-900 transition">Login</Link>
+                                </p>
+                            </>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name"
-                                    className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
-                                <input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone"
-                                    className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
-                            </div>
+                        {/* Step 2 — OTP Verification */}
+                        {step === 2 && (
+                            <>
+                                <h2 className="text-2xl font-bold text-slate-800 text-center mb-1">Verify Email</h2>
+                                <p className="text-center text-slate-500 text-sm mb-2">OTP sent to</p>
+                                <p className="text-center font-semibold text-slate-700 text-sm mb-5">{formData.email}</p>
 
-                            <div className="relative">
-                                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email"
-                                    className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 pr-8 focus:outline-none focus:border-slate-600 transition text-sm" required/>
-                                <span className="absolute right-2 top-2 text-slate-400 text-sm">✉</span>
-                            </div>
+                                {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+                                {success && <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm text-center">{success}</div>}
 
-                            <select name="role" value={formData.role} onChange={handleChange}
-                                className="w-full border-b-2 border-slate-300 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-slate-600 transition text-sm">
-                                <option value="booker">I want to Book a Venue</option>
-                                <option value="venueOwner">I want to List my Venue</option>
-                            </select>
+                                <form onSubmit={handleVerifyOTP} className="space-y-4">
+                                    <input
+                                        type="text"
+                                        value={otp}
+                                        onChange={(e)=>setOtp(e.target.value)}
+                                        placeholder="Enter 6-digit OTP"
+                                        maxLength={6}
+                                        className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-3 text-center text-2xl tracking-widest focus:outline-none focus:border-slate-600 transition"
+                                        required
+                                    />
+                                    <button type="submit" disabled={loading}
+                                        className="w-full py-3 rounded-lg font-semibold text-white transition"
+                                        style={{ background: loading ? '#7a9aaa' : '#1e4d5c' }}>
+                                        {loading ? 'Verifying...' : 'Verify OTP'}
+                                    </button>
+                                </form>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password"
-                                    className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
-                                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm"
-                                    className="w-full border-b-2 border-slate-300 bg-transparent text-slate-700 placeholder-slate-400 py-2 focus:outline-none focus:border-slate-600 transition text-sm" required/>
-                            </div>
-
-                            <button type="submit" disabled={loading} className="w-full py-3 rounded-lg font-semibold text-white transition"
-                                style={{ background: loading ? '#7a9aaa' : '#1e4d5c' }}>
-                                {loading ? 'Creating Account...' : 'Create Account'}
-                            </button>
-                        </form>
-
-                        <p className="text-center text-slate-500 text-sm mt-4">
-                            Already have an account?{' '}
-                            <Link to="/login" className="font-bold text-slate-700 hover:text-slate-900 transition">Login</Link>
-                        </p>
+                                <button onClick={()=>{ setStep(1); setError(''); setSuccess(''); }}
+                                    className="w-full text-center text-slate-400 text-sm mt-4 hover:text-slate-600 transition">
+                                    ← Back to Register
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

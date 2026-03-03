@@ -7,6 +7,11 @@ export const registerUser = async (formData) => {
     return response.data;
 };
 
+export const verifyOTP = async (email, otp) => {
+    const response = await axios.post(`${API}/auth/verify-otp`, { email, otp });
+    return response.data;
+};
+
 export const loginUser = async (formData) => {
     const response = await axios.post(`${API}/auth/login`, formData);
     return response.data;
