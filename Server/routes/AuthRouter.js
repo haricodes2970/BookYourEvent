@@ -3,10 +3,95 @@ const router = express.Router();
 const { register, verifyOTP, login, getUsers } = require('../controllers/AuthController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/roleMiddleware');
+const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const User = require('../models/User');
 
 router.post('/register', register);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', login);
 router.get('/users', protect, adminOnly, getUsers);
+
+// Google OAuth - Step 1: Redirect to Google
+router.get('/google', (req, res) => {
+    const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        redirect_uri: 'http://localhost:3000/api/auth/google/callback',
+        response_type: 'code',
+        scope: 'profile email',
+        access_type: 'offline'
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// Google OAuth - Step 2: Handle callback
+router.get('/google/callback', async (req, res) => {
+    const { code, error } = req.query;
+
+    if (error) {
+        console.error('Google returned error:', error);
+        return res.redirect(`${process.env.CLIENT_URL}/login?error=google_failed`);
+    }
+
+    try {
+        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: 'http://localhost:3000/api/auth/google/callback',
+            grant_type: 'authorization_code'
+        });
+
+        const { access_token } = tokenResponse.data;
+
+        const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+
+        const { email, name } = userInfoResponse.data;
+        console.log('Google user:', email, name);
+
+        let user = await User.findOne({ email });
+        console.log('User found in DB:', user ? user.email : 'NOT FOUND');
+
+        if (user) {
+            user.isVerified = true;
+            await user.save();
+            console.log('Existing user updated');
+        } else {
+            user = await User.create({
+                name,
+                email,
+                password: 'GOOGLE_AUTH_' + Math.random().toString(36),
+                phone: 'N/A',
+                role: 'booker',
+                isVerified: true
+            });
+            console.log('New user created');
+        }
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        const userEncoded = encodeURIComponent(JSON.stringify({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            phone: user.phone
+        }));
+
+        const redirectURL = `${process.env.CLIENT_URL}/auth/google/success?token=${token}&user=${userEncoded}`;
+        console.log('Redirect URL length:', redirectURL.length);
+        res.redirect(redirectURL);
+
+    } catch (err) {
+        console.error('Google OAuth callback error:', err.response?.data || err.message);
+        res.redirect(`${process.env.CLIENT_URL}/login?error=google_failed`);
+    }
+});
 
 module.exports = router;

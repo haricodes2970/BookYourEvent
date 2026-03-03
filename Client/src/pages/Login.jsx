@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 const Background = () => (
     <>
         <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(180deg, #c8e6f0 0%, #ddeef5 25%, #eef5f0 50%, #f5efe6 75%, #f0e8d5 100%)' }} />
@@ -73,6 +75,10 @@ const Login = () => {
         }
     };
 
+    const handleGoogleLogin = () => {
+        window.location.href = `${API}/auth/google`;
+    };
+
     return (
         <div className="h-screen relative overflow-hidden flex flex-col">
             <Background />
@@ -80,7 +86,7 @@ const Login = () => {
             <div className="relative z-10 flex-1 flex items-center justify-center px-4 pb-24">
                 <div className="w-full" style={{ maxWidth: '420px' }}>
                     <div className="rounded-2xl p-8 shadow-2xl" style={{ background: 'rgba(255,252,245,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(200,185,160,0.4)' }}>
-                        
+
                         <div className="flex justify-center mb-4">
                             <img src="/logo.png" alt="BYE Logo" className="h-20 w-20 rounded-full object-cover shadow-md" onError={(e)=>{e.target.style.display='none'}}/>
                         </div>
@@ -118,6 +124,26 @@ const Login = () => {
                                 {loading ? 'Logging in...' : 'Login'}
                             </button>
                         </form>
+
+                        {/* Divider */}
+                        <div className="flex items-center gap-3 my-4">
+                            <div className="flex-1 h-px bg-slate-200"/>
+                            <span className="text-slate-400 text-xs">or</span>
+                            <div className="flex-1 h-px bg-slate-200"/>
+                        </div>
+
+                        {/* Google Login Button */}
+                        <button onClick={handleGoogleLogin}
+                            className="w-full py-3 rounded-lg font-semibold transition flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50"
+                            style={{ background: 'white', color: '#444' }}>
+                            <svg width="18" height="18" viewBox="0 0 48 48">
+                                <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/>
+                                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.8 13.5-4.7l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-3-11.4-7.3l-6.5 5C9.6 39.5 16.3 44 24 44z"/>
+                                <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.4-2.5 4.4-4.6 5.8l6.2 5.2C40.8 35.7 44 30.3 44 24c0-1.3-.1-2.7-.4-4z"/>
+                            </svg>
+                            Continue with Google
+                        </button>
 
                         <p className="text-center text-slate-500 text-sm mt-5">
                             Don't have an account?{' '}

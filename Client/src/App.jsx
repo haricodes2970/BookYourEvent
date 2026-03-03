@@ -7,6 +7,7 @@ import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import VenueDetail from './pages/VenueDetail';
 import MyBookings from './pages/MyBookings';
+import GoogleAuthSuccess from './pages/GoogleAuthSuccess';
 
 function App() {
     return (
@@ -20,6 +21,7 @@ function App() {
                 <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/venue/:id" element={<VenueDetail />} />
+                <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
             </Routes>
         </BrowserRouter>
     );
