@@ -135,5 +135,17 @@ const updateBookingStatus = async (req, res) => {
     }
 };
 
-module.exports = { createBooking, getVenueBookings, getMyBookings, updateBookingStatus };
+const getAllBookingsAdmin = async (req, res) => {
+    try {
+        const bookings = await Booking.find()
+            .populate('booker', 'name email phone')
+            .populate('venue', 'name location')
+            .sort({ createdAt: -1 });
+        res.status(200).json({ count: bookings.length, bookings });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+module.exports = { createBooking, getVenueBookings, getMyBookings, updateBookingStatus, getAllBookingsAdmin };
 

@@ -169,8 +169,9 @@ const OwnerDashboard = () => {
             <nav className="relative z-10 flex items-center justify-between px-8 py-4">
                 {/* Left — Logo + Nav Links */}
                 <div className="flex items-center gap-8">
-                    <img src="/logo.png" alt="BYE" className="h-14 w-14 rounded-full object-cover shadow-md"
-                        onError={(e)=>{e.target.style.display='none'}}/>
+                    <img src="/logo.png" alt="BYE" className="h-14 w-14 rounded-full object-cover shadow-md cursor-pointer"
+                    onClick={() => navigate('/')}
+                    onError={(e)=>{e.target.style.display='none'}}/>
                     <button onClick={()=>setActiveTab('venues')}
                         className={`text-sm font-medium transition ${activeTab==='venues' ? 'text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}>
                         My Venues

@@ -4,7 +4,7 @@ const cors = require('cors');
 const passport = require('passport');
 const connectDB = require('./config/db');
 
-dotenv.config();
+dotenv.config({ path: __dirname + '/.env' });
 require('./config/passport');
 
 const app = express();
