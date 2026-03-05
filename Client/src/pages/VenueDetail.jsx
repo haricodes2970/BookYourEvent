@@ -4,6 +4,7 @@ import { getVenueById } from '../services/venueService';
 import { createBooking } from '../services/bookingService';
 import { useAuth } from '../context/AuthContext';
 import { getVenueReviews, addReview } from '../services/reviewService';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 
 const VenueDetail = () => {
     const { id } = useParams();
@@ -325,9 +326,24 @@ const VenueDetail = () => {
                                 <form onSubmit={handleBooking} className="space-y-5">
                                     <div>
                                         <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">Event Date</label>
-                                        <input type="date" name="eventDate" value={bookingData.eventDate} onChange={handleChange}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            className="w-full border-b-2 border-slate-200 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-blue-400 transition text-sm" required/>
+                                        <input
+                                        type="date"
+                                        name="eventDate"
+                                        value={bookingData.eventDate}
+                                        onChange={(e) => {
+                                        const selectedDate = e.target.value;
+                                        const blocked = venue.blockedDates?.map(d => new Date(d).toISOString().split('T')[0]) || [];
+                                        if (blocked.includes(selectedDate)) {
+                                        setError('This date is not available. Please choose another date.');
+                                        return;
+                                        }
+                                        setError('');
+                                        setBookingData({ ...bookingData, eventDate: selectedDate });
+                                        }}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full border-b-2 border-slate-200 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-blue-400 transition text-sm"
+                                        required
+                                    />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -359,6 +375,15 @@ const VenueDetail = () => {
                                             </p>
                                         </div>
                                     )}
+
+                                    {/* Availability Calendar */}
+                                    <div>
+                                    <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">Availability</label>
+                                    <AvailabilityCalendar
+                                    blockedDates={venue.blockedDates || []}
+                                    mode="view"
+                                    />
+                                    </div>
 
                                     <button type="submit" disabled={bookingLoading}
                                         className="w-full py-3 rounded-xl font-semibold text-white transition mt-2"
@@ -455,3 +480,4 @@ const VenueDetail = () => {
 };
 
 export default VenueDetail;
+

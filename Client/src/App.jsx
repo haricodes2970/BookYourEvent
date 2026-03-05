@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import About from './pages/About';
 import BookerDashboard from './pages/BookerDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -17,6 +18,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/booker/dashboard" element={<BookerDashboard />} />
                 <Route path="/booker/my-bookings" element={<MyBookings />} />
                 <Route path="/owner/dashboard" element={<OwnerDashboard />} />

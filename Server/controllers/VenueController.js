@@ -97,4 +97,43 @@ const adminDeleteVenue = async (req, res) => {
     }
 };
 
-module.exports = { createVenue, getAllVenues, getVenueById, deleteVenue, approveVenue, getAllVenuesAdmin, adminDeleteVenue };
+const blockDates = async (req, res) => {
+    try {
+        const { dates } = req.body;
+        const venue = await Venue.findById(req.params.id);
+        if (!venue) return res.status(404).json({ message: 'Venue not found' });
+        if (venue.owner.toString() !== req.user.id)
+            return res.status(403).json({ message: 'Unauthorized' });
+
+        venue.blockedDates = [...new Set([
+            ...venue.blockedDates.map(d => d.toISOString().split('T')[0]),
+            ...dates
+        ])].map(d => new Date(d));
+
+        await venue.save();
+        res.status(200).json({ message: 'Dates blocked', blockedDates: venue.blockedDates });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+const unblockDate = async (req, res) => {
+    try {
+        const { date } = req.body;
+        const venue = await Venue.findById(req.params.id);
+        if (!venue) return res.status(404).json({ message: 'Venue not found' });
+        if (venue.owner.toString() !== req.user.id)
+            return res.status(403).json({ message: 'Unauthorized' });
+
+        venue.blockedDates = venue.blockedDates.filter(d =>
+            d.toISOString().split('T')[0] !== date
+        );
+
+        await venue.save();
+        res.status(200).json({ message: 'Date unblocked', blockedDates: venue.blockedDates });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+module.exports = { createVenue, getAllVenues, getVenueById, deleteVenue, approveVenue, getAllVenuesAdmin, adminDeleteVenue, blockDates, unblockDate };

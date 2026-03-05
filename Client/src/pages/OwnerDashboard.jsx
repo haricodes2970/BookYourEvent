@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { createVenueWithImages, getAllVenues, deleteVenue } from '../services/venueService';
+import { createVenueWithImages, getAllVenues, deleteVenue, blockDates, unblockDate } from '../services/venueService';
 import { getVenueBookings, updateBookingStatus } from '../services/bookingService';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
 
 const VENUE_TYPES = [
     'Marriage Hall', 'Party Hall', 'Conference Room', 'Shop/Retail',
@@ -32,6 +33,7 @@ const OwnerDashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [images, setImages] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
+    const [selectedVenueForCalendar, setSelectedVenueForCalendar] = useState(null);
 
     const [formData, setFormData] = useState({
         name: '', description: '', type: 'Marriage Hall',
@@ -116,7 +118,6 @@ const OwnerDashboard = () => {
             data.append('amenities', JSON.stringify(formData.amenities));
             data.append('bookingType', formData.bookingType);
             images.forEach(img => data.append('images', img));
-
             await createVenueWithImages(data);
             setSuccess('Venue created! Waiting for admin approval.');
             setShowForm(false);
@@ -137,6 +138,25 @@ const OwnerDashboard = () => {
             setVenues(venues.filter(v => v._id !== id));
         } catch (err) {
             setError('Failed to delete venue');
+        }
+    };
+
+    const handleCalendarDateClick = async (date) => {
+        if (!selectedVenueForCalendar) return;
+        const venue = venues.find(v => v._id === selectedVenueForCalendar);
+        const blockedStrs = venue.blockedDates?.map(d => new Date(d).toISOString().split('T')[0]) || [];
+        try {
+            if (blockedStrs.includes(date)) {
+                const data = await unblockDate(selectedVenueForCalendar, date);
+                setVenues(venues.map(v => v._id === selectedVenueForCalendar ? { ...v, blockedDates: data.blockedDates } : v));
+                setSuccess('Date unblocked!');
+            } else {
+                const data = await blockDates(selectedVenueForCalendar, [date]);
+                setVenues(venues.map(v => v._id === selectedVenueForCalendar ? { ...v, blockedDates: data.blockedDates } : v));
+                setSuccess('Date blocked!');
+            }
+        } catch (err) {
+            setError('Failed to update availability');
         }
     };
 
@@ -203,6 +223,10 @@ const OwnerDashboard = () => {
                     <button onClick={()=>setActiveTab('bookings')}
                         className={`text-sm font-medium transition ${activeTab==='bookings' ? 'text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}>
                         Bookings
+                    </button>
+                    <button onClick={()=>setActiveTab('calendar')}
+                        className={`text-sm font-medium transition ${activeTab==='calendar' ? 'text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Availability
                     </button>
                     <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">About</a>
                     <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">Contact</a>
@@ -339,7 +363,6 @@ const OwnerDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Image Upload */}
                             <div>
                                 <label className="text-slate-500 text-xs mb-2 block">Venue Images (max 5)</label>
                                 <input type="file" accept="image/*" multiple onChange={handleImageChange}
@@ -382,7 +405,6 @@ const OwnerDashboard = () => {
                                     <div key={venue._id}
                                         className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-lg hover:-translate-y-0.5"
                                         style={{ background: 'rgba(255,255,255,0.78)', border: '1px solid rgba(180,220,180,0.4)' }}>
-
                                         <div className="h-28 overflow-hidden"
                                             style={{ background: 'linear-gradient(135deg, #c8e8c8, #b0d8b0)' }}>
                                             {venue.images && venue.images.length > 0 ? (
@@ -393,7 +415,6 @@ const OwnerDashboard = () => {
                                                 </div>
                                             )}
                                         </div>
-
                                         <div className="p-3">
                                             <div className="flex justify-between items-start mb-1">
                                                 <span className="text-xs px-2 py-0.5 rounded-full text-slate-500"
@@ -434,13 +455,10 @@ const OwnerDashboard = () => {
                                 </button>
                             ))}
                         </div>
-
                         {bookingsLoading && <p className="text-slate-400 text-sm">Loading bookings...</p>}
-
                         {!bookingsLoading && bookings.length === 0 && (
                             <p className="text-slate-400 text-sm">Click a venue above to see its bookings.</p>
                         )}
-
                         {bookings.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {bookings.map(booking => (
@@ -481,6 +499,67 @@ const OwnerDashboard = () => {
                                     </div>
                                 ))}
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Calendar Tab */}
+                {activeTab === 'calendar' && (
+                    <div>
+                        <p className="text-slate-500 text-sm mb-4">Select a venue to manage its availability</p>
+                        <div className="flex gap-3 mb-6 flex-wrap">
+                            {venues.map(venue => (
+                                <button key={venue._id}
+                                    onClick={() => setSelectedVenueForCalendar(venue._id)}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium transition hover:shadow-md"
+                                    style={selectedVenueForCalendar === venue._id
+                                        ? { background: 'rgba(74,138,100,0.2)', border: '1px solid rgba(74,138,100,0.4)', color: '#4a7a5a' }
+                                        : { background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(180,220,180,0.5)', color: '#64748b' }}>
+                                    {venue.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        {selectedVenueForCalendar && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-slate-600 text-sm font-semibold mb-3">
+                                        📅 {venues.find(v => v._id === selectedVenueForCalendar)?.name} — Click dates to block/unblock
+                                    </p>
+                                    <AvailabilityCalendar
+                                        blockedDates={venues.find(v => v._id === selectedVenueForCalendar)?.blockedDates || []}
+                                        onDateClick={handleCalendarDateClick}
+                                        mode="owner"
+                                    />
+                                </div>
+                                <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(180,220,180,0.4)' }}>
+                                    <p className="text-slate-600 text-sm font-semibold mb-3">🚫 Blocked Dates</p>
+                                    {(venues.find(v => v._id === selectedVenueForCalendar)?.blockedDates || []).length === 0 ? (
+                                        <p className="text-slate-400 text-sm">No dates blocked yet.</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {venues.find(v => v._id === selectedVenueForCalendar)?.blockedDates
+                                                .sort((a, b) => new Date(a) - new Date(b))
+                                                .map((date, i) => (
+                                                <div key={i} className="flex items-center gap-1 px-3 py-1 rounded-full text-xs"
+                                                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                                                    {new Date(date).toLocaleDateString()}
+                                                    <button onClick={() => handleCalendarDateClick(new Date(date).toISOString().split('T')[0])}
+                                                        className="ml-1 hover:opacity-70">✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {!selectedVenueForCalendar && venues.length > 0 && (
+                            <p className="text-slate-400 text-sm">Select a venue above to manage its calendar.</p>
+                        )}
+
+                        {venues.length === 0 && (
+                            <p className="text-slate-400 text-sm">No venues yet. Create a venue first.</p>
                         )}
                     </div>
                 )}

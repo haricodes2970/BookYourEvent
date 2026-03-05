@@ -61,6 +61,10 @@ const venueSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    blockedDates: {
+    type: [Date],
+    default: []
+    },
     isApproved: {
         type: Boolean,
         default: false

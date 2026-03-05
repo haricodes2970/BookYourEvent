@@ -34,3 +34,17 @@ export const deleteVenue = async (id) => {
     });
     return response.data;
 };
+
+export const blockDates = async (venueId, dates) => {
+    const response = await axios.patch(`${API}/venues/${venueId}/block-dates`, { dates }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    return response.data;
+};
+
+export const unblockDate = async (venueId, date) => {
+    const response = await axios.patch(`${API}/venues/${venueId}/unblock-date`, { date }, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    return response.data;
+};

@@ -1,304 +1,709 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getAllVenues } from '../services/venueService';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 
+/* ══════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════ */
+const useDark = () => {
+    const [dark, setDark] = useState(false);
+    return { dark, toggle: () => setDark(d => !d) };
+};
+
+const ThemeToggle = ({ dark, toggle }) => (
+    <motion.button onClick={toggle} whileTap={{ scale: 0.95 }}
+        style={{
+            width: 60, height: 30, borderRadius: 999, padding: 3,
+            display: 'flex', alignItems: 'center', cursor: 'pointer',
+            border: 'none', flexShrink: 0,
+            background: dark ? '#2a2a2a' : '#f1ede5',
+            boxShadow: dark ? '0 0 10px rgba(212,175,55,0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+            transition: 'background 0.35s ease',
+        }}>
+        <motion.div layout animate={{ x: dark ? 30 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: dark ? '#D4AF37' : '#C8A45B',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+            }}>{dark ? '🌙' : '☀️'}</motion.div>
+    </motion.button>
+);
+
+/* ══════════════════════════════════════
+   VENUE TYPES
+══════════════════════════════════════ */
 const VENUE_TYPES = [
     'All', 'Marriage Hall', 'Party Hall', 'Conference Room', 'Farmhouse',
     'Rooftop', 'Studio', 'Banquet Hall', 'Resort', 'Turf', 'Auditorium',
     'Warehouse', 'Photoshoot Studio', 'Terrace', 'Community Hall'
 ];
 
+const venueEmoji = (type) => ({
+    'Resort': '🏖️', 'Rooftop': '🌆', 'Farmhouse': '🌾',
+    'Marriage Hall': '💒', 'Party Hall': '🎉', 'Conference Room': '🏢',
+    'Banquet Hall': '🍽️', 'Turf': '⚽', 'Studio': '🎨',
+    'Auditorium': '🎭', 'Terrace': '🌅', 'Warehouse': '🏗️',
+    'Photoshoot Studio': '📸', 'Community Hall': '🏘️',
+}[type] || '🏛️');
+
+/* ══════════════════════════════════════
+   VENUE CARD
+══════════════════════════════════════ */
+const VenueCard = ({ venue, dark, onClick, index, inView }) => {
+    const T = {
+        card:    dark ? '#1E1E1E' : '#FFFFFF',
+        border:  dark ? '#333333' : '#E6E2D9',
+        name:    dark ? '#F3F3F3' : '#1F1F1F',
+        sub:     dark ? '#9a9a9a' : '#6b7280',
+        tag:     dark ? 'rgba(212,175,55,0.15)' : 'rgba(200,164,91,0.12)',
+        tagText: dark ? '#D4AF37' : '#C8A45B',
+        badge:   dark ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.92)',
+        badgeText: dark ? '#D4AF37' : '#C8A45B',
+        btn:     dark ? 'rgba(212,175,55,0.12)' : 'rgba(200,164,91,0.1)',
+        btnBorder: dark ? 'rgba(212,175,55,0.4)' : 'rgba(200,164,91,0.4)',
+        btnText: dark ? '#D4AF37' : '#C8A45B',
+        divider: dark ? '#2a2a2a' : '#f0ece4',
+    };
+
+    const stars = venue.rating ? Math.round(venue.rating * 2) / 2 : 4.5;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5, delay: (index % 4) * 0.08, ease: 'easeOut' }}
+            whileHover={{ y: -8, boxShadow: dark
+                ? '0 24px 50px rgba(212,175,55,0.12)'
+                : '0 24px 50px rgba(200,164,91,0.18)' }}
+            onClick={onClick}
+            style={{
+                background: T.card, borderRadius: 18,
+                border: `1px solid ${T.border}`,
+                overflow: 'hidden', cursor: 'pointer',
+                boxShadow: dark ? '0 4px 20px rgba(0,0,0,0.35)' : '0 4px 20px rgba(0,0,0,0.07)',
+                transition: 'box-shadow 0.3s ease',
+            }}
+        >
+            {/* Image */}
+            <div style={{ position: 'relative', height: 175, overflow: 'hidden',
+                background: dark
+                    ? 'linear-gradient(135deg,#1a2a1a,#2a1a0a)'
+                    : 'linear-gradient(135deg,#e8dfc8,#d4c8a8)' }}>
+                {venue.images?.length > 0 ? (
+                    <motion.img
+                        src={venue.images[0]} alt={venue.name}
+                        whileHover={{ scale: 1.08 }}
+                        transition={{ duration: 0.4 }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 52 }}>
+                        {venueEmoji(venue.type)}
+                    </div>
+                )}
+                {/* Gradient overlay */}
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)',
+                }}/>
+                {/* Type badge */}
+                <div style={{
+                    position: 'absolute', top: 10, left: 10,
+                    background: T.badge, backdropFilter: 'blur(8px)',
+                    borderRadius: 50, padding: '3px 10px',
+                    fontSize: 11, fontWeight: 700, color: T.badgeText,
+                    border: `1px solid ${T.btnBorder}`,
+                }}>
+                    {venue.type}
+                </div>
+                {/* Booking type */}
+                {venue.bookingType === 'instant' && (
+                    <div style={{
+                        position: 'absolute', top: 10, right: 10,
+                        background: dark ? 'rgba(212,175,55,0.2)' : 'rgba(200,164,91,0.15)',
+                        backdropFilter: 'blur(8px)', borderRadius: 50, padding: '3px 10px',
+                        fontSize: 11, fontWeight: 700, color: T.badgeText,
+                        border: `1px solid ${T.btnBorder}`,
+                    }}>⚡ Instant</div>
+                )}
+                {/* Rating bottom overlay */}
+                <div style={{
+                    position: 'absolute', bottom: 10, left: 12,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                    <span style={{ color: '#D4AF37', fontSize: 13 }}>
+                        {'★'.repeat(Math.floor(stars))}
+                        {stars % 1 ? '½' : ''}
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 600 }}>
+                        {stars.toFixed(1)}
+                    </span>
+                </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '14px 16px 16px' }}>
+                <h3 style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: 16, fontWeight: 800,
+                    color: T.name, marginBottom: 4,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                    {venue.name}
+                </h3>
+                <p style={{ fontSize: 12, color: T.sub, marginBottom: 12,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    📍 {venue.location?.address}, {venue.location?.city}
+                </p>
+
+                {/* Tags */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {['AC Hall', 'Parking', venue.type === 'Resort' ? 'Pool' : 'Stage'].map((tag, i) => (
+                        <span key={i} style={{
+                            fontSize: 10, padding: '3px 8px', borderRadius: 50,
+                            background: T.tag, color: T.tagText, fontWeight: 600,
+                        }}>{tag}</span>
+                    ))}
+                </div>
+
+                <div style={{ borderTop: `1px solid ${T.divider}`, paddingTop: 12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <span style={{
+                            fontFamily: "'Playfair Display', serif",
+                            fontSize: 17, fontWeight: 900,
+                            color: dark ? '#D4AF37' : '#C8A45B',
+                        }}>₹{venue.pricePerHour?.toLocaleString('en-IN')}</span>
+                        <span style={{ fontSize: 11, color: T.sub, fontWeight: 500 }}>/hr</span>
+                    </div>
+                    <motion.button
+                        whileHover={{ background: 'linear-gradient(135deg,#C8A45B,#E3C67A)', color: 'white' }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={e => { e.stopPropagation(); onClick(); }}
+                        style={{
+                            padding: '7px 16px', borderRadius: 50, fontSize: 12, fontWeight: 700,
+                            background: T.btn, border: `1.5px solid ${T.btnBorder}`,
+                            color: T.btnText, cursor: 'pointer', fontFamily: 'inherit',
+                            transition: 'all 0.2s ease',
+                        }}>
+                        View Details
+                    </motion.button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+/* ══════════════════════════════════════
+   BOOKER DASHBOARD
+══════════════════════════════════════ */
 const BookerDashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [venues, setVenues] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedType, setSelectedType] = useState('All');
-    const [selectedCity, setSelectedCity] = useState('All');
-    const [maxPrice, setMaxPrice] = useState('');
+    const { dark, toggle } = useDark();
+
+    const [venues, setVenues]                   = useState([]);
+    const [loading, setLoading]                 = useState(true);
+    const [searchQuery, setSearchQuery]         = useState('');
+    const [selectedType, setSelectedType]       = useState('All');
+    const [selectedCity, setSelectedCity]       = useState('All');
+    const [maxPrice, setMaxPrice]               = useState('');
     const [bookingTypeFilter, setBookingTypeFilter] = useState('All');
-    const [showFilters, setShowFilters] = useState(false);
+    const [showFilters, setShowFilters]         = useState(false);
+    const [profileOpen, setProfileOpen]         = useState(false);
+
+    const gridRef  = useRef(null);
+    const gridView = useInView(gridRef, { once: false, amount: 0.05 });
 
     useEffect(() => {
-        const fetchVenues = async () => {
-            try {
-                const data = await getAllVenues();
-                setVenues(data.venues);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchVenues();
+        getAllVenues()
+            .then(data => setVenues(data.venues))
+            .catch(console.error)
+            .finally(() => setLoading(false));
     }, []);
 
     const handleLogout = () => { logout(); navigate('/login'); };
 
     const cities = ['All', ...new Set(venues.map(v => v.location?.city).filter(Boolean))];
+    const activeFilters = [selectedType, selectedCity, maxPrice, bookingTypeFilter]
+        .filter(f => f && f !== 'All').length;
 
     const filteredVenues = venues.filter(v => {
-        const matchSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            v.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            v.location?.city?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchType = selectedType === 'All' || v.type === selectedType;
-        const matchCity = selectedCity === 'All' || v.location?.city === selectedCity;
-        const matchPrice = !maxPrice || v.pricePerHour <= parseInt(maxPrice);
-        const matchBooking = bookingTypeFilter === 'All' || v.bookingType === bookingTypeFilter;
-        return matchSearch && matchType && matchCity && matchPrice && matchBooking;
+        const q = searchQuery.toLowerCase();
+        return (
+            (v.name.toLowerCase().includes(q) ||
+             v.type.toLowerCase().includes(q) ||
+             v.location?.city?.toLowerCase().includes(q)) &&
+            (selectedType === 'All' || v.type === selectedType) &&
+            (selectedCity === 'All' || v.location?.city === selectedCity) &&
+            (!maxPrice || v.pricePerHour <= parseInt(maxPrice)) &&
+            (bookingTypeFilter === 'All' || v.bookingType === bookingTypeFilter)
+        );
     });
 
-    const activeFilters = [selectedType, selectedCity, maxPrice, bookingTypeFilter].filter(f => f && f !== 'All').length;
+    const clearFilters = () => {
+        setSelectedType('All'); setSelectedCity('All');
+        setMaxPrice(''); setBookingTypeFilter('All'); setSearchQuery('');
+    };
 
-    const venueEmoji = (type) => ({
-        'Resort': '🏖️', 'Rooftop': '🌆', 'Farmhouse': '🌾',
-        'Marriage Hall': '💒', 'Party Hall': '🎉', 'Conference Room': '🏢',
-        'Banquet Hall': '🍽️', 'Turf': '⚽', 'Studio': '🎨', 'Auditorium': '🎭'
-    }[type] || '🏛️');
+    /* ── THEME TOKENS ── */
+    const T = {
+        bg:       dark ? '#121212' : '#F8F6F2',
+        navBg:    dark ? 'rgba(18,18,18,0.92)' : 'rgba(248,246,242,0.92)',
+        navBorder:dark ? '#2a2a2a' : '#E6E2D9',
+        card:     dark ? '#1E1E1E' : '#FFFFFF',
+        border:   dark ? '#333333' : '#E6E2D9',
+        title:    dark ? '#F3F3F3' : '#1F1F1F',
+        sub:      dark ? '#9a9a9a' : '#6b7280',
+        gold:     dark ? '#D4AF37' : '#C8A45B',
+        goldLight:dark ? 'rgba(212,175,55,0.12)' : 'rgba(200,164,91,0.1)',
+        goldBorder:dark? 'rgba(212,175,55,0.35)' : 'rgba(200,164,91,0.35)',
+        input:    dark ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.9)',
+        filterBg: dark ? '#1A1A1A' : '#FFFFFF',
+        shadow:   dark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.08)',
+    };
 
     return (
-        <div className="min-h-screen relative overflow-hidden flex flex-col" style={{
-            background: 'linear-gradient(180deg, #b8dff0 0%, #cce8f4 20%, #dff0f8 45%, #eef7fb 70%, #f5fafd 100%)'
-        }}>
-            {/* Birds */}
-            <svg className="absolute top-20 left-16 opacity-25 z-0 pointer-events-none" width="180" height="80" viewBox="0 0 180 80">
-                <path d="M10 40 Q24 26 38 40 Q24 33 10 40Z" fill="#4a8aaa"/>
-                <path d="M48 25 Q62 12 76 25 Q62 18 48 25Z" fill="#4a8aaa" opacity="0.8"/>
-                <path d="M85 42 Q99 29 113 42 Q99 35 85 42Z" fill="#4a8aaa" opacity="0.7"/>
-                <path d="M22 58 Q36 45 50 58 Q36 51 22 58Z" fill="#4a8aaa" opacity="0.5"/>
-            </svg>
-            <svg className="absolute top-14 right-24 opacity-25 z-0 pointer-events-none" width="160" height="70" viewBox="0 0 160 70">
-                <path d="M120 30 Q134 17 148 30 Q134 23 120 30Z" fill="#4a8aaa"/>
-                <path d="M85 42 Q99 29 113 42 Q99 35 85 42Z" fill="#4a8aaa" opacity="0.8"/>
-                <path d="M130 52 Q144 39 158 52 Q144 45 130 52Z" fill="#4a8aaa" opacity="0.6"/>
-            </svg>
+        <div style={{ minHeight: '100vh', background: T.bg,
+            fontFamily: "'DM Sans', sans-serif", position: 'relative' }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap');
+                ::-webkit-scrollbar { width: 5px; height: 5px; }
+                ::-webkit-scrollbar-track { background: ${dark ? '#1a1a1a' : '#f1ede5'}; }
+                ::-webkit-scrollbar-thumb { background: #C8A45B; border-radius: 10px; }
+                select { appearance: none; }
+                input[type=range] { accent-color: #C8A45B; }
+                input[type=radio]  { accent-color: #C8A45B; }
+            `}</style>
 
-            {/* Wildflowers */}
-            <div className="absolute bottom-0 left-0 right-0 z-0 pointer-events-none">
-                <svg viewBox="0 0 1440 180" preserveAspectRatio="none" className="w-full">
-                    <path d="M0 180 Q180 110 360 145 Q540 100 720 138 Q900 105 1080 135 Q1260 108 1440 128 L1440 180Z" fill="#a8d4e8" opacity="0.25"/>
-                    <path d="M0 180 Q220 130 440 155 Q660 120 880 148 Q1100 125 1320 142 L1440 138 L1440 180Z" fill="#88bcd8" opacity="0.2"/>
-                    {[30,90,160,240,320,400,490,570,650,730,820,900,990,1070,1150,1230,1310,1390].map((x,i)=>(
-                        <g key={i}>
-                            <line x1={x} y1="180" x2={x-((i%3)-1)*4} y2={130+(i%5)*8} stroke="#7aaabb" strokeWidth="1.5" opacity="0.5"/>
-                            <ellipse cx={x-((i%3)-1)*4} cy={122+(i%5)*8} rx={5+(i%3)} ry={9+(i%3)}
-                                fill={['#b8d8ec','#c8dff0','#d4c8e0','#c0d8e8','#d8e8c0','#e8d4b8'][i%6]} opacity="0.7"/>
-                            {i%3===0 && <ellipse cx={x+8} cy={118+(i%4)*9} rx="4" ry="7" fill="#d0b8dc" opacity="0.5"/>}
-                        </g>
-                    ))}
-                </svg>
-            </div>
+            {/* ══════════════════════════════════════
+                NAVBAR
+            ══════════════════════════════════════ */}
+            <motion.nav
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                style={{
+                    position: 'sticky', top: 0, zIndex: 100,
+                    background: T.navBg, backdropFilter: 'blur(20px)',
+                    borderBottom: `1px solid ${T.navBorder}`,
+                    padding: '0 28px',
+                    boxShadow: dark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.06)',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', height: 64 }}>
 
-            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-slate-400 text-xs italic z-10 tracking-widest pointer-events-none">
-                EASY. BOOK. ENJOY.
-            </p>
+                    {/* Left — Logo + Nav */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+                        <motion.div whileHover={{ scale: 1.05 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                            onClick={() => navigate('/')}>
+                            <img src="/logo.png" alt="BYE"
+                                className="h-10 w-10 rounded-full object-cover"
+                                style={{ boxShadow: `0 0 0 2px ${T.gold}` }}
+                                onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}/>
+                            <div style={{
+                                display:'none', width:38, height:38, borderRadius:'50%',
+                                background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
+                                alignItems:'center', justifyContent:'center',
+                                color:'white', fontSize:10, fontWeight:800,
+                            }}>BYE</div>
+                            <span style={{
+                                fontFamily:"'Playfair Display', serif", fontWeight:700,
+                                fontSize:15, color:T.title, display:'none',
+                            }} className="hidden lg:block">BookYourEvent</span>
+                        </motion.div>
 
-            {/* Navbar */}
-            <nav className="relative z-10 flex items-center justify-between px-8 py-4">
-                <div className="flex items-center gap-8">
-                    <img src="/logo.png" alt="BYE" className="h-14 w-14 rounded-full object-cover shadow-md cursor-pointer"
-                        onClick={() => navigate('/')}
-                        onError={(e)=>{e.target.style.display='none'}}/>
-                    <button className="text-sm font-bold text-slate-800">Browse Venues</button>
-                    <button onClick={()=>navigate('/booker/my-bookings')}
-                        className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">
-                        My Bookings
-                    </button>
-                    <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">About</a>
-                    <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">Contact</a>
-                </div>
-
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }}>
-                    <input type="text" placeholder="Search Venues" value={searchQuery}
-                        onChange={(e)=>setSearchQuery(e.target.value)}
-                        className="bg-transparent text-slate-600 text-sm focus:outline-none placeholder-slate-400 w-44"/>
-                    <span className="text-slate-400 text-sm">🔍</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <span className="text-slate-500 text-sm font-medium">Hi, {user?.name?.split(' ')[0]}</span>
-                    <button onClick={()=>navigate('/booker/my-bookings')}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 transition hover:shadow-md"
-                        style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }}>
-                        My Bookings
-                    </button>
-                    <button onClick={handleLogout}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 transition hover:shadow-md"
-                        style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }}>
-                        Log Out
-                    </button>
-                </div>
-            </nav>
-
-            {/* Page Title + Filter Toggle */}
-            <div className="relative z-10 px-8 pt-2 pb-3 flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-700">Booker Dashboard</h1>
-                    <p className="text-slate-400 text-xs tracking-widest uppercase mt-0.5">
-                        {filteredVenues.length} venues found
-                    </p>
-                </div>
-                <button onClick={()=>setShowFilters(!showFilters)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition hover:shadow-md"
-                    style={{
-                        background: showFilters ? 'rgba(74,138,170,0.15)' : 'rgba(255,255,255,0.7)',
-                        border: showFilters ? '1px solid rgba(74,138,170,0.4)' : '1px solid rgba(255,255,255,0.9)',
-                        color: showFilters ? '#4a8aaa' : '#64748b'
-                    }}>
-                    🎛️ Filters {activeFilters > 0 && (
-                        <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {activeFilters}
-                        </span>
-                    )}
-                </button>
-            </div>
-
-            {/* Filter Panel */}
-            {showFilters && (
-                <div className="relative z-10 px-8 pb-4">
-                    <div className="rounded-2xl p-5 shadow-sm"
-                        style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.9)' }}>
-                        <div className="grid grid-cols-4 gap-4">
-
-                            {/* Venue Type */}
-                            <div>
-                                <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">Venue Type</label>
-                                <select value={selectedType} onChange={(e)=>setSelectedType(e.target.value)}
-                                    className="w-full border-b-2 border-slate-200 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-blue-400 transition text-sm">
-                                    {VENUE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                            </div>
-
-                            {/* City */}
-                            <div>
-                                <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">City</label>
-                                <select value={selectedCity} onChange={(e)=>setSelectedCity(e.target.value)}
-                                    className="w-full border-b-2 border-slate-200 bg-transparent text-slate-600 py-2 focus:outline-none focus:border-blue-400 transition text-sm">
-                                    {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-
-                            {/* Max Price */}
-                            <div>
-                                <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">
-                                    Max Price/hr {maxPrice && `— ₹${maxPrice}`}
-                                </label>
-                                <input type="range" min="500" max="50000" step="500"
-                                    value={maxPrice || 50000}
-                                    onChange={(e)=>setMaxPrice(e.target.value)}
-                                    className="w-full accent-blue-400"/>
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>₹500</span>
-                                    <span>₹50,000</span>
-                                </div>
-                            </div>
-
-                            {/* Booking Type */}
-                            <div>
-                                <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2 block">Booking Type</label>
-                                <div className="flex flex-col gap-2 mt-1">
-                                    {['All', 'instant', 'manual'].map(bt => (
-                                        <label key={bt} className="flex items-center gap-2 text-slate-600 text-sm cursor-pointer">
-                                            <input type="radio" name="bookingType" value={bt}
-                                                checked={bookingTypeFilter === bt}
-                                                onChange={() => setBookingTypeFilter(bt)}
-                                                className="accent-blue-400"/>
-                                            {bt === 'All' ? 'All' : bt === 'instant' ? '⚡ Instant' : '📋 Manual'}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            {[
+                                { label:'Browse Venues', active:true,  action:null },
+                                { label:'My Bookings',   active:false, action:()=>navigate('/booker/my-bookings') },
+                                { label:'About',         active:false, action:()=>navigate('/about') },
+                                { label:'Contact',       active:false, action:()=>navigate('/#contact') },
+                            ].map((item, i) => (
+                                <motion.button key={i}
+                                    whileHover={{ color: T.gold }}
+                                    onClick={item.action || undefined}
+                                    style={{
+                                        padding: '6px 14px', borderRadius: 8,
+                                        background: item.active ? T.goldLight : 'transparent',
+                                        border: item.active ? `1px solid ${T.goldBorder}` : '1px solid transparent',
+                                        color: item.active ? T.gold : T.sub,
+                                        fontSize: 13, fontWeight: item.active ? 700 : 500,
+                                        cursor: 'pointer', fontFamily: 'inherit',
+                                        transition: 'color 0.2s ease',
+                                    }}>
+                                    {item.label}
+                                </motion.button>
+                            ))}
                         </div>
+                    </div>
 
-                        {/* Clear Filters */}
-                        {activeFilters > 0 && (
-                            <button onClick={()=>{ setSelectedType('All'); setSelectedCity('All'); setMaxPrice(''); setBookingTypeFilter('All'); }}
-                                className="mt-4 text-xs text-red-400 hover:text-red-500 transition">
-                                ✕ Clear all filters
-                            </button>
-                        )}
+                    {/* Center — Search */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        background: T.input, backdropFilter: 'blur(10px)',
+                        borderRadius: 50, padding: '8px 18px',
+                        border: `1px solid ${T.border}`,
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+                        width: 260,
+                    }}>
+                        <span style={{ color: T.gold, fontSize: 15 }}>🔍</span>
+                        <input
+                            type="text" placeholder="Search venues..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{
+                                background: 'transparent', border: 'none', outline: 'none',
+                                fontSize: 13, color: T.title, width: '100%', fontFamily: 'inherit',
+                                caretColor: T.gold,
+                            }}
+                        />
+                        <style>{`input::placeholder { color: ${T.sub}; }`}</style>
+                    </div>
+
+                    {/* Right — Theme + Profile */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <ThemeToggle dark={dark} toggle={toggle} />
+
+                        {/* Profile dropdown */}
+                        <div style={{ position: 'relative' }}>
+                            <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setProfileOpen(o => !o)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '6px 14px 6px 8px', borderRadius: 50,
+                                    background: T.goldLight, border: `1.5px solid ${T.goldBorder}`,
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                }}>
+                                <div style={{
+                                    width: 28, height: 28, borderRadius: '50%',
+                                    background: `linear-gradient(135deg,${dark?'#D4AF37':'#C8A45B'},#E3C67A)`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'white', fontSize: 12, fontWeight: 800,
+                                }}>
+                                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </div>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: T.title }}>
+                                    {user?.name?.split(' ')[0] || 'User'}
+                                </span>
+                                <span style={{ fontSize: 10, color: T.sub }}>▼</span>
+                            </motion.button>
+
+                            <AnimatePresence>
+                                {profileOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{
+                                            position: 'absolute', right: 0, top: '110%',
+                                            background: T.filterBg, border: `1px solid ${T.border}`,
+                                            borderRadius: 14, padding: '8px 0',
+                                            boxShadow: T.shadow, minWidth: 180, zIndex: 200,
+                                        }}>
+                                        {[
+                                            { label: '📋 My Bookings', action: () => navigate('/booker/my-bookings') },
+                                            { label: '👤 Profile',      action: () => {} },
+                                            { label: '⚙️ Settings',     action: () => {} },
+                                            { label: '🚪 Log Out',       action: handleLogout, danger: true },
+                                        ].map((item, i) => (
+                                            <motion.button key={i}
+                                                whileHover={{ background: T.goldLight, color: item.danger ? '#ef4444' : T.gold }}
+                                                onClick={() => { item.action(); setProfileOpen(false); }}
+                                                style={{
+                                                    width: '100%', padding: '10px 18px', textAlign: 'left',
+                                                    background: 'transparent', border: 'none',
+                                                    color: item.danger ? '#ef4444' : T.title,
+                                                    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                                    fontFamily: 'inherit', transition: 'all 0.15s',
+                                                    borderTop: i === 3 ? `1px solid ${T.border}` : 'none',
+                                                    marginTop: i === 3 ? 4 : 0,
+                                                }}>{item.label}</motion.button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </div>
-            )}
+            </motion.nav>
 
-            {/* Venue Type Quick Filters */}
-            <div className="relative z-10 px-8 pb-3 flex gap-2 overflow-x-auto">
-                {VENUE_TYPES.slice(0, 8).map(type => (
-                    <button key={type} onClick={()=>setSelectedType(type)}
-                        className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition flex-shrink-0"
-                        style={selectedType === type
-                            ? { background: 'rgba(74,138,170,0.2)', border: '1px solid rgba(74,138,170,0.4)', color: '#4a8aaa' }
-                            : { background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)', color: '#64748b' }}>
-                        {type}
-                    </button>
-                ))}
+            {/* ══════════════════════════════════════
+                PAGE HEADER
+            ══════════════════════════════════════ */}
+            <div style={{ padding: '32px 28px 20px', maxWidth: 1400, margin: '0 auto' }}>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    style={{ display: 'flex', alignItems: 'flex-end',
+                        justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                    <div>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: T.goldLight, borderRadius: 50, padding: '4px 14px',
+                            border: `1px solid ${T.goldBorder}`, marginBottom: 10,
+                        }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
+                                textTransform: 'uppercase', color: T.gold }}>
+                                ✨ Explore
+                            </span>
+                        </div>
+                        <h1 style={{
+                            fontFamily: "'Playfair Display', serif",
+                            fontSize: 'clamp(1.8rem,3.5vw,2.4rem)', fontWeight: 900,
+                            color: T.title, lineHeight: 1.1, marginBottom: 6,
+                        }}>Booker Dashboard</h1>
+                        <p style={{ fontSize: 13, color: T.sub }}>
+                            {loading ? 'Loading venues...' : `${filteredVenues.length} venues available for you`}
+                        </p>
+                    </div>
+
+                    {/* Filter toggle */}
+                    <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowFilters(!showFilters)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '10px 20px', borderRadius: 50, cursor: 'pointer',
+                            background: showFilters ? T.goldLight : T.card,
+                            border: `1.5px solid ${showFilters ? T.goldBorder : T.border}`,
+                            color: showFilters ? T.gold : T.sub,
+                            fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                            boxShadow: showFilters ? `0 4px 14px rgba(200,164,91,0.2)` : T.shadow,
+                            transition: 'all 0.2s ease',
+                        }}>
+                        <span>🎛️ Filters</span>
+                        {activeFilters > 0 && (
+                            <motion.span
+                                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                style={{
+                                    background: T.gold, color: 'white',
+                                    fontSize: 10, fontWeight: 800,
+                                    width: 18, height: 18, borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>{activeFilters}</motion.span>
+                        )}
+                    </motion.button>
+                </motion.div>
             </div>
 
-            {/* Venues Grid */}
-            <div className="relative z-10 flex-1 px-8 pb-24 overflow-y-auto">
+            {/* ══════════════════════════════════════
+                FILTER PANEL
+            ══════════════════════════════════════ */}
+            <AnimatePresence>
+                {showFilters && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        style={{ overflow: 'hidden', padding: '0 28px 16px',
+                            maxWidth: 1400, margin: '0 auto' }}
+                    >
+                        <div style={{
+                            background: T.filterBg, border: `1px solid ${T.border}`,
+                            borderRadius: 20, padding: '24px 28px',
+                            boxShadow: T.shadow,
+                        }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 24 }}>
+
+                                {/* Venue Type */}
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
+                                        textTransform: 'uppercase', color: T.gold, display: 'block', marginBottom: 10 }}>
+                                        Venue Type
+                                    </label>
+                                    <select value={selectedType} onChange={e => setSelectedType(e.target.value)}
+                                        style={{
+                                            width: '100%', borderBottom: `2px solid ${T.goldBorder}`,
+                                            background: 'transparent', color: T.title, padding: '8px 4px',
+                                            fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                                            cursor: 'pointer',
+                                        }}>
+                                        {VENUE_TYPES.map(t => <option key={t} value={t}
+                                            style={{ background: T.filterBg, color: T.title }}>{t}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* City */}
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
+                                        textTransform: 'uppercase', color: T.gold, display: 'block', marginBottom: 10 }}>
+                                        City
+                                    </label>
+                                    <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}
+                                        style={{
+                                            width: '100%', borderBottom: `2px solid ${T.goldBorder}`,
+                                            background: 'transparent', color: T.title, padding: '8px 4px',
+                                            fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                                            cursor: 'pointer',
+                                        }}>
+                                        {cities.map(c => <option key={c} value={c}
+                                            style={{ background: T.filterBg, color: T.title }}>{c}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* Max Price */}
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
+                                        textTransform: 'uppercase', color: T.gold, display: 'block', marginBottom: 10 }}>
+                                        Max Price/hr {maxPrice ? `— ₹${parseInt(maxPrice).toLocaleString('en-IN')}` : ''}
+                                    </label>
+                                    <input type="range" min="500" max="50000" step="500"
+                                        value={maxPrice || 50000}
+                                        onChange={e => setMaxPrice(e.target.value)}
+                                        style={{ width: '100%', marginBottom: 4 }}/>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                                        fontSize: 11, color: T.sub }}>
+                                        <span>₹500</span><span>₹50,000</span>
+                                    </div>
+                                </div>
+
+                                {/* Booking Type */}
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
+                                        textTransform: 'uppercase', color: T.gold, display: 'block', marginBottom: 10 }}>
+                                        Booking Type
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                        {['All','instant','manual'].map(bt => (
+                                            <label key={bt} style={{ display: 'flex', alignItems: 'center',
+                                                gap: 8, cursor: 'pointer', fontSize: 13, color: T.title }}>
+                                                <input type="radio" name="bt" value={bt}
+                                                    checked={bookingTypeFilter === bt}
+                                                    onChange={() => setBookingTypeFilter(bt)}/>
+                                                {bt === 'All' ? '🏛️ All' : bt === 'instant' ? '⚡ Instant' : '📋 Manual'}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {activeFilters > 0 && (
+                                <motion.button
+                                    whileHover={{ color: '#ef4444' }}
+                                    onClick={clearFilters}
+                                    style={{ marginTop: 20, fontSize: 12, color: T.sub,
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        fontFamily: 'inherit', transition: 'color 0.2s' }}>
+                                    ✕ Clear all filters
+                                </motion.button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ══════════════════════════════════════
+                QUICK FILTER CHIPS
+            ══════════════════════════════════════ */}
+            <div style={{ padding: '0 28px 20px', maxWidth: 1400, margin: '0 auto' }}>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                    {VENUE_TYPES.slice(0, 10).map((type, i) => {
+                        const active = selectedType === type;
+                        return (
+                            <motion.button key={type}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.04 }}
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.96 }}
+                                onClick={() => setSelectedType(type)}
+                                style={{
+                                    flexShrink: 0, padding: '7px 18px',
+                                    borderRadius: 999, fontSize: 12, fontWeight: 600,
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                    background: active
+                                        ? 'linear-gradient(135deg,#C8A45B,#E3C67A)'
+                                        : T.card,
+                                    border: `1.5px solid ${active ? 'transparent' : T.border}`,
+                                    color: active ? 'white' : T.sub,
+                                    boxShadow: active
+                                        ? '0 4px 14px rgba(200,164,91,0.35)'
+                                        : '0 2px 8px rgba(0,0,0,0.04)',
+                                    transition: 'all 0.2s ease',
+                                }}>
+                                {type}
+                            </motion.button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* ══════════════════════════════════════
+                VENUE GRID
+            ══════════════════════════════════════ */}
+            <div ref={gridRef} style={{ padding: '0 28px 80px', maxWidth: 1400, margin: '0 auto' }}>
                 {loading ? (
-                    <div className="flex items-center justify-center h-48">
-                        <p className="text-slate-400 text-sm">Loading venues...</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <motion.div key={i}
+                                animate={{ opacity: [0.4, 0.8, 0.4] }}
+                                transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.1 }}
+                                style={{
+                                    height: 280, borderRadius: 18,
+                                    background: dark ? '#1E1E1E' : '#F0ECE4',
+                                    border: `1px solid ${T.border}`,
+                                }}/>
+                        ))}
                     </div>
                 ) : filteredVenues.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 gap-3">
-                        <p className="text-slate-400 text-sm">No venues found matching your filters.</p>
-                        <button onClick={()=>{ setSelectedType('All'); setSelectedCity('All'); setMaxPrice(''); setBookingTypeFilter('All'); setSearchQuery(''); }}
-                            className="text-xs text-blue-400 hover:text-blue-500">Clear filters</button>
-                    </div>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        style={{ textAlign: 'center', padding: '80px 24px' }}>
+                        <div style={{ fontSize: 52, marginBottom: 16 }}>🏛️</div>
+                        <p style={{ color: T.sub, fontSize: 15, marginBottom: 16 }}>
+                            No venues found matching your filters.
+                        </p>
+                        <motion.button
+                            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                            onClick={clearFilters}
+                            style={{
+                                padding: '10px 24px', borderRadius: 50, border: 'none',
+                                background: 'linear-gradient(135deg,#C8A45B,#E3C67A)',
+                                color: 'white', fontWeight: 700, fontSize: 13,
+                                cursor: 'pointer', fontFamily: 'inherit',
+                                boxShadow: '0 6px 18px rgba(200,164,91,0.3)',
+                            }}>Clear Filters</motion.button>
+                    </motion.div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {filteredVenues.map(venue => (
-                            <div key={venue._id}
-                                onClick={()=>navigate(`/venue/${venue._id}`)}
-                                className="rounded-2xl overflow-hidden cursor-pointer transition hover:shadow-xl hover:-translate-y-1"
-                                style={{
-                                    background: 'rgba(255,255,255,0.72)',
-                                    border: '1px solid rgba(255,255,255,0.95)',
-                                    backdropFilter: 'blur(8px)'
-                                }}>
-
-                                <div className="h-28 overflow-hidden"
-                                    style={{ background: 'linear-gradient(135deg, #c8e8f8, #b0d8f0)' }}>
-                                    {venue.images && venue.images.length > 0 ? (
-                                        <img src={venue.images[0]} alt={venue.name} className="w-full h-full object-cover"/>
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-5xl">
-                                            {venueEmoji(venue.type)}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="p-3">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs px-2 py-0.5 rounded-full text-slate-500"
-                                            style={{ background: 'rgba(150,200,220,0.2)' }}>
-                                            {venue.type}
-                                        </span>
-                                        {venue.bookingType === 'instant' && (
-                                            <span className="text-xs text-blue-400">⚡ Instant</span>
-                                        )}
-                                    </div>
-                                    <p className="text-slate-700 font-bold text-sm mt-2 truncate">{venue.name}</p>
-                                    <p className="text-slate-400 text-xs truncate mt-0.5">📍 {venue.location?.address}, {venue.location?.city}</p>
-
-                                    <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-100">
-                                        <span className="text-slate-700 font-bold text-sm">₹{venue.pricePerHour}<span className="text-slate-400 font-normal text-xs">/hr</span></span>
-                                        <button onClick={(e)=>{e.stopPropagation(); navigate(`/venue/${venue._id}`)}}
-                                            className="text-xs px-3 py-1.5 rounded-lg font-medium text-slate-600 transition hover:shadow-md"
-                                            style={{ background: 'rgba(150,200,220,0.3)', border: '1px solid rgba(150,200,220,0.4)' }}>
-                                            View Details
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gap: 20,
+                    }}>
+                        {filteredVenues.map((venue, i) => (
+                            <VenueCard
+                                key={venue._id}
+                                venue={venue}
+                                dark={dark}
+                                index={i}
+                                inView={gridView}
+                                onClick={() => navigate(`/venue/${venue._id}`)}
+                            />
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Bottom tagline */}
+            <p style={{
+                position: 'fixed', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+                color: T.sub, fontSize: 11, fontStyle: 'italic',
+                letterSpacing: '2px', pointerEvents: 'none', zIndex: 10,
+            }}>EASY. BOOK. ENJOY.</p>
         </div>
     );
 };
