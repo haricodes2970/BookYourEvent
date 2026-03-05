@@ -116,7 +116,10 @@ const Login = () => {
                                     <input type="checkbox" checked={rememberMe} onChange={(e)=>setRememberMe(e.target.checked)} className="accent-slate-600"/>
                                     <span className="text-slate-500 text-xs">Remember me</span>
                                 </label>
-                                <a href="#" className="text-slate-500 text-xs hover:text-slate-700 transition">Forgot Password?</a>
+                                <button type="button" onClick={()=>navigate('/forgot-password')}
+                                className="text-slate-500 text-xs hover:text-slate-700 transition">
+                                Forgot Password?
+                                    </button>
                             </div>
 
                             <button type="submit" disabled={loading} className="w-full py-3 rounded-lg font-semibold text-white transition"

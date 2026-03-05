@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { createVenue, getAllVenues, deleteVenue } from '../services/venueService';
+import { createVenueWithImages, getAllVenues, deleteVenue } from '../services/venueService';
 import { getVenueBookings, updateBookingStatus } from '../services/bookingService';
 
 const VENUE_TYPES = [
@@ -30,6 +30,8 @@ const OwnerDashboard = () => {
     const [bookingsLoading, setBookingsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('venues');
     const [searchQuery, setSearchQuery] = useState('');
+    const [images, setImages] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
 
     const [formData, setFormData] = useState({
         name: '', description: '', type: 'Marriage Hall',
@@ -91,14 +93,35 @@ const OwnerDashboard = () => {
         }
     };
 
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        setImages(files);
+        const previews = files.map(f => URL.createObjectURL(f));
+        setImagePreviews(previews);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormLoading(true);
         setError('');
         try {
-            await createVenue(formData);
+            const data = new FormData();
+            data.append('name', formData.name);
+            data.append('description', formData.description);
+            data.append('type', formData.type);
+            data.append('location', JSON.stringify(formData.location));
+            data.append('capacity', formData.capacity);
+            data.append('pricePerHour', formData.pricePerHour);
+            data.append('pricePerDay', formData.pricePerDay);
+            data.append('amenities', JSON.stringify(formData.amenities));
+            data.append('bookingType', formData.bookingType);
+            images.forEach(img => data.append('images', img));
+
+            await createVenueWithImages(data);
             setSuccess('Venue created! Waiting for admin approval.');
             setShowForm(false);
+            setImages([]);
+            setImagePreviews([]);
             fetchMyVenues();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to create venue');
@@ -119,6 +142,12 @@ const OwnerDashboard = () => {
 
     const handleLogout = () => { logout(); navigate('/login'); };
 
+    const venueEmoji = (type) => ({
+        'Resort': '🏖️', 'Rooftop': '🌆', 'Farmhouse': '🌾',
+        'Marriage Hall': '💒', 'Party Hall': '🎉', 'Conference Room': '🏢',
+        'Banquet Hall': '🍽️', 'Turf': '⚽', 'Studio': '🎨', 'Auditorium': '🎭'
+    }[type] || '🏛️');
+
     return (
         <div className="min-h-screen relative overflow-hidden flex flex-col" style={{
             background: 'linear-gradient(180deg, #c8e6c9 0%, #d8eeda 20%, #e8f5e9 45%, #f1f8f1 70%, #f8fdf8 100%)'
@@ -130,15 +159,11 @@ const OwnerDashboard = () => {
                 <path d="M85 42 Q99 29 113 42 Q99 35 85 42Z" fill="#4a8a6a" opacity="0.7"/>
                 <path d="M22 58 Q36 45 50 58 Q36 51 22 58Z" fill="#4a8a6a" opacity="0.5"/>
             </svg>
-
-            {/* Birds Right */}
             <svg className="absolute top-14 right-24 opacity-25 z-0 pointer-events-none" width="160" height="70" viewBox="0 0 160 70">
                 <path d="M120 30 Q134 17 148 30 Q134 23 120 30Z" fill="#4a8a6a"/>
                 <path d="M85 42 Q99 29 113 42 Q99 35 85 42Z" fill="#4a8a6a" opacity="0.8"/>
                 <path d="M130 52 Q144 39 158 52 Q144 45 130 52Z" fill="#4a8a6a" opacity="0.6"/>
             </svg>
-
-            {/* Extra Birds */}
             <svg className="absolute top-40 left-1/3 opacity-15 z-0 pointer-events-none" width="120" height="60" viewBox="0 0 120 60">
                 <path d="M10 30 Q22 18 34 30 Q22 24 10 30Z" fill="#6aaa8a"/>
                 <path d="M44 18 Q56 6 68 18 Q56 12 44 18Z" fill="#6aaa8a" opacity="0.8"/>
@@ -167,11 +192,10 @@ const OwnerDashboard = () => {
 
             {/* Navbar */}
             <nav className="relative z-10 flex items-center justify-between px-8 py-4">
-                {/* Left — Logo + Nav Links */}
                 <div className="flex items-center gap-8">
                     <img src="/logo.png" alt="BYE" className="h-14 w-14 rounded-full object-cover shadow-md cursor-pointer"
-                    onClick={() => navigate('/')}
-                    onError={(e)=>{e.target.style.display='none'}}/>
+                        onClick={() => navigate('/')}
+                        onError={(e)=>{e.target.style.display='none'}}/>
                     <button onClick={()=>setActiveTab('venues')}
                         className={`text-sm font-medium transition ${activeTab==='venues' ? 'text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}>
                         My Venues
@@ -184,24 +208,17 @@ const OwnerDashboard = () => {
                     <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-700 transition">Contact</a>
                 </div>
 
-                {/* Center — Search */}
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
                     style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }}>
-                    <input
-                        type="text"
-                        placeholder="Search Venues"
-                        value={searchQuery}
+                    <input type="text" placeholder="Search Venues" value={searchQuery}
                         onChange={(e)=>setSearchQuery(e.target.value)}
-                        className="bg-transparent text-slate-600 text-sm focus:outline-none placeholder-slate-400 w-44"
-                    />
+                        className="bg-transparent text-slate-600 text-sm focus:outline-none placeholder-slate-400 w-44"/>
                     <span className="text-slate-400 text-sm">🔍</span>
                 </div>
 
-                {/* Right — Buttons */}
                 <div className="flex items-center gap-3">
                     <span className="text-slate-500 text-sm font-medium">Hi, {user?.name?.split(' ')[0]}</span>
-                    <button
-                        onClick={()=>{ setShowForm(!showForm); setActiveTab('venues'); }}
+                    <button onClick={()=>{ setShowForm(!showForm); setActiveTab('venues'); }}
                         className="px-4 py-2 rounded-lg text-sm font-medium transition hover:shadow-md"
                         style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)', color: '#4a7a5a' }}>
                         {showForm ? 'Cancel' : '+ Add Venue'}
@@ -322,6 +339,21 @@ const OwnerDashboard = () => {
                                 </div>
                             </div>
 
+                            {/* Image Upload */}
+                            <div>
+                                <label className="text-slate-500 text-xs mb-2 block">Venue Images (max 5)</label>
+                                <input type="file" accept="image/*" multiple onChange={handleImageChange}
+                                    className="w-full text-slate-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-600 hover:file:bg-green-100"/>
+                                {imagePreviews.length > 0 && (
+                                    <div className="flex gap-2 mt-2 flex-wrap">
+                                        {imagePreviews.map((src, i) => (
+                                            <img key={i} src={src} alt="preview"
+                                                className="w-16 h-16 object-cover rounded-lg border border-slate-200"/>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <button type="submit" disabled={formLoading}
                                 className="px-8 py-2.5 rounded-lg text-sm font-semibold text-white transition"
                                 style={{ background: formLoading ? '#9dc49d' : '#4a7a5a' }}>
@@ -351,17 +383,15 @@ const OwnerDashboard = () => {
                                         className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-lg hover:-translate-y-0.5"
                                         style={{ background: 'rgba(255,255,255,0.78)', border: '1px solid rgba(180,220,180,0.4)' }}>
 
-                                        <div className="h-28 flex items-center justify-center text-5xl"
+                                        <div className="h-28 overflow-hidden"
                                             style={{ background: 'linear-gradient(135deg, #c8e8c8, #b0d8b0)' }}>
-                                            {venue.type === 'Resort' ? '🏖️' :
-                                             venue.type === 'Rooftop' ? '🌆' :
-                                             venue.type === 'Farmhouse' ? '🌾' :
-                                             venue.type === 'Marriage Hall' ? '💒' :
-                                             venue.type === 'Party Hall' ? '🎉' :
-                                             venue.type === 'Conference Room' ? '🏢' :
-                                             venue.type === 'Banquet Hall' ? '🍽️' :
-                                             venue.type === 'Turf' ? '⚽' :
-                                             venue.type === 'Studio' ? '🎨' : '🏛️'}
+                                            {venue.images && venue.images.length > 0 ? (
+                                                <img src={venue.images[0]} alt={venue.name} className="w-full h-full object-cover"/>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-5xl">
+                                                    {venueEmoji(venue.type)}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="p-3">

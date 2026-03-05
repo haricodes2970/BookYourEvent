@@ -3,8 +3,9 @@ const router = express.Router();
 const { createVenue, getAllVenues, getVenueById, deleteVenue, approveVenue, getAllVenuesAdmin, adminDeleteVenue } = require('../controllers/VenueController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles, adminOnly } = require('../middleware/roleMiddleware');
+const { upload } = require('../config/cloudinary');
 
-router.post('/', protect, authorizeRoles('venueOwner'), createVenue);
+router.post('/', protect, authorizeRoles('venueOwner'), upload.array('images', 5), createVenue);
 router.get('/', protect, getAllVenues);
 router.get('/admin/all', protect, adminOnly, getAllVenuesAdmin);
 router.get('/:id', protect, getVenueById);

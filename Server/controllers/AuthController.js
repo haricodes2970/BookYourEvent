@@ -96,4 +96,42 @@ const updateUserRole = async (req, res) => {
     }
 };
 
-module.exports = { register, verifyOTP, login, getUsers, deleteUser, updateUserRole };
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'No account found with this email' });
+
+        const otp = generateOTP();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        await sendOTPEmail(email, user.name, otp);
+        res.status(200).json({ message: 'OTP sent to your email' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to send OTP', error: err.message });
+    }
+};
+
+const resetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
+        if (user.otpExpiry < new Date()) return res.status(400).json({ message: 'OTP expired' });
+
+        user.password = newPassword;
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        await user.save();
+
+        res.status(200).json({ message: 'Password reset successful! Please login.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reset password', error: err.message });
+    }
+};
+
+module.exports = { register, verifyOTP, login, getUsers, deleteUser, updateUserRole, forgotPassword, resetPassword };

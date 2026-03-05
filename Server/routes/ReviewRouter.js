@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { createReview, getVenueReviews } = require('../controllers/ReviewController');
+const { addReview, getVenueReviews, deleteReview } = require('../controllers/ReviewController');
 const { protect } = require('../middleware/authMiddleware');
-const { authorizeRoles } = require('../middleware/roleMiddleware');
 
-router.post('/create', protect, authorizeRoles('booker'), createReview);
+router.post('/', protect, addReview);
 router.get('/:venueId', protect, getVenueReviews);
+router.delete('/:id', protect, deleteReview);
 
 module.exports = router;

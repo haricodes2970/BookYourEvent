@@ -6,14 +6,9 @@ const reviewSchema = new mongoose.Schema({
         ref: 'Venue',
         required: true
     },
-    booker: {
+    reviewer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
-    },
-    booking: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Booking',
         required: true
     },
     rating: {
@@ -28,6 +23,9 @@ const reviewSchema = new mongoose.Schema({
         trim: true
     }
 }, { timestamps: true });
+
+// One review per user per venue
+reviewSchema.index({ venue: 1, reviewer: 1 }, { unique: true });
 
 const Review = mongoose.model('Review', reviewSchema);
 module.exports = Review;

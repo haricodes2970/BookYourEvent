@@ -18,9 +18,12 @@ export const getVenueById = async (id) => {
     return response.data;
 };
 
-export const createVenue = async (venueData) => {
-    const response = await axios.post(`${API}/venues`, venueData, {
-        headers: { Authorization: `Bearer ${getToken()}` }
+export const createVenueWithImages = async (formData) => {
+    const response = await axios.post(`${API}/venues`, formData, {
+        headers: {
+            Authorization: `Bearer ${getToken()}`,
+            'Content-Type': 'multipart/form-data'
+        }
     });
     return response.data;
 };

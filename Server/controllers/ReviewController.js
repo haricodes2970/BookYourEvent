@@ -1,76 +1,63 @@
 const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 
-
-
-// CREATE REVIEW
-const createReview = async (req, res) => {
+const addReview = async (req, res) => {
     try {
-        const { venueId, bookingId, rating, comment } = req.body;
+        const { venueId, rating, comment } = req.body;
 
-        if (!venueId || !bookingId || !rating || !comment)
-            return res.status(400).json({ message: 'Please fill all fields' });
-
-        
-        
-        // Check booking exists and belongs to this user
-        const booking = await Booking.findById(bookingId);
-        if (!booking)
-            return res.status(404).json({ message: 'Booking not found' });
-
-        if (booking.booker.toString() !== req.user.id)
-            return res.status(403).json({ message: 'This is not your booking' });
-
-        
-        
-        // Only completed or approved bookings can be reviewed
-        if (!['approved', 'completed'].includes(booking.status))
-            return res.status(400).json({ message: 'You can only review after your event is confirmed' });
-
-        
-        
-        // One review per booking
-        const existingReview = await Review.findOne({ booking: bookingId });
-        if (existingReview)
-            return res.status(400).json({ message: 'You have already reviewed this booking' });
-
-        const review = new Review({
+        // Check if user has a completed/approved booking for this venue
+        const booking = await Booking.findOne({
             venue: venueId,
             booker: req.user.id,
-            booking: bookingId,
+            status: 'approved'
+        });
+        if (!booking) return res.status(403).json({ message: 'You can only review venues you have booked' });
+
+        // Check if already reviewed
+        const existing = await Review.findOne({ venue: venueId, reviewer: req.user.id });
+        if (existing) return res.status(400).json({ message: 'You have already reviewed this venue' });
+
+        const review = await Review.create({
+            venue: venueId,
+            reviewer: req.user.id,
             rating,
             comment
         });
 
-        await review.save();
-        res.status(201).json({ message: 'Review submitted successfully', review });
-
+        await review.populate('reviewer', 'name');
+        res.status(201).json({ message: 'Review added!', review });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
-
-
-// GET ALL REVIEWS FOR A VENUE
 const getVenueReviews = async (req, res) => {
     try {
         const reviews = await Review.find({ venue: req.params.venueId })
-            .populate('booker', 'name');
+            .populate('reviewer', 'name')
+            .sort({ createdAt: -1 });
 
-        const avgRating = reviews.length > 0
+        const avgRating = reviews.length
             ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
             : 0;
 
-        res.status(200).json({ 
-            count: reviews.length, 
-            averageRating: avgRating,
-            reviews 
-        });
-
+        res.status(200).json({ reviews, avgRating, total: reviews.length });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
-module.exports = { createReview, getVenueReviews };
+const deleteReview = async (req, res) => {
+    try {
+        const review = await Review.findById(req.params.id);
+        if (!review) return res.status(404).json({ message: 'Review not found' });
+        if (review.reviewer.toString() !== req.user.id && req.user.role !== 'admin')
+            return res.status(403).json({ message: 'Unauthorized' });
+        await Review.findByIdAndDelete(req.params.id);
+        res.status(200).json({ message: 'Review deleted' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+module.exports = { addReview, getVenueReviews, deleteReview };

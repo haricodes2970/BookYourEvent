@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, verifyOTP, login, getUsers, deleteUser, updateUserRole } = require('../controllers/AuthController');
+const { register, verifyOTP, login, getUsers, deleteUser, updateUserRole, forgotPassword, resetPassword } = require('../controllers/AuthController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/roleMiddleware');
 const jwt = require('jsonwebtoken');
@@ -10,6 +10,8 @@ const User = require('../models/User');
 router.post('/register', register);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.get('/users', protect, adminOnly, getUsers);
 router.delete('/users/:id', protect, adminOnly, deleteUser);
 router.patch('/users/:id/role', protect, adminOnly, updateUserRole);
@@ -31,7 +33,8 @@ router.get('/google/callback', async (req, res) => {
     if (error) return res.redirect(`${process.env.CLIENT_URL}/login?error=google_failed`);
     try {
         const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-            code, client_id: process.env.GOOGLE_CLIENT_ID,
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
             redirect_uri: 'http://localhost:3000/api/auth/google/callback',
             grant_type: 'authorization_code'
@@ -42,12 +45,26 @@ router.get('/google/callback', async (req, res) => {
         });
         const { email, name } = userInfoResponse.data;
         let user = await User.findOne({ email });
-        if (user) { user.isVerified = true; await user.save(); }
-        else {
-            user = await User.create({ name, email, password: 'GOOGLE_AUTH_' + Math.random().toString(36), phone: 'N/A', role: 'booker', isVerified: true });
+        if (user) {
+            user.isVerified = true;
+            await user.save();
+        } else {
+            user = await User.create({
+                name, email,
+                password: 'GOOGLE_AUTH_' + Math.random().toString(36),
+                phone: 'N/A',
+                role: 'booker',
+                isVerified: true
+            });
         }
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-        const userEncoded = encodeURIComponent(JSON.stringify({ id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone }));
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+        const userEncoded = encodeURIComponent(JSON.stringify({
+            id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone
+        }));
         res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&user=${userEncoded}`);
     } catch (err) {
         console.error('Google OAuth callback error:', err.response?.data || err.message);

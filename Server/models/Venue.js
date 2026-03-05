@@ -57,6 +57,10 @@ const venueSchema = new mongoose.Schema({
         enum: ['instant', 'manual'],
         default: 'manual'
     },
+    images: {
+        type: [String],
+        default: []
+    },
     isApproved: {
         type: Boolean,
         default: false
