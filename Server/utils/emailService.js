@@ -1,13 +1,12 @@
 const nodemailer = require('nodemailer');
 
-console.log('EMAIL_USER:', process.env.EMAIL_USER);
-console.log('EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
-
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',  // ✅ explicit host instead of service
+    port: 587,               // ✅ port 587 works on Render
+    secure: false,           // ✅ false for port 587
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        pass: process.env.EMAIL_PASS  // ✅ must be App Password
     }
 });
 
@@ -46,7 +45,7 @@ const sendWelcomeEmail = async (email, name) => {
             <p style="color: #555;">Hi <strong>${name}</strong>, your account is verified and ready to use.</p>
             <p style="color: #555;">Start exploring hundreds of venues in Bangalore.</p>
             <div style="text-align: center; margin: 32px 0;">
-                <a href="https://bookyourevent.netlify.app/login"
+                <a href="${process.env.CLIENT_URL}/login"
                    style="background: #1e4d5c; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
                     Start Booking →
                 </a>
