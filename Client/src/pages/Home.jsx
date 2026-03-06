@@ -2,11 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
 /* ─── COUNTER HOOK ─── */
 const useCountUp = (target, duration = 2000, active = false) => {
     const [count, setCount] = useState(0);
     useEffect(() => {
-        if (!active) return;
+        if (!active || target === 0) return;
         let start = null;
         const step = (ts) => {
             if (!start) start = ts;
@@ -22,11 +24,8 @@ const useCountUp = (target, duration = 2000, active = false) => {
 };
 
 /* ─── STAT ITEM ─── */
-const StatItem = ({ number, label, active, delay = 0 }) => {
-    const isPercent = number.includes('%');
-    const isPlus    = number.includes('+');
-    const raw       = parseInt(number.replace(/[^0-9]/g, ''));
-    const count     = useCountUp(raw, 2000, active);
+const StatItem = ({ number, suffix = '', label, active, delay = 0 }) => {
+    const count = useCountUp(number, 2000, active);
     return (
         <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -40,7 +39,7 @@ const StatItem = ({ number, label, active, delay = 0 }) => {
                 background: 'linear-gradient(135deg,#1e4d5c 0%,#5aa89c 100%)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>
-                {count.toLocaleString()}{isPlus ? '+' : ''}{isPercent ? '%' : ''}
+                {count.toLocaleString()}{suffix}
             </p>
             <p className="text-slate-400 text-xs mt-1 font-medium tracking-wide">{label}</p>
         </motion.div>
@@ -65,31 +64,40 @@ const Leaf = ({ size = 44, opacity = 0.5, color = '#6FB3A8', rotate = 0 }) => (
 );
 
 /* ─── FLOATING VENUE CARD ─── */
-const FloatingVenueCard = ({ img, name, price, stars = 4, posStyle, floatDelay = 0 }) => (
-    <motion.div
-        animate={{ y: [0, -16, 0] }}
-        transition={{ duration: 5 + floatDelay, repeat: Infinity, ease: 'easeInOut', delay: floatDelay }}
-        style={{
-            position: 'absolute', background: 'white', borderRadius: 16,
-            overflow: 'hidden', width: 152, pointerEvents: 'none',
-            boxShadow: '0 14px 40px rgba(30,77,92,0.22)', ...posStyle,
-        }}
-    >
-        <img src={img} alt={name}
-            style={{ width: '100%', height: 88, objectFit: 'cover', display: 'block' }} />
-        <div style={{ padding: '8px 10px 10px' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#2D4A47', marginBottom: 4 }}>{name}</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: '#F59E0B' }}>
-                    {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#1e4d5c' }}>📍 {price}</span>
+const FloatingVenueCard = ({ venue, posStyle, floatDelay = 0 }) => {
+    if (!venue) return null;
+    return (
+        <motion.div
+            animate={{ y: [0, -16, 0] }}
+            transition={{ duration: 5 + floatDelay, repeat: Infinity, ease: 'easeInOut', delay: floatDelay }}
+            style={{
+                position: 'absolute', background: 'white', borderRadius: 16,
+                overflow: 'hidden', width: 152, pointerEvents: 'none',
+                boxShadow: '0 14px 40px rgba(30,77,92,0.22)', ...posStyle,
+            }}
+        >
+            <img
+                src={venue.images?.[0] || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&h=200&fit=crop'}
+                alt={venue.name}
+                style={{ width: '100%', height: 88, objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{ padding: '8px 10px 10px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#2D4A47', marginBottom: 4,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {venue.name}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: '#F59E0B' }}>★★★★★</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#1e4d5c' }}>
+                        ₹{venue.pricePerHour?.toLocaleString('en-IN')}/hr
+                    </span>
+                </div>
             </div>
-        </div>
-    </motion.div>
-);
+        </motion.div>
+    );
+};
 
-/* ─── SCROLL REVEAL WRAPPER ─── */
+/* ─── SCROLL REVEAL ─── */
 const Reveal = ({ children, delay = 0, y = 44, ...props }) => {
     const ref = useRef(null);
     const inView = useInView(ref, { once: true, amount: 0.2 });
@@ -108,16 +116,38 @@ const Reveal = ({ children, delay = 0, y = 44, ...props }) => {
 ══════════════════════════════════════════════════════ */
 const Home = () => {
     const navigate = useNavigate();
+    const [stats, setStats] = useState({ venueCount: 0, bookingCount: 0, satisfactionRate: 0 });
+    const [randomVenues, setRandomVenues] = useState([null, null]);
 
-    /* refs for scroll-triggered counters */
     const statsRef    = useRef(null);
     const statsInView = useInView(statsRef, { once: true, amount: 0.4 });
-
-    /* refs for staggered section reveals */
     const servicesRef    = useRef(null);
     const servicesInView = useInView(servicesRef, { once: true, amount: 0.15 });
     const howRef         = useRef(null);
     const howInView      = useInView(howRef, { once: true, amount: 0.15 });
+
+    /* ── FETCH LIVE STATS ── */
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch(`${API}/stats`);
+                const data = await res.json();
+                setStats({
+                    venueCount: data.venueCount || 0,
+                    bookingCount: data.bookingCount || 0,
+                    satisfactionRate: data.satisfactionRate || 0,
+                });
+                if (data.randomVenues?.length >= 2) {
+                    setRandomVenues(data.randomVenues);
+                } else if (data.randomVenues?.length === 1) {
+                    setRandomVenues([data.randomVenues[0], null]);
+                }
+            } catch (err) {
+                console.error('Stats fetch failed:', err);
+            }
+        };
+        fetchStats();
+    }, []);
 
     const LEAVES = [
         { cls:'top-[12%] left-[6%]',    size:54, opacity:0.45, color:'#6FB3A8', rotate:-20, dur:6,   delay:0   },
@@ -140,7 +170,6 @@ const Home = () => {
         <div className="min-h-screen relative overflow-hidden flex flex-col"
             style={{ fontFamily:"'DM Sans', sans-serif" }}>
 
-            {/* ── GLOBAL STYLES ── */}
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
                 @keyframes gradientShift {
@@ -153,22 +182,18 @@ const Home = () => {
                     background-size: 300% 300%;
                     animation: gradientShift 12s ease infinite;
                 }
-                /* button hovers */
                 .btn-p { transition: transform .22s ease, box-shadow .22s ease; }
                 .btn-p:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 14px 36px rgba(30,77,92,.32); }
                 .btn-s { transition: transform .22s ease, box-shadow .22s ease, background .22s ease; }
                 .btn-s:hover { transform: translateY(-3px) scale(1.04); background: rgba(255,255,255,.96) !important; box-shadow: 0 10px 28px rgba(0,0,0,.1); }
-                /* nav underline */
                 .nav-link { position:relative; transition:color .2s; }
                 .nav-link::after { content:''; position:absolute; bottom:-2px; left:0; width:0; height:2px; background:#1e4d5c; border-radius:2px; transition:width .25s ease; }
                 .nav-link:hover { color:#1e4d5c !important; }
                 .nav-link:hover::after { width:100%; }
-                /* cards */
                 .svc-card { transition: transform .3s ease, box-shadow .3s ease; }
                 .svc-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 24px 48px rgba(30,77,92,.14) !important; }
                 .how-card { transition: transform .3s ease, box-shadow .3s ease; }
                 .how-card:hover { transform: translateY(-7px); box-shadow: 0 18px 38px rgba(30,77,92,.12) !important; }
-                /* scrollbar */
                 ::-webkit-scrollbar { width:5px; }
                 ::-webkit-scrollbar-track { background:#eef5f0; }
                 ::-webkit-scrollbar-thumb { background:#7aaabb; border-radius:10px; }
@@ -265,15 +290,23 @@ const Home = () => {
                     </motion.div>
 
                     <div className="hidden md:flex items-center gap-8">
-                        {['Home','About','Services','Contact'].map((item, i) => (
-                            <motion.a key={item}
-                                href={item==='Home'?'#':`#${item.toLowerCase()}`}
+                        {[
+                            { label: 'Home',            action: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+                            { label: 'About',           action: () => navigate('/about') },
+                            { label: 'Help & Support',  action: () => navigate('/help') },
+                            { label: 'Services',        action: () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }) },
+                        ].map((item, i) => (
+                            <motion.button key={item.label}
+                                onClick={item.action}
                                 className="nav-link text-slate-600 font-medium text-sm"
-                                style={{ textDecoration:'none' }}
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    fontFamily: 'inherit', padding: 0,
+                                }}
                                 initial={{ opacity:0, y:-8 }}
                                 animate={{ opacity:1, y:0 }}
                                 transition={{ delay:0.1*i+0.35 }}
-                            >{item}</motion.a>
+                            >{item.label}</motion.button>
                         ))}
 
                         <motion.button
@@ -297,17 +330,17 @@ const Home = () => {
             ══════════════════════════════════════ */}
             <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-8 pb-48 pt-8">
 
-                {/* Floating venue preview cards (desktop only) */}
+                {/* Floating venue cards — real random venues */}
                 <div className="hidden lg:block">
                     <FloatingVenueCard
-                        img="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=300&h=200&fit=crop"
-                        name="Premia Venue" price="$33" stars={4}
-                        posStyle={{ left:'4%', top:'38%' }} floatDelay={0}
+                        venue={randomVenues[0]}
+                        posStyle={{ left:'4%', top:'38%' }}
+                        floatDelay={0}
                     />
                     <FloatingVenueCard
-                        img="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=300&h=200&fit=crop"
-                        name="Crystal Lounge" price="$45" stars={5}
-                        posStyle={{ right:'4%', top:'30%' }} floatDelay={1.4}
+                        venue={randomVenues[1]}
+                        posStyle={{ right:'4%', top:'30%' }}
+                        floatDelay={1.4}
                     />
                 </div>
 
@@ -372,44 +405,12 @@ const Home = () => {
                         }}>List Your Venue</button>
                 </motion.div>
 
-                {/* Stats */}
+                {/* Live Stats */}
                 <div ref={statsRef} className="flex gap-12 flex-wrap justify-center">
-                    {[
-                        { number:'500+',  label:'Venues Listed',   delay:0    },
-                        { number:'2000+', label:'Events Booked',   delay:0.15 },
-                        { number:'98%',   label:'Happy Customers', delay:0.3  },
-                    ].map((s, i) => (
-                        <StatItem key={i} {...s} active={statsInView} />
-                    ))}
+                    <StatItem number={stats.venueCount}       suffix="+"  label="Venues Listed"   active={statsInView} delay={0}    />
+                    <StatItem number={stats.bookingCount}     suffix="+"  label="Events Booked"   active={statsInView} delay={0.15} />
+                    <StatItem number={stats.satisfactionRate} suffix="%"  label="Satisfaction Rate" active={statsInView} delay={0.3}  />
                 </div>
-            </div>
-
-            {/* ══════════════════════════════════════
-                ABOUT
-            ══════════════════════════════════════ */}
-            <div id="about" className="relative z-10 px-8 py-16 text-center"
-                style={{ background:'rgba(255,255,255,0.45)', backdropFilter:'blur(8px)' }}>
-                <Reveal>
-                    <div style={{
-                        display:'inline-flex', alignItems:'center', gap:8,
-                        background:'rgba(30,77,92,0.08)', borderRadius:50,
-                        padding:'6px 18px', marginBottom:14,
-                    }}>
-                        <span style={{ fontSize:13, color:'#1e4d5c', fontWeight:700,
-                            letterSpacing:'1px', textTransform:'uppercase' }}>
-                            🏛️ About Us
-                        </span>
-                    </div>
-                    <h2 style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(1.6rem,4vw,2.2rem)',
-                        fontWeight:800, color:'#2d4a57', marginBottom:12 }}>
-                        About BookYourEvent
-                    </h2>
-                    <p className="text-slate-500 text-sm max-w-2xl mx-auto leading-relaxed">
-                        BookYourEvent is Bangalore's most trusted venue booking platform. We connect event planners
-                        with venue owners — making the entire process seamless, transparent, and stress-free.
-                        Whether you're planning a wedding, corporate event, or birthday party, we've got the perfect space for you.
-                    </p>
-                </Reveal>
             </div>
 
             {/* ══════════════════════════════════════
@@ -547,11 +548,10 @@ const Home = () => {
                 </div>
                 <div className="flex gap-6 flex-wrap">
                     {[
-                        { label:'Login',    action:()=>navigate('/login') },
-                        { label:'Register', action:()=>navigate('/register') },
-                        { label:'About',    action:()=>document.getElementById('about')?.scrollIntoView({behavior:'smooth'}) },
-                        { label:'Services', action:()=>document.getElementById('services')?.scrollIntoView({behavior:'smooth'}) },
-                        { label:'Contact',  action:()=>document.getElementById('contact')?.scrollIntoView({behavior:'smooth'}) },
+                        { label:'Login',        action: () => navigate('/login') },
+                        { label:'Register',     action: () => navigate('/register') },
+                        { label:'Services',     action: () => document.getElementById('services')?.scrollIntoView({ behavior:'smooth' }) },
+                        { label:'Contact',      action: () => document.getElementById('contact')?.scrollIntoView({ behavior:'smooth' }) },
                     ].map(item => (
                         <motion.button key={item.label} onClick={item.action}
                             whileHover={{ color:'#1e4d5c', y:-1 }}

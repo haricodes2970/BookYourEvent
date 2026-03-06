@@ -31,6 +31,7 @@ app.use('/api/auth', require('./routes/AuthRouter'));
 app.use('/api/venues', require('./routes/VenueRouter'));
 app.use('/api/bookings', require('./routes/BookingRouter'));
 app.use('/api/reviews', require('./routes/ReviewRouter'));
+app.use('/api/stats', require('./routes/StatsRouter'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
