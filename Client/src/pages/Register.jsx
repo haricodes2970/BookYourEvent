@@ -499,7 +499,7 @@ const Register = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Registration failed');
             setSuccess(true);
-            setTimeout(() => navigate('/login'), 2200);
+            setTimeout(() => navigate(`/verify-otp?email=${encodeURIComponent(form.email)}`), 2200);
         } catch (err) {
             setError(err.message || 'Registration failed');
         } finally {
