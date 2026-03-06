@@ -566,20 +566,20 @@ const Register = () => {
                     </motion.div>
 
                     <div className="hidden md:flex items-center gap-6">
-                        {[{label:'Home',to:'/'},{label:'About',to:'/#about'},
-                          {label:'Services',to:'/#services'},{label:'Contact',to:'/#contact'}].map((item,i) => (
-                            <motion.div key={item.label}
-                                initial={{ opacity:0, y:-8 }}
-                                animate={{ opacity:1, y:0 }}
-                                transition={{ delay:0.1*i+0.2 }}>
-                                <Link to={item.to} style={{
-                                    textDecoration:'none', fontSize:13, fontWeight:500,
-                                    color:dark?'#9abbc8':'#4a6a7a', transition:'color 0.2s',
-                                }}
-                                onMouseEnter={e=>e.target.style.color=dark?'#c8e6f0':'#1e4d5c'}
-                                onMouseLeave={e=>e.target.style.color=dark?'#9abbc8':'#4a6a7a'}
-                                >{item.label}</Link>
-                            </motion.div>
+                    {[{label:'Home',to:'/'},{label:'About',to:'/about'},
+                    {label:'Services',to:'/#services'},{label:'Help & Contact',to:'/help'}].map((item,i) => (
+                    <motion.div key={item.label}
+                    initial={{ opacity:0, y:-8 }}
+                    animate={{ opacity:1, y:0 }}
+                    transition={{ delay:0.1*i+0.2 }}>
+                    <Link to={item.to} style={{
+                        textDecoration:'none', fontSize:13, fontWeight:500,
+                        color:dark?'#9abbc8':'#4a6a7a', transition:'color 0.2s',
+                        }}
+                        onMouseEnter={e=>e.target.style.color=dark?'#c8e6f0':'#1e4d5c'}
+                        onMouseLeave={e=>e.target.style.color=dark?'#9abbc8':'#4a6a7a'}
+                        >{item.label}</Link>
+                        </motion.div>
                         ))}
                         <ThemeToggle dark={dark} toggle={toggle} />
                     </div>

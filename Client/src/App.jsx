@@ -10,6 +10,7 @@ import VenueDetail from './pages/VenueDetail';
 import MyBookings from './pages/MyBookings';
 import GoogleAuthSuccess from './pages/GoogleAuthSuccess';
 import ForgotPassword from './pages/ForgotPassword';
+import HelpContact from './pages/HelpContact';
 
 function App() {
     return (
@@ -25,6 +26,7 @@ function App() {
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/venue/:id" element={<VenueDetail />} />
                 <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
+                <Route path="/help" element={<HelpContact />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
             </Routes>
         </BrowserRouter>
