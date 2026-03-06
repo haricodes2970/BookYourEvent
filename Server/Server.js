@@ -4,7 +4,8 @@ const cors = require('cors');
 const passport = require('passport');
 const connectDB = require('./config/db');
 
-dotenv.config({ path: __dirname + '/.env' });
+dotenv.config({ path: __dirname + '/.env' }); // ✅ Only once, at the top
+
 require('./config/passport');
 
 const app = express();
@@ -12,7 +13,7 @@ const app = express();
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'https://bookyourevent.netlify.app'
+        process.env.CLIENT_URL  // ✅ Uses your .env instead of hardcoding
     ],
     credentials: true
 }));
@@ -35,6 +36,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-
-dotenv.config({ path: __dirname + '/.env' });
-console.log('SERVER_URL:', process.env.SERVER_URL); // ADD THIS
