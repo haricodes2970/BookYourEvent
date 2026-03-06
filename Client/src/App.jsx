@@ -11,6 +11,7 @@ import MyBookings from './pages/MyBookings';
 import GoogleAuthSuccess from './pages/GoogleAuthSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import HelpContact from './pages/HelpContact';
+import VerifyOTP from './pages/VerifyOTP';
 
 function App() {
     return (
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
                 <Route path="/help" element={<HelpContact />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/verify-otp" element={<VerifyOTP />} />
             </Routes>
         </BrowserRouter>
     );
