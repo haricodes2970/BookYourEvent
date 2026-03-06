@@ -5,7 +5,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const getToken = () => localStorage.getItem('token');
 
 export const createBooking = async (bookingData) => {
-    const response = await axios.post(`${API}/bookings`, bookingData, {
+    const response = await axios.post(`${API}/bookings/create`, bookingData, {
         headers: { Authorization: `Bearer ${getToken()}` }
     });
     return response.data;
