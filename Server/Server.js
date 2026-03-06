@@ -35,3 +35,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+dotenv.config({ path: __dirname + '/.env' });
+console.log('SERVER_URL:', process.env.SERVER_URL); // ADD THIS
