@@ -20,7 +20,7 @@ router.patch('/users/:id/role', protect, adminOnly, updateUserRole);
 router.get('/google', (req, res) => {
     const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
-        redirect_uri: 'http://localhost:3000/api/auth/google/callback',
+        redirect_uri: `${process.env.SERVER_URL}/api/auth/google/callback`,
         response_type: 'code',
         scope: 'profile email',
         access_type: 'offline'
@@ -36,7 +36,7 @@ router.get('/google/callback', async (req, res) => {
             code,
             client_id: process.env.GOOGLE_CLIENT_ID,
             client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            redirect_uri: 'http://localhost:3000/api/auth/google/callback',
+            redirect_uri: `${process.env.SERVER_URL}/api/auth/google/callback`,
             grant_type: 'authorization_code'
         });
         const { access_token } = tokenResponse.data;
