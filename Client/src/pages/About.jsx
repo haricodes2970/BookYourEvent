@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /* ══════════════════════════════════════
    DARK MODE
@@ -87,7 +89,7 @@ const Reveal = ({ children, delay = 0, y = 40, x = 0 }) => {
 const useCountUp = (target, active) => {
     const [count, setCount] = useState(0);
     const ran = useRef(false);
-    if (active && !ran.current) {
+    if (active && !ran.current && target > 0) {
         ran.current = true;
         let start = null;
         const step = (ts) => {
@@ -106,9 +108,8 @@ const useCountUp = (target, active) => {
 /* ══════════════════════════════════════
    STAT CARD
 ══════════════════════════════════════ */
-const StatCard = ({ number, suffix, label, emoji, dark, active, delay }) => {
-    const raw = parseInt(number.replace(/[^0-9]/g, ''));
-    const count = useCountUp(raw, active);
+const StatCard = ({ value, suffix, label, emoji, dark, active, delay }) => {
+    const count = useCountUp(value, active);
     return (
         <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -172,7 +173,7 @@ const ServiceCard = ({ emoji, title, desc, dark, delay, inView }) => (
 );
 
 /* ══════════════════════════════════════
-   TEAM CARD (no photo)
+   TEAM CARD
 ══════════════════════════════════════ */
 const TeamCard = ({ name, role, bio, emoji, gradient, dark, delay, inView }) => (
     <motion.div
@@ -181,7 +182,7 @@ const TeamCard = ({ name, role, bio, emoji, gradient, dark, delay, inView }) => 
         transition={{ duration: 0.55, delay, ease: 'easeOut' }}
         whileHover={{ y: -8, boxShadow: '0 24px 48px rgba(30,77,92,0.16)' }}
         style={{
-            flex: 1, minWidth: 220,
+            flex: 1, minWidth: 240,
             background: dark ? 'rgba(20,55,68,0.65)' : 'rgba(255,255,255,0.78)',
             backdropFilter: 'blur(12px)',
             border: `1px solid ${dark ? 'rgba(111,179,168,0.18)' : 'rgba(200,185,160,0.35)'}`,
@@ -189,7 +190,6 @@ const TeamCard = ({ name, role, bio, emoji, gradient, dark, delay, inView }) => 
             boxShadow: dark ? '0 6px 24px rgba(0,0,0,0.25)' : '0 6px 24px rgba(30,77,92,0.07)',
             transition: 'box-shadow 0.3s ease',
         }}>
-        {/* Avatar placeholder with gradient + emoji */}
         <div style={{
             width: 72, height: 72, borderRadius: '50%', margin: '0 auto 14px',
             background: gradient, display: 'flex', alignItems: 'center',
@@ -256,63 +256,85 @@ const About = () => {
     const { dark, toggle } = useDark();
     const navigate = useNavigate();
 
+    const [stats, setStats] = useState({ venueCount: 0, bookingCount: 0, satisfactionRate: 0 });
+
+    useEffect(() => {
+        fetch(`${API}/stats`)
+            .then(r => r.json())
+            .then(data => setStats({
+                venueCount:       data.venueCount       || 0,
+                bookingCount:     data.bookingCount     || 0,
+                satisfactionRate: data.satisfactionRate || 0,
+            }))
+            .catch(() => {});
+    }, []);
+
     const statsRef    = useRef(null);
     const servicesRef = useRef(null);
     const teamRef     = useRef(null);
     const valuesRef   = useRef(null);
 
-    const statsInView    = useInView(statsRef,    { once: true, amount: 0.3 });
+    const statsInView    = useInView(statsRef,    { once: true, amount: 0.3  });
     const servicesInView = useInView(servicesRef, { once: true, amount: 0.15 });
     const teamInView     = useInView(teamRef,     { once: true, amount: 0.15 });
     const valuesInView   = useInView(valuesRef,   { once: true, amount: 0.15 });
 
-    /* ── THEME TOKENS ── */
     const T = {
         bg:      dark ? '#0a1f28' : '#EAF6F8',
-        section: dark ? 'rgba(13,42,51,0.6)'  : 'rgba(255,255,255,0.45)',
         title:   dark ? '#d0ecf5' : '#1e293b',
         sub:     dark ? '#7aaabb' : '#64748b',
         card:    dark ? 'rgba(20,55,68,0.7)'  : 'rgba(255,255,255,0.82)',
         border:  dark ? 'rgba(111,179,168,0.2)' : 'rgba(200,185,160,0.4)',
     };
 
+    // ── REAL TEAM — 3 members ──
     const TEAM = [
         {
-            name: 'Srihari', role: 'Founder & CEO',
-            bio: 'Visionary behind BookYourEvent. Passionate about connecting people with spaces that make memories.',
-            emoji: '🚀', gradient: 'linear-gradient(135deg,#1e4d5c,#2D8A84)',
+            name: 'Srihari Prasad S',
+            role: 'Founder & CEO',
+            bio: 'Visionary behind BookYourEvent. Built the full-stack architecture, backend APIs, authentication system, and led the entire technical development of the platform.',
+            emoji: '🚀',
+            gradient: 'linear-gradient(135deg,#1e4d5c,#2D8A84)',
         },
         {
-            name: 'Sarah Chen', role: 'Product Designer',
-            bio: 'Crafting intuitive, beautiful experiences that make venue discovery feel effortless and joyful.',
-            emoji: '🎨', gradient: 'linear-gradient(135deg,#6FB3A8,#a78bfa)',
+            name: 'Varsha C',
+            role: 'Finance & Management',
+            bio: 'Manages the operational and financial strategy of BookYourEvent. Ensures the platform delivers real value to both venue owners and event planners.',
+            emoji: '💼',
+            gradient: 'linear-gradient(135deg,#6FB3A8,#1e4d5c)',
         },
         {
-            name: 'Liam O\'Connell', role: 'Engineering Lead',
-            bio: 'Building the robust, scalable infrastructure that powers every booking on our platform.',
-            emoji: '⚙️', gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)',
-        },
-        {
-            name: 'Priya Nair', role: 'Head of Partnerships',
-            bio: 'Growing our venue network across Bangalore and beyond — one meaningful partnership at a time.',
-            emoji: '🤝', gradient: 'linear-gradient(135deg,#34d399,#0ea5e9)',
+            name: 'Nisarga M',
+            role: 'Marketing Head',
+            bio: 'Drives the brand identity and outreach for BookYourEvent. Focuses on connecting the right audience with the right venues across Bangalore.',
+            emoji: '📣',
+            gradient: 'linear-gradient(135deg,#C8A45B,#1e4d5c)',
         },
     ];
 
     const VALUES = [
-        { emoji:'✨', title:'Transparency First',  desc:'No hidden charges. No surprises. Every price, policy, and detail is upfront.' },
-        { emoji:'🤝', title:'Trust & Safety',       desc:'Every venue is verified. Every booking is secured. You can plan with complete peace of mind.' },
-        { emoji:'⚡', title:'Instant & Effortless', desc:'From search to confirmation in minutes. We respect your time as much as your celebration.' },
-        { emoji:'🌿', title:'Community Rooted',     desc:'Born in Bangalore, built for India — we understand local events, traditions, and scale.' },
-        { emoji:'💡', title:'Always Innovating',    desc:'We continuously improve our platform based on real feedback from bookers and owners alike.' },
-        { emoji:'🎯', title:'Event-First Thinking', desc:'Every feature we build starts with one question: does this make events better?' },
+        { emoji: '✨', title: 'Transparency First',  desc: 'No hidden charges. No surprises. Every price, policy, and detail is upfront.' },
+        { emoji: '🤝', title: 'Trust & Safety',       desc: 'Every venue is verified. Every booking is secured. Plan with complete peace of mind.' },
+        { emoji: '⚡', title: 'Instant & Effortless', desc: 'From search to confirmation in minutes. We respect your time as much as your celebration.' },
+        { emoji: '🌿', title: 'Community Rooted',     desc: 'Born in Bangalore, built for India — we understand local events, traditions, and scale.' },
+        { emoji: '💡', title: 'Always Innovating',    desc: 'We continuously improve based on real feedback from bookers and venue owners alike.' },
+        { emoji: '🎯', title: 'Event-First Thinking', desc: 'Every feature we build starts with one question: does this make events better?' },
     ];
 
     const SERVICES = [
-        { emoji:'🔍', title:'Discover Venues',    desc:'Explore hundreds of verified venues across Bangalore. Filter by type, capacity, price, and amenities to find your perfect match.' },
-        { emoji:'📅', title:'Instant Booking',    desc:'Book in minutes with real-time availability checks. Transparent pricing with zero hidden charges or last-minute surprises.' },
-        { emoji:'🏛️', title:'List Your Venue',   desc:'Own a space? Reach thousands of event planners actively looking. Manage bookings from a powerful owner dashboard.' },
-        { emoji:'📊', title:'Smart Dashboard',    desc:'Track bookings, revenue, and analytics from a single clean interface — built for both venue owners and event bookers.' },
+        { emoji: '🔍', title: 'Discover Venues',  desc: 'Explore verified venues across Bangalore. Filter by type, capacity, price, and amenities to find your perfect match.' },
+        { emoji: '📅', title: 'Instant Booking',  desc: 'Book in minutes with real-time availability. Transparent pricing with zero hidden charges or last-minute surprises.' },
+        { emoji: '🏛️', title: 'List Your Venue', desc: 'Own a space? Reach thousands of event planners actively looking. Manage bookings from a powerful owner dashboard.' },
+        { emoji: '📊', title: 'Smart Dashboard',  desc: 'Track bookings and analytics from a single clean interface — built for both owners and bookers.' },
+    ];
+
+    // ── REAL TIMELINE ──
+    const TIMELINE = [
+        { tag: 'Week 1',   event: 'Idea finalised — identified the real problem with venue booking in Bangalore' },
+        { tag: 'Week 1',   event: 'Tech stack decided — MERN, JWT, Google OAuth, Cloudinary, Netlify + Render' },
+        { tag: 'Week 1–2', event: 'Backend built — 25+ REST API endpoints, 4 MongoDB collections, role-based middleware' },
+        { tag: 'Week 2',   event: 'Frontend built — 12+ pages, 3 premium UI themes, dark/light mode, PWA support' },
+        { tag: 'Week 2',   event: 'Deployed live — Netlify (frontend) + Render (backend) + MongoDB Atlas (DB)' },
     ];
 
     return (
@@ -334,9 +356,7 @@ const About = () => {
                 ::-webkit-scrollbar-thumb { background:#7aaabb; border-radius:10px; }
             `}</style>
 
-            {/* ══════════════════════════════════════
-                NAVBAR
-            ══════════════════════════════════════ */}
+            {/* ── NAVBAR ── */}
             <motion.nav
                 initial={{ y: -30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -345,8 +365,7 @@ const About = () => {
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: dark ? 'rgba(13,42,51,0.82)' : 'rgba(255,255,255,0.82)',
-                    backdropFilter: 'blur(16px)', borderRadius: 18,
-                    padding: '10px 24px',
+                    backdropFilter: 'blur(16px)', borderRadius: 18, padding: '10px 24px',
                     border: `1px solid ${dark ? 'rgba(111,179,168,0.2)' : 'rgba(203,231,227,0.55)'}`,
                     boxShadow: '0 2px 16px rgba(30,77,92,0.08)',
                 }}>
@@ -369,8 +388,10 @@ const About = () => {
                     </motion.div>
 
                     <div className="hidden md:flex items-center gap-6">
-                        {[{ label: 'Home', to: '/' }, { label: 'About', to: '/about' },
-                          { label: 'Services', to: '/#services' }, { label: 'Contact', to: '/#contact' }
+                        {[
+                            { label: 'Home',           to: '/'      },
+                            { label: 'About',          to: '/about' },
+                            { label: 'Help & Support', to: '/help'  },
                         ].map((item, i) => (
                             <motion.div key={item.label}
                                 initial={{ opacity: 0, y: -8 }}
@@ -378,9 +399,7 @@ const About = () => {
                                 transition={{ delay: 0.1 * i + 0.2 }}>
                                 <Link to={item.to} style={{
                                     textDecoration: 'none', fontSize: 13, fontWeight: 500,
-                                    color: item.to === '/about'
-                                        ? '#1e4d5c'
-                                        : dark ? '#9abbc8' : '#4a6a7a',
+                                    color: item.to === '/about' ? '#1e4d5c' : dark ? '#9abbc8' : '#4a6a7a',
                                     borderBottom: item.to === '/about' ? '2px solid #1e4d5c' : 'none',
                                     paddingBottom: 2,
                                 }}>{item.label}</Link>
@@ -395,19 +414,15 @@ const About = () => {
                                 border: '1.5px solid #1e4d5c', background: 'transparent',
                                 color: dark ? '#6FB3A8' : '#1e4d5c', fontWeight: 700,
                                 fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                                transition: 'all 0.2s',
                             }}>Login</motion.button>
                     </div>
                 </div>
             </motion.nav>
 
-            {/* ══════════════════════════════════════
-                HERO BANNER
-            ══════════════════════════════════════ */}
+            {/* ── HERO ── */}
             <div className="hero-about-bg relative overflow-hidden"
                 style={{ padding: '80px 24px 100px', textAlign: 'center' }}>
 
-                {/* Birds */}
                 <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
                     overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}>
                     <Bird x={80}  y={60}  scale={1}    delay={0}   color="#4a7a8a" opacity={0.5}/>
@@ -415,11 +430,9 @@ const About = () => {
                     <Bird x={148} y={58}  scale={0.7}  delay={0.6} color="#4a7a8a" opacity={0.35}/>
                     <Bird x={700} y={40}  scale={0.9}  delay={1.2} color="#4a7a8a" opacity={0.48}/>
                     <Bird x={730} y={25}  scale={0.72} delay={1.6} color="#4a7a8a" opacity={0.38}/>
-                    <Bird x={758} y={44}  scale={0.58} delay={2.0} color="#4a7a8a" opacity={0.3}/>
                     <Bird x={400} y={30}  scale={0.5}  delay={2.5} color="#6a8a9a" opacity={0.22}/>
                 </svg>
 
-                {/* Floating leaves */}
                 {[
                     { x: '4%',  y: '20%', size: 38, rot: -20, dur: 6,   delay: 0,   color: '#6FB3A8' },
                     { x: '90%', y: '10%', size: 28, rot: 30,  dur: 7.5, delay: 1.5, color: '#5aa89c' },
@@ -433,21 +446,6 @@ const About = () => {
                     </motion.div>
                 ))}
 
-                {/* Pulsing dots */}
-                {[
-                    { top: '25%', left: '18%', size: 8,  color: '#1e4d5c' },
-                    { top: '70%', right: '20%', size: 6, color: '#6FB3A8' },
-                    { top: '15%', left: '55%', size: 5,  color: '#7aaabb' },
-                ].map((d, i) => (
-                    <motion.div key={i} style={{
-                        position: 'absolute', ...d, width: d.size, height: d.size,
-                        borderRadius: '50%', background: d.color, zIndex: 0, pointerEvents: 'none',
-                    }}
-                        animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0.7, 0.3] }}
-                        transition={{ duration: 2.5 + i * 0.4, repeat: Infinity, delay: i * 0.6 }} />
-                ))}
-
-                {/* Hero text */}
                 <div style={{ position: 'relative', zIndex: 2, maxWidth: 740, margin: '0 auto' }}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -484,7 +482,6 @@ const About = () => {
                     </motion.p>
                 </div>
 
-                {/* Wave */}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
                     <svg viewBox="0 0 1440 60" preserveAspectRatio="none"
                         style={{ width: '100%', height: 60, display: 'block' }}>
@@ -494,12 +491,9 @@ const About = () => {
                 </div>
             </div>
 
-            {/* ══════════════════════════════════════
-                OUR STORY
-            ══════════════════════════════════════ */}
+            {/* ── OUR STORY ── */}
             <section style={{ padding: '80px 24px', maxWidth: 1100, margin: '0 auto' }}>
                 <div style={{ display: 'flex', gap: 60, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {/* Left text */}
                     <div style={{ flex: '1 1 380px' }}>
                         <Reveal>
                             <SectionLabel label="Our Story" dark={dark} />
@@ -507,18 +501,16 @@ const About = () => {
                                 fontFamily: "'Playfair Display', serif",
                                 fontSize: 'clamp(1.8rem,3.5vw,2.6rem)', fontWeight: 900,
                                 color: T.title, marginBottom: 20, lineHeight: 1.2,
-                            }}>
-                                How We Started
-                            </h2>
+                            }}>Built in 2 Weeks</h2>
                         </Reveal>
                         <Reveal delay={0.1}>
                             <p style={{ fontSize: 15, color: T.sub, lineHeight: 1.85, marginBottom: 18 }}>
-                                BookYourEvent was born out of a simple frustration — finding a great venue in Bangalore was unnecessarily hard. We were tired of outdated listings, unanswered calls, and hidden charges that only appeared at the end.
+                                BookYourEvent was born out of a real frustration — finding and booking a venue in Bangalore was unnecessarily complicated. Calls went unanswered, listings were outdated, and pricing was never transparent.
                             </p>
                         </Reveal>
                         <Reveal delay={0.2}>
                             <p style={{ fontSize: 15, color: T.sub, lineHeight: 1.85, marginBottom: 24 }}>
-                                So we built the platform we wished existed. One that's transparent, instant, and built around the joy of celebrations — not the stress of logistics. Today, we're proud to serve thousands of event planners and venue owners across Bangalore.
+                                So we built the platform we wished existed. In just 2 weeks, a team of 3 students designed, developed, and deployed a full-stack production application — from database schema to live deployment — that makes venue booking simple, instant, and transparent.
                             </p>
                         </Reveal>
                         <Reveal delay={0.3}>
@@ -532,22 +524,18 @@ const About = () => {
                                     color: 'white', fontWeight: 700, fontSize: 14,
                                     cursor: 'pointer', fontFamily: 'inherit',
                                     boxShadow: '0 6px 20px rgba(30,77,92,0.28)',
-                                }}>
-                                Start Exploring →
-                            </motion.button>
+                                }}>Start Exploring →</motion.button>
                         </Reveal>
                     </div>
 
-                    {/* Right – illustrated stats / quote card */}
+                    {/* Right — real build timeline */}
                     <div style={{ flex: '1 1 320px' }}>
                         <Reveal delay={0.15} x={40} y={0}>
                             <div style={{
                                 background: T.card, backdropFilter: 'blur(14px)',
-                                border: `1px solid ${T.border}`, borderRadius: 24,
-                                padding: '32px 28px',
+                                border: `1px solid ${T.border}`, borderRadius: 24, padding: '32px 28px',
                                 boxShadow: dark ? '0 16px 48px rgba(0,0,0,0.3)' : '0 16px 48px rgba(30,77,92,0.1)',
                             }}>
-                                {/* Quote */}
                                 <div style={{ marginBottom: 28 }}>
                                     <div style={{ fontSize: 40, color: '#1e4d5c', lineHeight: 1, marginBottom: 8, opacity: 0.4 }}>"</div>
                                     <p style={{
@@ -555,19 +543,13 @@ const About = () => {
                                         fontSize: 17, fontStyle: 'italic', lineHeight: 1.7,
                                         color: T.title, fontWeight: 700,
                                     }}>
-                                        Empowering everyone to find and book their ideal venue with ease and transparency.
+                                        From idea to live product in 14 days — built with passion, shipped with purpose.
                                     </p>
                                     <div style={{ width: 40, height: 3, background: 'linear-gradient(90deg,#1e4d5c,#6FB3A8)',
                                         borderRadius: 2, marginTop: 16 }} />
                                 </div>
 
-                                {/* Mini timeline */}
-                                {[
-                                    { year: '2022', event: 'Founded in Bangalore with a vision to simplify venue booking' },
-                                    { year: '2023', event: 'Crossed 200 listed venues and 500+ successful events' },
-                                    { year: '2024', event: 'Launched owner dashboard and instant booking system' },
-                                    { year: '2025', event: '500+ venues, 2000+ events — and still growing 🚀' },
-                                ].map((item, i) => (
+                                {TIMELINE.map((item, i) => (
                                     <motion.div key={i}
                                         initial={{ opacity: 0, x: 20 }}
                                         whileInView={{ opacity: 1, x: 0 }}
@@ -575,11 +557,11 @@ const About = () => {
                                         transition={{ delay: i * 0.1 + 0.2 }}
                                         style={{ display: 'flex', gap: 14, marginBottom: 14, alignItems: 'flex-start' }}>
                                         <div style={{
-                                            flexShrink: 0, width: 44, height: 24, borderRadius: 50,
+                                            flexShrink: 0, minWidth: 62, height: 24, borderRadius: 50,
                                             background: 'linear-gradient(135deg,#1e4d5c,#2a7a6a)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: 10, fontWeight: 800, color: 'white', letterSpacing: '0.5px',
-                                        }}>{item.year}</div>
+                                            fontSize: 9, fontWeight: 800, color: 'white', padding: '0 8px',
+                                        }}>{item.tag}</div>
                                         <p style={{ fontSize: 13, color: T.sub, lineHeight: 1.55, paddingTop: 2 }}>{item.event}</p>
                                     </motion.div>
                                 ))}
@@ -589,9 +571,7 @@ const About = () => {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════
-                STATS
-            ══════════════════════════════════════ */}
+            {/* ── LIVE STATS ── */}
             <section style={{
                 background: dark ? 'rgba(13,42,51,0.5)' : 'rgba(255,255,255,0.5)',
                 backdropFilter: 'blur(8px)',
@@ -603,20 +583,13 @@ const About = () => {
                     maxWidth: 900, margin: '0 auto',
                     display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center',
                 }}>
-                    {[
-                        { number: '500+',  suffix: '+', label: 'Venues Listed',   emoji: '🏛️', delay: 0    },
-                        { number: '2000+', suffix: '+', label: 'Events Booked',   emoji: '📅', delay: 0.15 },
-                        { number: '98',    suffix: '%', label: 'Happy Customers', emoji: '😊', delay: 0.3  },
-                        { number: '50',    suffix: '+', label: 'Cities Covered',  emoji: '📍', delay: 0.45 },
-                    ].map((s, i) => (
-                        <StatCard key={i} {...s} dark={dark} active={statsInView} />
-                    ))}
+                    <StatCard value={stats.venueCount}       suffix="+" label="Venues Listed"    emoji="🏛️" dark={dark} active={statsInView} delay={0}    />
+                    <StatCard value={stats.bookingCount}     suffix="+" label="Events Booked"    emoji="📅" dark={dark} active={statsInView} delay={0.15} />
+                    <StatCard value={stats.satisfactionRate} suffix="%" label="Satisfaction Rate" emoji="😊" dark={dark} active={statsInView} delay={0.3}  />
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════
-                WHAT WE DO
-            ══════════════════════════════════════ */}
+            {/* ── SERVICES ── */}
             <section style={{ padding: '80px 24px', maxWidth: 1100, margin: '0 auto' }}>
                 <Reveal>
                     <div style={{ textAlign: 'center', marginBottom: 48 }}>
@@ -638,9 +611,7 @@ const About = () => {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════
-                OUR VALUES
-            ══════════════════════════════════════ */}
+            {/* ── VALUES ── */}
             <section style={{
                 background: dark ? 'rgba(13,42,51,0.5)' : 'rgba(255,255,255,0.45)',
                 backdropFilter: 'blur(8px)',
@@ -671,46 +642,40 @@ const About = () => {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════
-                TEAM
-            ══════════════════════════════════════ */}
+            {/* ── TEAM ── */}
             <section style={{ padding: '80px 24px', maxWidth: 1100, margin: '0 auto' }}>
                 <Reveal>
                     <div style={{ textAlign: 'center', marginBottom: 48 }}>
-                        <SectionLabel label="Leadership" dark={dark} />
+                        <SectionLabel label="The Team" dark={dark} />
                         <h2 style={{
                             fontFamily: "'Playfair Display', serif",
                             fontSize: 'clamp(1.8rem,3.5vw,2.4rem)', fontWeight: 900,
                             color: T.title, marginTop: 4,
                         }}>The People Behind BYE</h2>
                         <p style={{ color: T.sub, fontSize: 15, marginTop: 10, maxWidth: 440, margin: '10px auto 0' }}>
-                            A small, passionate team on a mission to make every event unforgettable.
+                            3 students. 1 idea. 2 weeks. 1 live product.
                         </p>
                     </div>
                 </Reveal>
-                <div ref={teamRef} style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                <div ref={teamRef} style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {TEAM.map((member, i) => (
                         <TeamCard key={i} {...member} dark={dark} delay={i * 0.12} inView={teamInView} />
                     ))}
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════
-                MISSION QUOTE BANNER
-            ══════════════════════════════════════ */}
+            {/* ── MISSION BANNER ── */}
             <section style={{
                 background: dark
                     ? 'linear-gradient(135deg,#0d2a33,#1e4d5c)'
                     : 'linear-gradient(135deg,#1e4d5c,#2a7a6a)',
                 padding: '70px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden',
             }}>
-                {/* Decorative circles */}
                 {[['-5%','20%',300],['95%','60%',200],['40%','-10%',160]].map(([l,t,size],i)=>(
                     <div key={i} style={{
                         position:'absolute', left:l, top:t, width:size, height:size,
                         borderRadius:'50%', background:'rgba(255,255,255,0.04)',
-                        border:'1px solid rgba(255,255,255,0.08)',
-                        pointerEvents:'none',
+                        border:'1px solid rgba(255,255,255,0.08)', pointerEvents:'none',
                     }}/>
                 ))}
                 <Reveal>
@@ -729,9 +694,7 @@ const About = () => {
                 </Reveal>
             </section>
 
-            {/* ══════════════════════════════════════
-                CTA
-            ══════════════════════════════════════ */}
+            {/* ── CTA ── */}
             <section style={{ padding: '80px 24px', textAlign: 'center' }}>
                 <Reveal>
                     <SectionLabel label="Get Started" dark={dark} />
@@ -740,8 +703,8 @@ const About = () => {
                         fontSize: 'clamp(1.8rem,3.5vw,2.4rem)', fontWeight: 900,
                         color: T.title, marginBottom: 14, marginTop: 6,
                     }}>Ready to Create Your Next Memory?</h2>
-                    <p style={{ color: T.sub, fontSize: 15, marginBottom: 32, maxWidth: 420, margin: '0 auto 32px' }}>
-                        Join thousands of happy event planners and venue owners on BookYourEvent.
+                    <p style={{ color: T.sub, fontSize: 15, maxWidth: 420, margin: '0 auto 32px' }}>
+                        Join event planners and venue owners on BookYourEvent.
                     </p>
                     <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
                         <motion.button
@@ -756,7 +719,7 @@ const About = () => {
                                 boxShadow: '0 6px 20px rgba(30,77,92,0.28)',
                             }}>Browse Venues →</motion.button>
                         <motion.button
-                            whileHover={{ scale: 1.04, boxShadow: '0 10px 28px rgba(0,0,0,0.1)' }}
+                            whileHover={{ scale: 1.04 }}
                             whileTap={{ scale: 0.97 }}
                             onClick={() => navigate('/register')}
                             style={{
@@ -764,16 +727,13 @@ const About = () => {
                                 border: `1.5px solid ${dark ? 'rgba(111,179,168,0.4)' : 'rgba(30,77,92,0.3)'}`,
                                 background: dark ? 'rgba(30,77,92,0.2)' : 'rgba(255,255,255,0.7)',
                                 color: dark ? '#6FB3A8' : '#1e4d5c', fontWeight: 700, fontSize: 15,
-                                cursor: 'pointer', fontFamily: 'inherit',
-                                backdropFilter: 'blur(8px)',
+                                cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(8px)',
                             }}>List Your Venue</motion.button>
                     </div>
                 </Reveal>
             </section>
 
-            {/* ══════════════════════════════════════
-                FOOTER
-            ══════════════════════════════════════ */}
+            {/* ── FOOTER ── */}
             <footer style={{
                 borderTop: `1px solid ${T.border}`,
                 padding: '28px 32px 20px',
@@ -798,10 +758,9 @@ const About = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                     {[
-                        { label: 'Home',     action: () => navigate('/') },
-                        { label: 'Login',    action: () => navigate('/login') },
+                        { label: 'Home',     action: () => navigate('/')         },
+                        { label: 'Login',    action: () => navigate('/login')    },
                         { label: 'Register', action: () => navigate('/register') },
-                        { label: 'Contact',  action: () => navigate('/#contact') },
                     ].map(item => (
                         <motion.button key={item.label} onClick={item.action}
                             whileHover={{ color: '#1e4d5c', y: -1 }}
