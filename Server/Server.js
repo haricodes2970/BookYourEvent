@@ -38,3 +38,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+// Keep Render awake — add this before app.listen
+setInterval(() => {
+    fetch(`https://bookyourevent.onrender.com/`)
+        .then(() => console.log('Server kept alive'))
+        .catch(() => {});
+}, 14 * 60 * 1000); // every 14 minutes
