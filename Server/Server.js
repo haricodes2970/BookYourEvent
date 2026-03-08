@@ -13,7 +13,9 @@ const app = express();
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        process.env.CLIENT_URL
+        'https://bookyourevnt.netlify.app',
+        'https://spontaneous-pixie-eb33b8.netlify.app',
+        process.env.CLIENT_URL,
     ],
     credentials: true
 }));
@@ -32,16 +34,16 @@ app.use('/api/venues',   require('./routes/VenueRouter'));
 app.use('/api/bookings', require('./routes/BookingRouter'));
 app.use('/api/reviews',  require('./routes/ReviewRouter'));
 app.use('/api/stats',    require('./routes/StatsRouter'));
-app.use('/api/payments', require('./routes/PaymentRouter')); // ✅ new
+app.use('/api/payments', require('./routes/PaymentRouter'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Keep Render awake — add this before app.listen
+// Keep Render awake every 14 minutes
 setInterval(() => {
-    fetch(`https://bookyourevent.onrender.com/`)
+    fetch('https://bookyourevent.onrender.com/')
         .then(() => console.log('Server kept alive'))
         .catch(() => {});
-}, 14 * 60 * 1000); // every 14 minutes
+}, 14 * 60 * 1000);
