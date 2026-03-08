@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getVenueReviews, addReview } from '../services/reviewService';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import PaymentModal from '../components/PaymentModal'; // ✅ NEW
 
 /* ══════════════════════════════════════
    DARK MODE
@@ -145,6 +146,10 @@ const VenueDetail = () => {
     const [reviewSuccess, setReviewSuccess] = useState('');
     const [activeThumb, setActiveThumb]   = useState(0);
 
+    // ✅ NEW — Payment modal state
+    const [showPayment, setShowPayment]   = useState(false);
+    const [pendingBooking, setPendingBooking] = useState(null);
+
     const [bookingData, setBookingData] = useState({
         eventDate: '', startTime: '', endTime: '', guestCount: ''
     });
@@ -193,19 +198,37 @@ const VenueDetail = () => {
         return hours > 0 ? hours * venue.pricePerHour : 0;
     };
 
+    // ✅ UPDATED — Form submit now opens PaymentModal instead of direct booking
     const handleBooking = async e => {
         e.preventDefault();
-        setError(''); setBookingLoading(true);
-        try {
-            await createBooking({ venueId: id, ...bookingData, guestCount: parseInt(bookingData.guestCount) });
-            setSuccess(venue.bookingType === 'instant'
-                ? '⚡ Booking confirmed! Check My Bookings.'
-                : '📋 Booking request sent! Waiting for owner approval.');
-        } catch (err) {
-            setError(err.response?.data?.message || 'Booking failed');
-        } finally {
-            setBookingLoading(false);
+        setError('');
+
+        const totalPrice = calculatePrice();
+        if (totalPrice <= 0) {
+            setError('Please select valid start and end times.');
+            return;
         }
+
+        // Build booking payload to pass to PaymentModal
+        setPendingBooking({
+            venue:      id,
+            venueName:  venue.name,
+            eventDate:  bookingData.eventDate,
+            startTime:  bookingData.startTime,
+            endTime:    bookingData.endTime,
+            guestCount: parseInt(bookingData.guestCount),
+            totalPrice,
+        });
+
+        setShowPayment(true); // open modal
+    };
+
+    // ✅ NEW — Called after payment verified successfully
+    const handlePaymentSuccess = (booking) => {
+        setShowPayment(false);
+        setPendingBooking(null);
+        setSuccess('⚡ Payment successful! Booking confirmed. Check My Bookings.');
+        setBookingData({ eventDate: '', startTime: '', endTime: '', guestCount: '' });
     };
 
     const handleReviewSubmit = async e => {
@@ -293,6 +316,14 @@ const VenueDetail = () => {
                 select { appearance: none; }
             `}</style>
 
+            {/* ✅ PAYMENT MODAL */}
+            <PaymentModal
+                isOpen={showPayment}
+                onClose={() => { setShowPayment(false); setPendingBooking(null); }}
+                bookingData={pendingBooking}
+                onSuccess={handlePaymentSuccess}
+            />
+
             {/* ══════════════════════════════════════
                 LIGHTBOX
             ══════════════════════════════════════ */}
@@ -307,7 +338,6 @@ const VenueDetail = () => {
                         }}
                         onClick={() => setLightboxIndex(null)}
                     >
-                        {/* Close */}
                         <motion.button whileHover={{ scale: 1.1 }}
                             onClick={() => setLightboxIndex(null)}
                             style={{
@@ -318,7 +348,6 @@ const VenueDetail = () => {
                                 alignItems: 'center', justifyContent: 'center',
                             }}>✕</motion.button>
 
-                        {/* Prev */}
                         {lightboxIndex > 0 && (
                             <motion.button whileHover={{ scale: 1.1, x: -3 }}
                                 onClick={e => { e.stopPropagation(); setLightboxIndex(i => i - 1); }}
@@ -342,7 +371,6 @@ const VenueDetail = () => {
                             onClick={e => e.stopPropagation()}
                         />
 
-                        {/* Next */}
                         {lightboxIndex < venue.images.length - 1 && (
                             <motion.button whileHover={{ scale: 1.1, x: 3 }}
                                 onClick={e => { e.stopPropagation(); setLightboxIndex(i => i + 1); }}
@@ -355,13 +383,11 @@ const VenueDetail = () => {
                                 }}>›</motion.button>
                         )}
 
-                        {/* Counter */}
                         <p style={{
                             position: 'absolute', bottom: 20,
                             color: 'rgba(212,175,55,0.7)', fontSize: 13, letterSpacing: '1px',
                         }}>{lightboxIndex + 1} / {venue.images.length}</p>
 
-                        {/* Thumbnail strip */}
                         {venue.images.length > 1 && (
                             <div style={{
                                 position: 'absolute', bottom: 50,
@@ -400,8 +426,6 @@ const VenueDetail = () => {
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between', height: 64 }}>
-
-                    {/* Left */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <motion.div whileHover={{ scale: 1.05 }}
                             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
@@ -417,47 +441,34 @@ const VenueDetail = () => {
                                 color:'white', fontSize:10, fontWeight:800,
                             }}>BYE</div>
                         </motion.div>
-
                         <div style={{ width: 1, height: 24, background: T.border, margin: '0 8px' }}/>
-
-                        <motion.button
-                            whileHover={{ color: T.gold }}
+                        <motion.button whileHover={{ color: T.gold }}
                             onClick={() => navigate('/booker/dashboard')}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 6,
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: T.sub, fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
                                 transition: 'color 0.2s',
-                            }}>
-                            ← Browse Venues
-                        </motion.button>
-
-                        <motion.button
-                            whileHover={{ color: T.gold }}
+                            }}>← Browse Venues</motion.button>
+                        <motion.button whileHover={{ color: T.gold }}
                             onClick={() => navigate('/booker/my-bookings')}
                             style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: T.sub, fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
                                 padding: '6px 12px', transition: 'color 0.2s',
-                            }}>
-                            My Bookings
-                        </motion.button>
+                            }}>My Bookings</motion.button>
                     </div>
-
-                    {/* Right */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <ThemeToggle dark={dark} toggle={toggle} />
                         <motion.button
-                            whileHover={{ scale: 1.03, boxShadow: `0 4px 14px rgba(200,164,91,0.25)` }}
+                            whileHover={{ scale: 1.03 }}
                             onClick={() => navigate('/booker/dashboard')}
                             style={{
                                 padding: '7px 18px', borderRadius: 50,
                                 background: T.goldLight, border: `1.5px solid ${T.goldBorder}`,
                                 color: T.gold, fontSize: 13, fontWeight: 700,
                                 cursor: 'pointer', fontFamily: 'inherit',
-                            }}>
-                            Dashboard
-                        </motion.button>
+                            }}>Dashboard</motion.button>
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '5px 14px 5px 8px', borderRadius: 50,
@@ -481,10 +492,7 @@ const VenueDetail = () => {
                 PAGE HEADER
             ══════════════════════════════════════ */}
             <div style={{ padding: '28px 28px 16px', maxWidth: 1400, margin: '0 auto' }}>
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}>
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         background: T.goldLight, borderRadius: 50, padding: '4px 14px',
@@ -498,9 +506,7 @@ const VenueDetail = () => {
                         fontSize: 'clamp(1.6rem,3vw,2.2rem)', fontWeight: 900,
                         color: T.title, marginBottom: 4,
                     }}>Review & Book Your Venue</h1>
-                    <p style={{ fontSize: 13, color: T.sub }}>
-                        Browse details, check availability, and secure your spot
-                    </p>
+                    <p style={{ fontSize: 13, color: T.sub }}>Browse details, check availability, and secure your spot</p>
                 </motion.div>
             </div>
 
@@ -548,11 +554,8 @@ const VenueDetail = () => {
                                     border: `1px solid ${T.border}`, overflow: 'hidden',
                                     boxShadow: T.shadow,
                                 }}>
-
-                                {/* Main image */}
                                 <div style={{ position: 'relative', height: 340, overflow: 'hidden',
-                                    cursor: 'pointer',
-                                    background: dark ? '#1a1a1a' : '#ede8de' }}
+                                    cursor: 'pointer', background: dark ? '#1a1a1a' : '#ede8de' }}
                                     onClick={() => venue.images?.length > 0 && setLightboxIndex(activeThumb)}>
                                     {venue.images?.length > 0 ? (
                                         <motion.img
@@ -566,27 +569,19 @@ const VenueDetail = () => {
                                         />
                                     ) : (
                                         <div style={{ width:'100%', height:'100%', display:'flex',
-                                            alignItems:'center', justifyContent:'center', fontSize:80 }}>
-                                            🏛️
-                                        </div>
+                                            alignItems:'center', justifyContent:'center', fontSize:80 }}>🏛️</div>
                                     )}
-                                    {/* Gradient overlay */}
                                     <div style={{
                                         position: 'absolute', inset: 0,
                                         background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 55%)',
                                     }}/>
-                                    {/* Expand hint */}
                                     <div style={{
                                         position: 'absolute', top: 14, right: 14,
                                         background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
                                         borderRadius: 50, padding: '5px 12px',
                                         color: 'white', fontSize: 11, fontWeight: 600,
                                     }}>⤢ View Gallery</div>
-                                    {/* Type + booking badge */}
-                                    <div style={{
-                                        position: 'absolute', bottom: 14, left: 14,
-                                        display: 'flex', gap: 8,
-                                    }}>
+                                    <div style={{ position: 'absolute', bottom: 14, left: 14, display: 'flex', gap: 8 }}>
                                         <div style={{
                                             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
                                             borderRadius: 50, padding: '4px 12px',
@@ -602,13 +597,10 @@ const VenueDetail = () => {
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Thumbnail strip */}
                                 {venue.images?.length > 1 && (
                                     <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto' }}>
                                         {venue.images.map((img, i) => (
-                                            <motion.div key={i}
-                                                whileHover={{ scale: 1.05 }}
+                                            <motion.div key={i} whileHover={{ scale: 1.05 }}
                                                 onClick={() => setActiveThumb(i)}
                                                 style={{
                                                     width: 72, height: 54, borderRadius: 10,
@@ -635,29 +627,22 @@ const VenueDetail = () => {
                                     border: `1px solid ${T.border}`,
                                     padding: '28px', boxShadow: T.shadow,
                                 }}>
-                                {/* Name + Rating */}
                                 <h2 style={{
                                     fontFamily: "'Playfair Display', serif",
                                     fontSize: 'clamp(1.6rem,3vw,2rem)', fontWeight: 900,
                                     color: T.title, marginBottom: 10,
                                 }}>{venue.name}</h2>
-
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                                     <div style={{ display: 'flex', gap: 2 }}>
                                         {[1,2,3,4,5].map(s => (
-                                            <span key={s} style={{
-                                                fontSize: 16,
-                                                color: s <= Math.round(avgRating) ? '#D4AF37' : dark?'#333':'#e2d9c8',
-                                            }}>★</span>
+                                            <span key={s} style={{ fontSize: 16,
+                                                color: s <= Math.round(avgRating) ? '#D4AF37' : dark?'#333':'#e2d9c8' }}>★</span>
                                         ))}
                                     </div>
                                     <span style={{ fontSize: 14, fontWeight: 700, color: T.title }}>{avgRating || 0}</span>
                                     <span style={{ fontSize: 13, color: T.sub }}>({reviews.length} reviews)</span>
                                 </div>
-
-                                {/* Location */}
-                                <motion.a
-                                    whileHover={{ color: T.gold }}
+                                <motion.a whileHover={{ color: T.gold }}
                                     href={getGoogleMapsUrl(venue)} target="_blank" rel="noopener noreferrer"
                                     style={{
                                         display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -670,60 +655,46 @@ const VenueDetail = () => {
                                     </span>
                                     <span style={{ fontSize: 11 }}>↗</span>
                                 </motion.a>
-
-                                {/* Description */}
                                 <p style={{ fontSize: 14, color: T.sub, lineHeight: 1.8, marginBottom: 24 }}>
                                     {venue.description}
                                 </p>
-
-                                {/* Stats row */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                                     {[
                                         { label: 'Capacity', value: venue.capacity, unit: 'max guests', icon: '👥' },
-                                        { label: 'Price',    value: `₹${venue.pricePerHour?.toLocaleString('en-IN')}`, unit: 'per hour', icon: '💰' },
+                                        { label: 'Price', value: `₹${venue.pricePerHour?.toLocaleString('en-IN')}`, unit: 'per hour', icon: '💰' },
                                     ].map((stat, i) => (
                                         <div key={i} style={{
                                             background: T.statBg, borderRadius: 14,
-                                            padding: '16px 18px',
-                                            border: `1px solid ${T.goldBorder}`,
+                                            padding: '16px 18px', border: `1px solid ${T.goldBorder}`,
                                         }}>
                                             <div style={{ fontSize: 20, marginBottom: 6 }}>{stat.icon}</div>
                                             <p style={{ fontSize: 11, color: T.sub, textTransform: 'uppercase',
                                                 letterSpacing: '0.8px', fontWeight: 600 }}>{stat.label}</p>
-                                            <p style={{
-                                                fontFamily: "'Playfair Display', serif",
-                                                fontSize: 22, fontWeight: 900,
-                                                color: T.gold, lineHeight: 1.2,
-                                            }}>{stat.value}</p>
+                                            <p style={{ fontFamily: "'Playfair Display', serif",
+                                                fontSize: 22, fontWeight: 900, color: T.gold, lineHeight: 1.2 }}>
+                                                {stat.value}
+                                            </p>
                                             <p style={{ fontSize: 11, color: T.sub, marginTop: 2 }}>{stat.unit}</p>
                                         </div>
                                     ))}
                                 </div>
-
-                                {/* Amenities */}
                                 {venue.amenities?.length > 0 && (
                                     <div style={{ marginBottom: 24 }}>
                                         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
-                                            textTransform: 'uppercase', color: T.gold, marginBottom: 12 }}>
-                                            Amenities
-                                        </p>
+                                            textTransform: 'uppercase', color: T.gold, marginBottom: 12 }}>Amenities</p>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                             {venue.amenities.map((a, i) => (
-                                                <motion.span key={i}
-                                                    whileHover={{ scale: 1.05, background: T.goldLight }}
+                                                <motion.span key={i} whileHover={{ scale: 1.05 }}
                                                     style={{
                                                         fontSize: 12, padding: '5px 14px', borderRadius: 50,
                                                         background: T.tagBg, color: T.tagText,
                                                         border: `1px solid ${T.goldBorder}`,
                                                         fontWeight: 600, cursor: 'default',
-                                                        transition: 'all 0.15s',
                                                     }}>{a}</motion.span>
                                             ))}
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Venue Owner */}
                                 <div style={{
                                     paddingTop: 20, borderTop: `1px solid ${T.divider}`,
                                     display: 'flex', alignItems: 'center', gap: 14,
@@ -734,9 +705,7 @@ const VenueDetail = () => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         color: 'white', fontSize: 16, fontWeight: 800,
                                         boxShadow: '0 4px 12px rgba(200,164,91,0.3)',
-                                    }}>
-                                        {venue.owner?.name?.charAt(0)?.toUpperCase() || 'O'}
-                                    </div>
+                                    }}>{venue.owner?.name?.charAt(0)?.toUpperCase() || 'O'}</div>
                                     <div>
                                         <p style={{ fontSize: 11, color: T.sub, textTransform: 'uppercase',
                                             letterSpacing: '0.8px', fontWeight: 600, marginBottom: 2 }}>Venue Owner</p>
@@ -764,8 +733,6 @@ const VenueDetail = () => {
                                 overflowY: 'auto',
                             }}>
                             <div style={{ padding: '28px' }}>
-
-                                {/* Header */}
                                 <div style={{ marginBottom: 24 }}>
                                     <div style={{
                                         display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -775,14 +742,13 @@ const VenueDetail = () => {
                                         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px',
                                             textTransform: 'uppercase', color: T.gold }}>📅 Reserve</span>
                                     </div>
-                                    <h3 style={{
-                                        fontFamily: "'Playfair Display', serif",
-                                        fontSize: 22, fontWeight: 900, color: T.title, marginBottom: 4,
-                                    }}>Book This Venue</h3>
+                                    <h3 style={{ fontFamily: "'Playfair Display', serif",
+                                        fontSize: 22, fontWeight: 900, color: T.title, marginBottom: 4 }}>
+                                        Book This Venue
+                                    </h3>
                                     <p style={{ fontSize: 13, color: T.sub }}>Fill in your event details below</p>
                                 </div>
 
-                                {/* Price display */}
                                 <div style={{
                                     background: T.goldLight, border: `1px solid ${T.goldBorder}`,
                                     borderRadius: 14, padding: '14px 16px', marginBottom: 22,
@@ -791,10 +757,11 @@ const VenueDetail = () => {
                                     <div>
                                         <p style={{ fontSize: 11, color: T.sub, textTransform: 'uppercase',
                                             letterSpacing: '0.8px', fontWeight: 600 }}>Starting from</p>
-                                        <p style={{
-                                            fontFamily: "'Playfair Display', serif",
-                                            fontSize: 22, fontWeight: 900, color: T.gold,
-                                        }}>₹{venue.pricePerHour?.toLocaleString('en-IN')}<span style={{ fontSize:12, fontWeight:500, color:T.sub }}>/hr</span></p>
+                                        <p style={{ fontFamily: "'Playfair Display', serif",
+                                            fontSize: 22, fontWeight: 900, color: T.gold }}>
+                                            ₹{venue.pricePerHour?.toLocaleString('en-IN')}
+                                            <span style={{ fontSize:12, fontWeight:500, color:T.sub }}>/hr</span>
+                                        </p>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <p style={{ fontSize: 11, color: T.sub }}>Capacity</p>
@@ -804,9 +771,8 @@ const VenueDetail = () => {
                                     </div>
                                 </div>
 
+                                {/* ✅ UPDATED form — opens PaymentModal on submit */}
                                 <form onSubmit={handleBooking} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-                                    {/* Event Date */}
                                     <GoldInput dark={dark} label="Event Date" required>
                                         <input type="date" name="eventDate"
                                             value={bookingData.eventDate}
@@ -823,7 +789,6 @@ const VenueDetail = () => {
                                             required style={inputStyle}/>
                                     </GoldInput>
 
-                                    {/* Start + End Time */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                         <GoldInput dark={dark} label="Start Time" required>
                                             <input type="time" name="startTime"
@@ -837,7 +802,6 @@ const VenueDetail = () => {
                                         </GoldInput>
                                     </div>
 
-                                    {/* Guests */}
                                     <GoldInput dark={dark} label="Number of Guests" required>
                                         <input type="number" name="guestCount"
                                             value={bookingData.guestCount} onChange={handleChange}
@@ -845,7 +809,6 @@ const VenueDetail = () => {
                                             required style={inputStyle}/>
                                     </GoldInput>
 
-                                    {/* Price estimate */}
                                     <AnimatePresence>
                                         {calculatePrice() > 0 && (
                                             <motion.div
@@ -860,10 +823,10 @@ const VenueDetail = () => {
                                                     textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight:600 }}>
                                                     Estimated Total
                                                 </p>
-                                                <p style={{
-                                                    fontFamily: "'Playfair Display', serif",
-                                                    fontSize: 26, fontWeight: 900, color: T.gold,
-                                                }}>₹{calculatePrice().toLocaleString('en-IN')}</p>
+                                                <p style={{ fontFamily: "'Playfair Display', serif",
+                                                    fontSize: 26, fontWeight: 900, color: T.gold }}>
+                                                    ₹{calculatePrice().toLocaleString('en-IN')}
+                                                </p>
                                                 <p style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>
                                                     {parseInt(bookingData.endTime) - parseInt(bookingData.startTime)} hrs × ₹{venue.pricePerHour?.toLocaleString('en-IN')}/hr
                                                 </p>
@@ -871,16 +834,12 @@ const VenueDetail = () => {
                                         )}
                                     </AnimatePresence>
 
-                                    {/* Availability Calendar */}
                                     <div>
                                         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
                                             textTransform: 'uppercase', color: T.gold, marginBottom: 10 }}>
                                             Availability
                                         </p>
-                                        <div style={{
-                                            borderRadius: 14, overflow: 'hidden',
-                                            border: `1px solid ${T.border}`,
-                                        }}>
+                                        <div style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid ${T.border}` }}>
                                             <AvailabilityCalendar
                                                 blockedDates={venue.blockedDates || []}
                                                 mode="view"
@@ -888,7 +847,7 @@ const VenueDetail = () => {
                                         </div>
                                     </div>
 
-                                    {/* Submit Button */}
+                                    {/* ✅ Button now says "Proceed to Pay" */}
                                     <motion.button type="submit" disabled={bookingLoading}
                                         whileHover={!bookingLoading ? {
                                             scale: 1.03,
@@ -897,7 +856,8 @@ const VenueDetail = () => {
                                         whileTap={!bookingLoading ? { scale: 0.98 } : {}}
                                         style={{
                                             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-                                            fontWeight: 700, fontSize: 15, cursor: bookingLoading ? 'not-allowed' : 'pointer',
+                                            fontWeight: 700, fontSize: 15,
+                                            cursor: bookingLoading ? 'not-allowed' : 'pointer',
                                             fontFamily: 'inherit',
                                             background: bookingLoading
                                                 ? (dark ? '#2a2a2a' : '#e2d9c8')
@@ -916,7 +876,7 @@ const VenueDetail = () => {
                                                         borderTopColor:'white', borderRadius:'50%' }}/>
                                                 Processing...
                                             </span>
-                                        ) : venue.bookingType === 'instant' ? '⚡ Book Now' : '📋 Send Booking Request'}
+                                        ) : '💳 Proceed to Pay'}
                                     </motion.button>
                                 </form>
                             </div>
@@ -936,8 +896,6 @@ const VenueDetail = () => {
                             border: `1px solid ${T.border}`, padding: '32px',
                             boxShadow: T.shadow,
                         }}>
-
-                        {/* Section header */}
                         <div style={{ display: 'flex', alignItems: 'center',
                             justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
                             <div>
@@ -949,10 +907,10 @@ const VenueDetail = () => {
                                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
                                         textTransform: 'uppercase', color: T.gold }}>⭐ Reviews</span>
                                 </div>
-                                <h3 style={{
-                                    fontFamily: "'Playfair Display', serif",
-                                    fontSize: 22, fontWeight: 900, color: T.title, marginBottom: 6,
-                                }}>Guest Reviews</h3>
+                                <h3 style={{ fontFamily: "'Playfair Display', serif",
+                                    fontSize: 22, fontWeight: 900, color: T.title, marginBottom: 6 }}>
+                                    Guest Reviews
+                                </h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ display: 'flex', gap: 2 }}>
                                         {[1,2,3,4,5].map(s => (
@@ -971,7 +929,6 @@ const VenueDetail = () => {
                             </div>
                         </div>
 
-                        {/* Write Review Form */}
                         <div style={{
                             background: T.card2, border: `1px solid ${T.goldBorder}`,
                             borderRadius: 16, padding: '22px', marginBottom: 28,
@@ -979,13 +936,10 @@ const VenueDetail = () => {
                             <h4 style={{ fontSize: 14, fontWeight: 700, color: T.title, marginBottom: 16 }}>
                                 ✍️ Write a Review
                             </h4>
-
                             <AnimatePresence>
                                 {reviewError && (
                                     <motion.p initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                                        style={{ color:'#ef4444', fontSize:12, marginBottom:10 }}>
-                                        {reviewError}
-                                    </motion.p>
+                                        style={{ color:'#ef4444', fontSize:12, marginBottom:10 }}>{reviewError}</motion.p>
                                 )}
                                 {reviewSuccess && (
                                     <motion.p initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
@@ -994,15 +948,13 @@ const VenueDetail = () => {
                                     </motion.p>
                                 )}
                             </AnimatePresence>
-
                             <form onSubmit={handleReviewSubmit}
                                 style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 <div>
                                     <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
                                         textTransform: 'uppercase', color: T.gold, marginBottom: 10 }}>Rating</p>
                                     <StarInput value={reviewForm.rating}
-                                        onChange={v => setReviewForm({ ...reviewForm, rating: v })}
-                                        dark={dark}/>
+                                        onChange={v => setReviewForm({ ...reviewForm, rating: v })} dark={dark}/>
                                 </div>
                                 <div>
                                     <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px',
@@ -1016,15 +968,11 @@ const VenueDetail = () => {
                                             width: '100%', background: 'transparent',
                                             border: 'none', borderBottom: `2px solid ${T.inputBorder}`,
                                             color: T.title, padding: '8px 4px', fontSize: 14,
-                                            outline: 'none', fontFamily: 'inherit',
-                                            caretColor: T.gold,
+                                            outline: 'none', fontFamily: 'inherit', caretColor: T.gold,
                                         }}/>
                                 </div>
                                 <motion.button type="submit" disabled={reviewLoading}
-                                    whileHover={!reviewLoading ? {
-                                        scale: 1.03,
-                                        boxShadow: '0 10px 28px rgba(200,164,91,0.35)',
-                                    } : {}}
+                                    whileHover={!reviewLoading ? { scale: 1.03 } : {}}
                                     whileTap={!reviewLoading ? { scale: 0.97 } : {}}
                                     style={{
                                         alignSelf: 'flex-start',
@@ -1033,7 +981,8 @@ const VenueDetail = () => {
                                             ? (dark ? '#2a2a2a' : '#e2d9c8')
                                             : 'linear-gradient(135deg,#C8A45B,#E3C67A)',
                                         color: reviewLoading ? T.sub : 'white',
-                                        fontWeight: 700, fontSize: 13, cursor: reviewLoading ? 'not-allowed' : 'pointer',
+                                        fontWeight: 700, fontSize: 13,
+                                        cursor: reviewLoading ? 'not-allowed' : 'pointer',
                                         fontFamily: 'inherit',
                                         boxShadow: reviewLoading ? 'none' : '0 6px 16px rgba(200,164,91,0.25)',
                                     }}>
@@ -1042,7 +991,6 @@ const VenueDetail = () => {
                             </form>
                         </div>
 
-                        {/* Reviews grid */}
                         <div ref={reviewsRef}>
                             {reviews.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -1066,11 +1014,9 @@ const VenueDetail = () => {
                 </div>
             )}
 
-            {/* Footer tagline */}
             <p style={{
                 textAlign: 'center', padding: '20px 0 32px',
-                color: T.sub, fontSize: 11, fontStyle: 'italic',
-                letterSpacing: '2px',
+                color: T.sub, fontSize: 11, fontStyle: 'italic', letterSpacing: '2px',
             }}>EASY. BOOK. ENJOY.</p>
         </div>
     );
