@@ -117,7 +117,7 @@ const register = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-        await User.create({
+        const createdUser = await User.create({
             name,
             username: normalizedUsername,
             email: normalizedEmail,
@@ -129,7 +129,15 @@ const register = async (req, res) => {
             avatar: createAvatarUrl(name),
         });
 
-        await sendOTPEmail(normalizedEmail, name, otp);
+        try {
+            await sendOTPEmail(normalizedEmail, name, otp);
+        } catch (emailErr) {
+            await User.findByIdAndDelete(createdUser._id);
+            return res.status(502).json({
+                message: 'Failed to send OTP email. Please try registering again.',
+                error: emailErr.message,
+            });
+        }
 
         res.status(201).json({
             message: 'OTP sent to your email. Please verify.',
@@ -177,7 +185,11 @@ const verifyOTP = async (req, res) => {
         await ensureIdentityFields(user);
         await user.save();
 
-        await sendWelcomeEmail(normalizedEmail, user.name);
+        try {
+            await sendWelcomeEmail(normalizedEmail, user.name);
+        } catch (emailErr) {
+            console.error(`Welcome email failed for user ${user._id}:`, emailErr.message);
+        }
 
         const token = generateToken(user);
         res.status(200).json({
@@ -282,12 +294,25 @@ const forgotPassword = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        const previousOtp = user.otp;
+        const previousOtpExpiry = user.otpExpiry;
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.otp = otp;
         user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
         await user.save();
-        await sendOTPEmail(user.email, user.name, otp);
+
+        try {
+            await sendOTPEmail(user.email, user.name, otp);
+        } catch (emailErr) {
+            user.otp = previousOtp;
+            user.otpExpiry = previousOtpExpiry;
+            await user.save();
+            return res.status(502).json({
+                message: 'Failed to send OTP email. Please try again.',
+                error: emailErr.message,
+            });
+        }
 
         res.status(200).json({ message: 'OTP sent to your email' });
     } catch (err) {

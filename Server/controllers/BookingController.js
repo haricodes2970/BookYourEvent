@@ -1,7 +1,14 @@
 const Booking = require('../models/Booking');
 const Venue   = require('../models/Venue');
 const User    = require('../models/User');
-const { sendBookingApprovedEmail, sendPaymentReminderEmail } = require('../utils/emailService');
+const {
+    sendBookingApprovedEmail,
+    sendBookingRejectedEmail,
+    sendBookingExpiredEmail,
+    sendPaymentReminderEmail,
+    sendOwnerNewBidEmail,
+    sendOwnerBidRaisedEmail,
+} = require('../utils/emailService');
 
 /* ══════════════════════════════════════
    CREATE BOOKING / PLACE BID
@@ -67,6 +74,37 @@ const createBooking = async (req, res) => {
             }],
         });
 
+        await booking.populate([
+            {
+                path: 'venue',
+                select: 'name owner',
+                populate: { path: 'owner', select: 'name email' },
+            },
+            { path: 'booker', select: 'name email' },
+        ]);
+
+        if (booking.venue?.owner?.email) {
+            try {
+                await sendOwnerNewBidEmail(
+                    booking.venue.owner.email,
+                    booking.venue.owner.name,
+                    {
+                        venueName: booking.venue.name,
+                        eventDate: booking.eventDate,
+                        startTime: booking.startTime,
+                        endTime: booking.endTime,
+                        bidAmount: booking.bidAmount,
+                        bookerName: booking.booker?.name,
+                        bookerEmail: booking.booker?.email,
+                    }
+                );
+            } catch (emailErr) {
+                console.error(`Owner new-bid email failed for booking ${booking._id}:`, emailErr.message);
+            }
+        } else {
+            console.warn(`Owner email missing for booking ${booking._id}. New-bid email skipped.`);
+        }
+
         res.status(201).json({
             message: 'Bid placed! Waiting for owner to review all bids.',
             booking,
@@ -97,6 +135,37 @@ const raiseBid = async (req, res) => {
         booking.bidAmount = newBidAmount;
         booking.bids.push({ booker: req.user.id, bidAmount: newBidAmount, message: message || '' });
         await booking.save();
+
+        await booking.populate([
+            {
+                path: 'venue',
+                select: 'name owner',
+                populate: { path: 'owner', select: 'name email' },
+            },
+            { path: 'booker', select: 'name email' },
+        ]);
+
+        if (booking.venue?.owner?.email) {
+            try {
+                await sendOwnerBidRaisedEmail(
+                    booking.venue.owner.email,
+                    booking.venue.owner.name,
+                    {
+                        venueName: booking.venue.name,
+                        eventDate: booking.eventDate,
+                        startTime: booking.startTime,
+                        endTime: booking.endTime,
+                        bidAmount: booking.bidAmount,
+                        bookerName: booking.booker?.name,
+                        bookerEmail: booking.booker?.email,
+                    }
+                );
+            } catch (emailErr) {
+                console.error(`Owner raised-bid email failed for booking ${booking._id}:`, emailErr.message);
+            }
+        } else {
+            console.warn(`Owner email missing for booking ${booking._id}. Raised-bid email skipped.`);
+        }
 
         res.status(200).json({ message: 'Bid raised successfully!', booking });
     } catch (err) {
@@ -262,6 +331,24 @@ const updateBookingStatus = async (req, res) => {
             } else {
                 console.warn(`Booker email missing for booking ${booking._id}. Approval email skipped.`);
             }
+        } else if (booking.booker?.email) {
+            try {
+                await sendBookingRejectedEmail(
+                    booking.booker.email,
+                    booking.booker.name,
+                    {
+                        venueName: booking.venue.name,
+                        eventDate: booking.eventDate,
+                        startTime: booking.startTime,
+                        endTime: booking.endTime,
+                        bidAmount: booking.bidAmount,
+                    }
+                );
+            } catch (emailErr) {
+                console.error(`Rejection email failed for booking ${booking._id}:`, emailErr.message);
+            }
+        } else {
+            console.warn(`Booker email missing for booking ${booking._id}. Rejection email skipped.`);
         }
 
         res.status(200).json({
@@ -285,7 +372,7 @@ const expireUnpaidBookings = async () => {
     try {
         const now = new Date();
 
-        // ── Find bookings past deadline → expire ──
+        // Find bookings past deadline and expire them.
         const expired = await Booking.find({
             status:          'payment_pending',
             paymentDeadline: { $lt: now },
@@ -294,11 +381,32 @@ const expireUnpaidBookings = async () => {
         for (const booking of expired) {
             booking.status = 'expired';
             await booking.save();
-            console.log(`Booking ${booking._id} expired — slot reopened`);
+            console.log(`Booking ${booking._id} expired - slot reopened`);
+
+            if (!booking.booker?.email) {
+                console.warn(`Booker email missing for booking ${booking._id}. Expiry email skipped.`);
+                continue;
+            }
+
+            try {
+                await sendBookingExpiredEmail(
+                    booking.booker.email,
+                    booking.booker.name,
+                    {
+                        venueName: booking.venue?.name || 'Venue',
+                        eventDate: booking.eventDate,
+                        startTime: booking.startTime,
+                        endTime: booking.endTime,
+                        bidAmount: booking.bidAmount,
+                    }
+                );
+            } catch (emailErr) {
+                console.error(`Expiry email failed for booking ${booking._id}:`, emailErr.message);
+            }
         }
 
-        // ── Find bookings within 1hr of deadline → send reminder ──
-        const reminderWindow = new Date(now.getTime() + 60 * 60 * 1000); // now + 1hr
+        // Find bookings within 1hr of deadline and send reminder email once.
+        const reminderWindow = new Date(now.getTime() + 60 * 60 * 1000);
         const needsReminder  = await Booking.find({
             status:          'payment_pending',
             reminderSent:    false,
@@ -333,9 +441,6 @@ const expireUnpaidBookings = async () => {
     }
 };
 
-/* ══════════════════════════════════════
-   ADMIN — GET ALL BOOKINGS
-══════════════════════════════════════ */
 const getAllBookingsAdmin = async (req, res) => {
     try {
         const bookings = await Booking.find()

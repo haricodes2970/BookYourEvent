@@ -239,11 +239,113 @@ const sendOwnerPaymentReceivedEmail = async (email, name, details) => {
     });
 };
 
+const sendBookingRejectedEmail = async (email, name, details) => {
+    await sendEmail({
+        to: email,
+        subject: `Booking update - ${details.venueName}`,
+        html: `
+            <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#fff7ed;border-radius:16px;border:1px solid #fed7aa;">
+                <h2 style="color:#c2410c;">Booking not approved, ${name}</h2>
+                <p style="color:#555;">Your bid was not selected for this slot.</p>
+
+                <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #fdba74;">
+                    <p style="margin:0 0 8px;"><strong>Venue:</strong> ${details.venueName}</p>
+                    <p style="margin:0 0 8px;"><strong>Date:</strong> ${formatDateIN(details.eventDate)}</p>
+                    <p style="margin:0 0 8px;"><strong>Time:</strong> ${details.startTime} - ${details.endTime}</p>
+                    <p style="margin:0;"><strong>Your Bid:</strong> INR ${formatINR(details.bidAmount)}</p>
+                </div>
+
+                <a href="${process.env.CLIENT_URL || '#'}"
+                    style="display:inline-block;padding:14px 32px;background:#c2410c;color:white;border-radius:50px;text-decoration:none;font-weight:700;font-size:15px;">
+                    Explore Other Venues
+                </a>
+            </div>`,
+    });
+};
+
+const sendBookingExpiredEmail = async (email, name, details) => {
+    await sendEmail({
+        to: email,
+        subject: `Booking expired - ${details.venueName}`,
+        html: `
+            <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#fef2f2;border-radius:16px;border:1px solid #fecaca;">
+                <h2 style="color:#b91c1c;">Booking expired, ${name}</h2>
+                <p style="color:#555;">The payment window closed, so this booking has expired and the slot is now reopened.</p>
+
+                <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #fca5a5;">
+                    <p style="margin:0 0 8px;"><strong>Venue:</strong> ${details.venueName}</p>
+                    <p style="margin:0 0 8px;"><strong>Date:</strong> ${formatDateIN(details.eventDate)}</p>
+                    <p style="margin:0 0 8px;"><strong>Time:</strong> ${details.startTime} - ${details.endTime}</p>
+                    <p style="margin:0;"><strong>Bid Amount:</strong> INR ${formatINR(details.bidAmount)}</p>
+                </div>
+
+                <a href="${process.env.CLIENT_URL || '#'}"
+                    style="display:inline-block;padding:14px 32px;background:#b91c1c;color:white;border-radius:50px;text-decoration:none;font-weight:700;font-size:15px;">
+                    Book Again
+                </a>
+            </div>`,
+    });
+};
+
+const sendOwnerNewBidEmail = async (email, name, details) => {
+    await sendEmail({
+        to: email,
+        subject: `New bid received - ${details.venueName}`,
+        html: `
+            <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#eff6ff;border-radius:16px;border:1px solid #bfdbfe;">
+                <h2 style="color:#1d4ed8;">New booking bid, ${name}</h2>
+                <p style="color:#555;">A new bid has been placed on your venue.</p>
+
+                <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #dbeafe;">
+                    <p style="margin:0 0 8px;"><strong>Venue:</strong> ${details.venueName}</p>
+                    <p style="margin:0 0 8px;"><strong>Event Date:</strong> ${formatDateIN(details.eventDate)}</p>
+                    <p style="margin:0 0 8px;"><strong>Time:</strong> ${details.startTime} - ${details.endTime}</p>
+                    <p style="margin:0 0 8px;"><strong>Bid Amount:</strong> INR ${formatINR(details.bidAmount)}</p>
+                    <p style="margin:0;"><strong>Booker:</strong> ${details.bookerName || 'N/A'} (${details.bookerEmail || 'N/A'})</p>
+                </div>
+
+                <a href="${process.env.CLIENT_URL || '#'}/owner/dashboard"
+                    style="display:inline-block;padding:14px 32px;background:#1d4ed8;color:white;border-radius:50px;text-decoration:none;font-weight:700;font-size:15px;">
+                    Review Bids
+                </a>
+            </div>`,
+    });
+};
+
+const sendOwnerBidRaisedEmail = async (email, name, details) => {
+    await sendEmail({
+        to: email,
+        subject: `Bid updated - ${details.venueName}`,
+        html: `
+            <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#f0f9ff;border-radius:16px;border:1px solid #bae6fd;">
+                <h2 style="color:#0369a1;">Bid raised, ${name}</h2>
+                <p style="color:#555;">A booker has increased their bid for your venue slot.</p>
+
+                <div style="background:white;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #bae6fd;">
+                    <p style="margin:0 0 8px;"><strong>Venue:</strong> ${details.venueName}</p>
+                    <p style="margin:0 0 8px;"><strong>Event Date:</strong> ${formatDateIN(details.eventDate)}</p>
+                    <p style="margin:0 0 8px;"><strong>Time:</strong> ${details.startTime} - ${details.endTime}</p>
+                    <p style="margin:0 0 8px;"><strong>New Bid:</strong> INR ${formatINR(details.bidAmount)}</p>
+                    <p style="margin:0;"><strong>Booker:</strong> ${details.bookerName || 'N/A'} (${details.bookerEmail || 'N/A'})</p>
+                </div>
+
+                <a href="${process.env.CLIENT_URL || '#'}/owner/dashboard"
+                    style="display:inline-block;padding:14px 32px;background:#0369a1;color:white;border-radius:50px;text-decoration:none;font-weight:700;font-size:15px;">
+                    Check Slot
+                </a>
+            </div>`,
+    });
+};
+
 module.exports = {
     sendOTPEmail,
     sendWelcomeEmail,
     sendBookingApprovedEmail,
+    sendBookingRejectedEmail,
+    sendBookingExpiredEmail,
     sendPaymentReminderEmail,
+    sendOwnerNewBidEmail,
+    sendOwnerBidRaisedEmail,
     sendBookerPaymentSuccessEmail,
     sendOwnerPaymentReceivedEmail,
 };
