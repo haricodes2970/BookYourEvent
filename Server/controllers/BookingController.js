@@ -163,45 +163,47 @@ const updateBookingStatus = async (req, res) => {
             return res.status(403).json({ message: 'Unauthorized' });
 
         if (status === 'approved') {
-            // ── Set 4hr payment deadline ──
             const deadline = new Date(Date.now() + 4 * 60 * 60 * 1000);
-            booking.status          = 'payment_pending';
+            booking.status = 'payment_pending';
             booking.paymentDeadline = deadline;
 
-            // ── Reject all other bids on same slot ──
             await Booking.updateMany(
                 {
-                    venue:     booking.venue._id,
+                    venue: booking.venue._id,
                     eventDate: booking.eventDate,
-                    _id:       { $ne: booking._id },
-                    status:    'pending',
+                    _id: { $ne: booking._id },
+                    status: 'pending',
                 },
                 { status: 'rejected' }
             );
-
-            // ── Send approval email to booker ──
-            try {
-                await sendBookingApprovedEmail(
-                    booking.booker.email,
-                    booking.booker.name,
-                    {
-                        venueName: booking.venue.name,
-                        eventDate: booking.eventDate,
-                        startTime: booking.startTime,
-                        endTime:   booking.endTime,
-                        bidAmount: booking.bidAmount,
-                        deadline:  deadline,
-                    }
-                );
-            } catch (emailErr) {
-                console.error('Approval email failed:', emailErr.message);
-            }
-
         } else {
             booking.status = 'rejected';
         }
 
         await booking.save();
+
+        if (status === 'approved') {
+            if (booking.booker?.email) {
+                try {
+                    await sendBookingApprovedEmail(
+                        booking.booker.email,
+                        booking.booker.name,
+                        {
+                            venueName: booking.venue.name,
+                            eventDate: booking.eventDate,
+                            startTime: booking.startTime,
+                            endTime: booking.endTime,
+                            bidAmount: booking.bidAmount,
+                            deadline: booking.paymentDeadline,
+                        }
+                    );
+                } catch (emailErr) {
+                    console.error(`Approval email failed for booking ${booking._id}:`, emailErr.message);
+                }
+            } else {
+                console.warn(`Booker email missing for booking ${booking._id}. Approval email skipped.`);
+            }
+        }
 
         res.status(200).json({
             message: status === 'approved'
@@ -245,13 +247,18 @@ const expireUnpaidBookings = async () => {
         }).populate('booker', 'name email').populate('venue', 'name');
 
         for (const booking of needsReminder) {
+            if (!booking.booker?.email) {
+                console.warn(`Booker email missing for booking ${booking._id}. Reminder skipped.`);
+                continue;
+            }
+
             try {
                 await sendPaymentReminderEmail(
                     booking.booker.email,
                     booking.booker.name,
                     {
                         venueName: booking.venue.name,
-                        deadline:  booking.paymentDeadline,
+                        deadline: booking.paymentDeadline,
                         bidAmount: booking.bidAmount,
                     }
                 );
@@ -259,7 +266,7 @@ const expireUnpaidBookings = async () => {
                 await booking.save();
                 console.log(`Reminder sent to ${booking.booker.email}`);
             } catch (e) {
-                console.error('Reminder email failed:', e.message);
+                console.error(`Reminder email failed for booking ${booking._id}:`, e.message);
             }
         }
     } catch (err) {
