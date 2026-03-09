@@ -47,7 +47,7 @@ export const getAllVenuesAdmin = async () => {
 };
 
 export const getAllBookingsAdmin = async () => {
-    const response = await axios.get(`${API}/bookings/all`, {
+    const response = await axios.get(`${API}/bookings/admin/all`, {
         headers: { Authorization: `Bearer ${getToken()}` }
     });
     return response.data;
