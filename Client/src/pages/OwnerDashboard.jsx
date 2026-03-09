@@ -194,8 +194,8 @@ const OwnerDashboard = () => {
     const handleLogout = () => { logout(); navigate('/login'); };
 
     /* ── Derived ── */
-    const upcoming = bookings.filter(b=>b.status==='approved').length;
-    const revenue  = bookings.filter(b=>b.status==='approved').reduce((s,b)=>s+(b.totalPrice||0),0);
+    const upcoming = bookings.filter(b=>b.status==='confirmed' || b.status==='payment_pending').length;
+    const revenue  = bookings.filter(b=>b.status==='confirmed').reduce((s,b)=>s+(b.bidAmount||b.totalPrice||0),0);
     const pending  = bookings.filter(b=>b.status==='pending').length;
 
     /* ── Theme ── */
@@ -296,9 +296,12 @@ const OwnerDashboard = () => {
 
     /* ── Booking status config ── */
     const sCfg = s => ({
-        approved:{color:'#16a34a',bg:'rgba(34,197,94,0.12)',label:'Confirmed'},
-        rejected:{color:'#ef4444',bg:'rgba(239,68,68,0.1)',label:'Rejected'},
-        pending: {color:'#b45309',bg:'rgba(234,179,8,0.12)',label:'Pending'},
+        confirmed:       {color:'#16a34a',bg:'rgba(34,197,94,0.12)',  label:'✅ Confirmed'},
+        approved:        {color:'#16a34a',bg:'rgba(34,197,94,0.12)',  label:'✅ Confirmed'},
+        rejected:        {color:'#ef4444',bg:'rgba(239,68,68,0.1)',   label:'❌ Rejected'},
+        pending:         {color:'#b45309',bg:'rgba(234,179,8,0.12)',  label:'⏳ Pending Bid'},
+        payment_pending: {color:'#1d4ed8',bg:'rgba(59,130,246,0.1)', label:'💳 Awaiting Payment'},
+        expired:         {color:'#6b7280',bg:'rgba(107,114,128,0.1)',label:'🕐 Expired'},
     }[s] || {color:'#6b7280',bg:'rgba(107,114,128,0.1)',label:s});
 
     return (
@@ -905,8 +908,8 @@ const OwnerDashboard = () => {
                         <div style={{marginBottom:20}}>
                             <Pill label="📅 Manage Bookings" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
                             <h2 style={{fontFamily:"'Playfair Display',serif",
-                                fontSize:22,fontWeight:900,color:T.title,marginBottom:4}}>Manage Bookings</h2>
-                            <p style={{fontSize:13,color:T.sub}}>Select a venue to view its bookings</p>
+                                fontSize:22,fontWeight:900,color:T.title,marginBottom:4}}>Manage Bookings & Bids</h2>
+                            <p style={{fontSize:13,color:T.sub}}>Bids are ranked highest first — approve the best bid to notify booker & start 4hr payment window</p>
                         </div>
                         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
                             {venues.map(venue=>{
@@ -980,7 +983,7 @@ const OwnerDashboard = () => {
                                                     {l:'Date',v:new Date(booking.eventDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})},
                                                     {l:'Time',v:`${booking.startTime} – ${booking.endTime}`},
                                                     {l:'Guests',v:`${booking.guestCount} people`},
-                                                    {l:'Total',v:`₹${(booking.totalPrice||0).toLocaleString('en-IN')}`,gold:true},
+                                                    {l:'Bid Amount',v:`₹${(booking.bidAmount||booking.totalPrice||0).toLocaleString('en-IN')}`,gold:true},
                                                 ].map((item,j)=>(
                                                     <div key={j} style={{background:T.statBg,borderRadius:10,padding:'10px 12px'}}>
                                                         <p style={{fontSize:10,color:T.sub,textTransform:'uppercase',
@@ -990,6 +993,36 @@ const OwnerDashboard = () => {
                                                     </div>
                                                 ))}
                                             </div>
+                                            {/* Rank badge — highest bid */}
+                                            {booking.status==='pending' && i===0 && (
+                                                <div style={{background:'rgba(212,175,55,0.1)',border:'1px solid rgba(212,175,55,0.3)',
+                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
+                                                    <p style={{fontSize:11,fontWeight:700,color:'#b45309'}}>
+                                                        🏆 Highest Bid — Approve to confirm this booker
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {booking.status==='payment_pending' && (
+                                                <div style={{background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.25)',
+                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
+                                                    <p style={{fontSize:11,fontWeight:700,color:'#1d4ed8'}}>
+                                                        💳 Approved — Waiting for booker to pay
+                                                    </p>
+                                                    {booking.paymentDeadline && (
+                                                        <p style={{fontSize:10,color:'#6b7280',marginTop:2}}>
+                                                            Deadline: {new Date(booking.paymentDeadline).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {booking.status==='confirmed' && (
+                                                <div style={{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.25)',
+                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
+                                                    <p style={{fontSize:11,fontWeight:700,color:'#16a34a'}}>
+                                                        ✅ Payment received — Booking confirmed!
+                                                    </p>
+                                                </div>
+                                            )}
                                             {booking.status==='pending' && (
                                                 <div style={{display:'flex',gap:8}}>
                                                     <motion.button
@@ -1001,7 +1034,7 @@ const OwnerDashboard = () => {
                                                             border:'1.5px solid rgba(34,197,94,0.3)',
                                                             color:'#16a34a',fontSize:13,fontWeight:700,
                                                             cursor:'pointer',fontFamily:'inherit'}}>
-                                                        ✓ Approve
+                                                        ✓ Approve & Notify Booker
                                                     </motion.button>
                                                     <motion.button
                                                         whileHover={{scale:1.03,boxShadow:'0 8px 20px rgba(239,68,68,0.15)'}}
