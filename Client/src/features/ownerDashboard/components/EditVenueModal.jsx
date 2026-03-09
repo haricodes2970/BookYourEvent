@@ -25,8 +25,8 @@ const EditVenueModal = ({ venue, onClose, onSave, saving }) => {
         if (!venue) return;
         gsap.fromTo(
             '.owner-edit-modal',
-            { y: 20, opacity: 0, scale: 0.98 },
-            { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }
+            { y: 50, opacity: 0, scale: 0.9 },
+            { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.7)' }
         );
     }, [venue]);
 
@@ -56,134 +56,130 @@ const EditVenueModal = ({ venue, onClose, onSave, saving }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/40 p-4 backdrop-blur-sm">
-            <div className="owner-edit-modal w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[0_26px_60px_rgba(8,28,21,0.3)]">
-                <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-[#022c22]/80 p-4 backdrop-blur-md">
+            <div className="owner-edit-modal w-full max-w-2xl rounded-[2.5rem] border border-white/10 bg-[#064e3b] p-8 md:p-10 shadow-2xl relative overflow-hidden text-white">
+                {/* Decorative orbs */}
+                <div className="absolute -right-20 -top-20 w-60 h-60 bg-[var(--primary)] opacity-10 blur-[80px] rounded-full" />
+
+                <div className="relative z-10 mb-8 flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="font-['Outfit'] text-2xl font-semibold text-[var(--text)]">
-                            Edit Venue
+                        <h3 className="font-['Outfit'] text-3xl font-black text-white leading-tight">
+                            Refine Property
                         </h3>
-                        <p className="mt-1 text-sm text-[var(--muted)]">
-                            Update core details shown to bookers.
+                        <p className="mt-2 text-sm text-emerald-100/60 font-medium">
+                            Adjusting details for <span className="text-[var(--accent)]">@{venue.name}</span>
                         </p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]"
+                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors text-xl"
                     >
-                        Close
+                        ✕
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)] md:col-span-2">
-                        Venue Name
+                <form onSubmit={handleSubmit} className="relative z-10 grid gap-6 md:grid-cols-2">
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Venue Identity</label>
                         <input
                             name="name"
                             value={form.name}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            placeholder="Venue Name"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                        City
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">City Hub</label>
                         <input
                             name="location.city"
                             value={form.location.city}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            placeholder="City"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                        Pincode
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Postal Code</label>
                         <input
                             name="location.pincode"
                             value={form.location.pincode}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            placeholder="Pincode"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)] md:col-span-2">
-                        Address
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Street Address</label>
                         <input
                             name="location.address"
                             value={form.location.address}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            placeholder="Detailed Address"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                        Price Per Hour
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Hourly Rate (₹)</label>
                         <input
                             name="pricePerHour"
                             type="number"
                             value={form.pricePerHour}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             min={0}
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                        Price Per Day
-                        <input
-                            name="pricePerDay"
-                            type="number"
-                            value={form.pricePerDay}
-                            onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
-                            min={0}
-                        />
-                    </label>
-
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                        Capacity
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Guest Capacity</label>
                         <input
                             name="capacity"
                             type="number"
                             value={form.capacity}
                             onChange={handleChange}
-                            className="rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            className="w-full rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold"
                             min={1}
                             required
                         />
-                    </label>
+                    </div>
 
-                    <label className="flex flex-col gap-2 text-sm text-[var(--muted)] md:col-span-2">
-                        Description
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100/40 px-1">Venue Narrative</label>
                         <textarea
                             name="description"
                             value={form.description}
                             onChange={handleChange}
-                            className="min-h-28 rounded-xl border border-[var(--border)] bg-transparent px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            placeholder="Describe the vibe, amenities, and unique features..."
+                            className="w-full min-h-32 rounded-2xl border border-white/5 bg-white/5 px-5 py-4 text-white outline-none focus:border-[var(--primary)] focus:bg-white/10 transition-all font-bold resize-none"
                             required
                         />
-                    </label>
+                    </div>
 
-                    <div className="md:col-span-2 flex justify-end gap-3">
+                    <div className="md:col-span-2 flex justify-end gap-4 mt-4">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text)]"
+                            className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-emerald-100/60 hover:text-white transition-colors"
                         >
-                            Cancel
+                            Dismiss
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            className="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--secondary)] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="px-8 py-4 rounded-2xl bg-[var(--primary)] hover:bg-[var(--accent)] text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {saving ? 'Saving...' : 'Save Changes'}
+                            {saving ? 'Syncing...' : 'Commit Changes'}
                         </button>
                     </div>
                 </form>
