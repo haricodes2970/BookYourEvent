@@ -142,7 +142,7 @@ const MyBookings = () => {
                         { label: 'Browse', path: '/booker/dashboard' },
                         { label: 'My Bookings', path: null },
                         { label: 'About', path: '/about' },
-                        { label: 'Help', path: null },
+                        { label: 'Help', path: '/help' },
                     ].map(({ label, path }) => (
                         <button key={label}
                             onClick={() => path && navigate(path)}

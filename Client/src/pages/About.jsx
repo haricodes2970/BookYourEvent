@@ -742,7 +742,10 @@ const About = () => {
                 background: dark ? 'rgba(10,31,40,0.8)' : 'rgba(255,255,255,0.4)',
                 backdropFilter: 'blur(8px)',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                    onClick={() => navigate('/')}
+                >
                     <img src="/logo.png" alt="BYE" className="h-9 w-9 rounded-full object-cover"
                         onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
                     <div style={{

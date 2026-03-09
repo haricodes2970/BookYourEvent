@@ -272,8 +272,10 @@ const Home = () => {
                     boxShadow:'0 2px 16px rgba(30,77,92,0.08)',
                     border:'1px solid rgba(203,231,227,0.55)',
                 }}>
-                    <motion.div whileHover={{ scale:1.06 }}
-                        style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <motion.div
+                        whileHover={{ scale:1.06 }}
+                        onClick={() => navigate('/')}
+                        style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
                         <img src="/logo.png" alt="BYE"
                             className="h-12 w-12 rounded-full object-cover shadow-md"
                             onError={e=>{
@@ -532,7 +534,10 @@ const Home = () => {
             ══════════════════════════════════════ */}
             <div className="relative z-10 px-8 py-6 flex justify-between items-center pb-16 flex-wrap gap-4"
                 style={{ borderTop:'1px solid rgba(200,185,160,0.3)' }}>
-                <div className="flex items-center gap-3">
+                <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => navigate('/')}
+                >
                     <img src="/logo.png" alt="BYE" className="h-10 w-10 rounded-full object-cover"
                         onError={e=>{ e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}/>
                     <div style={{

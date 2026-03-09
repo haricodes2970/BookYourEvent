@@ -557,13 +557,20 @@ const Register = () => {
                     border:`1px solid ${dark?'rgba(111,179,168,0.2)':'rgba(203,231,227,0.5)'}`,
                     boxShadow:'0 2px 16px rgba(0,0,0,0.08)',
                 }}>
-                    <motion.div whileHover={{ scale:1.06 }}
-                        style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <img src="/logo.png" alt="BYE" className="h-10 w-10 rounded-full object-cover shadow-md"
+                    <motion.div
+                        whileHover={{ scale:1.06 }}
+                        onClick={() => navigate('/')}
+                        style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}
+                    >
+                        <img
+                            src="/logo.png"
+                            alt="BYE"
+                            className="h-10 w-10 rounded-full object-cover shadow-md"
                             onError={e=>{
                                 e.target.style.display='none';
                                 e.target.nextSibling.style.display='flex';
-                            }}/>
+                            }}
+                        />
                         <div style={{
                             display:'none', width:38, height:38, borderRadius:'50%',
                             background:'linear-gradient(135deg,#1e4d5c,#2D8A84)',
@@ -656,14 +663,21 @@ const Register = () => {
                                 <>
                                     {/* Logo */}
                                     <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
-                                        <motion.div whileHover={{ scale:1.08, rotate:5 }}>
-                                            <img src="/logo.png" alt="BYE"
+                                        <motion.div
+                                            whileHover={{ scale:1.08, rotate:5 }}
+                                            onClick={() => navigate('/')}
+                                            style={{ cursor:'pointer' }}
+                                        >
+                                            <img
+                                                src="/logo.png"
+                                                alt="BYE"
                                                 className="h-14 w-14 rounded-full object-cover"
                                                 style={{ boxShadow:'0 6px 20px rgba(30,77,92,0.25)' }}
                                                 onError={e=>{
                                                     e.target.style.display='none';
                                                     e.target.nextSibling.style.display='flex';
-                                                }}/>
+                                                }}
+                                            />
                                             <div style={{
                                                 display:'none', width:56, height:56, borderRadius:'50%',
                                                 background:'linear-gradient(135deg,#1e4d5c,#2D8A84)',
