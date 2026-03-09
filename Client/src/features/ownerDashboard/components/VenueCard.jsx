@@ -1,8 +1,10 @@
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 
 const VenueCard = ({ venue, bookingCount, selected, onEdit, onViewBookings, onToggleActive }) => {
     const cardRef = useRef(null);
+    const navigate = useNavigate();
 
     const statusLabel = !venue.isActive ? 'Disabled' : venue.isApproved ? 'Approved' : 'Pending';
     const statusTone = !venue.isActive
@@ -14,8 +16,12 @@ const VenueCard = ({ venue, bookingCount, selected, onEdit, onViewBookings, onTo
     return (
         <article
             ref={cardRef}
-            className={`venue-card group flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--border)] bg-[var(--surface)] transition-all duration-500 ${selected ? 'ring-4 ring-[var(--primary)]/20 border-[var(--primary)]' : 'hover:border-[var(--primary)]/30'
-                }`}
+            className={`venue-card group flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--border)] bg-[var(--surface)] transition-all duration-500 ${
+                selected
+                    ? 'ring-4 ring-[var(--primary)]/20 border-[var(--primary)]'
+                    : 'hover:border-[var(--primary)]/30'
+            } cursor-pointer`}
+            onClick={() => navigate(`/owner/venues/${venue._id}`)}
         >
             <div className="relative h-56 overflow-hidden">
                 {venue.images?.[0] ? (

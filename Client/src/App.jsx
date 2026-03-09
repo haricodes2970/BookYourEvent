@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import About from './pages/About';
 import BookerDashboard from './pages/BookerDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerVenueDetails from './features/ownerDashboard/OwnerVenueDetails';
 import AdminDashboard from './pages/AdminDashboard';
 import VenueDetail from './pages/VenueDetail';
 import MyBookings from './pages/MyBookings';
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/owner/dashboard" element={<OwnerDashboard />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/venue/:id" element={<VenueDetail />} />
+                <Route path="/owner/venues/:id" element={<OwnerVenueDetails />} />
                 <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
                 <Route path="/help" element={<HelpContact />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
