@@ -16,7 +16,7 @@ const {
     generateUniqueUsername,
 } = require('../controllers/AuthController');
 const { protect } = require('../middleware/authMiddleware');
-const { adminOnly } = require('../middleware/roleMiddleware');
+const { adminOnly, authorizeRoles } = require('../middleware/roleMiddleware');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../models/User');
@@ -27,7 +27,7 @@ router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.get('/me',                  protect, getMe);
-router.patch('/payment-details',   protect, savePaymentDetails);
+router.patch('/payment-details',   protect, authorizeRoles('venueOwner'), savePaymentDetails);
 router.get('/users',               protect, adminOnly, getUsers);
 router.delete('/users/:id',        protect, adminOnly, deleteUser);
 router.patch('/users/:id/role',    protect, adminOnly, updateUserRole);
