@@ -21,6 +21,17 @@ const createBooking = async (req, res) => {
         if (!venueId || !eventDate || !startTime || !endTime || !guestCount)
             return res.status(400).json({ message: 'Please fill all fields' });
 
+        const eventDateObj = new Date(eventDate);
+        if (Number.isNaN(eventDateObj.getTime())) {
+            return res.status(400).json({ message: 'Invalid event date' });
+        }
+
+        const today = new Date();
+        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (eventDateObj < todayMidnight) {
+            return res.status(400).json({ message: 'Event date cannot be in the past' });
+        }
+
         const venue = await Venue.findById(venueId);
         if (!venue)
             return res.status(404).json({ message: 'Venue not found' });
@@ -51,9 +62,29 @@ const createBooking = async (req, res) => {
             return res.status(400).json({ message: 'This slot is already confirmed. Please choose another time.' });
 
         // ── Calculate price ──
-        const start      = parseInt(startTime.split(':')[0]);
-        const end        = parseInt(endTime.split(':')[0]);
-        const hours      = end - start;
+        const parseTime = (timeStr = '') => {
+            const [h, m] = timeStr.split(':').map(Number);
+            if (
+                Number.isNaN(h) ||
+                Number.isNaN(m) ||
+                h < 0 ||
+                h > 23 ||
+                m < 0 ||
+                m > 59
+            ) {
+                return null;
+            }
+            return h * 60 + m;
+        };
+
+        const startMinutes = parseTime(startTime);
+        const endMinutes   = parseTime(endTime);
+
+        if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+            return res.status(400).json({ message: 'Invalid start/end time selection' });
+        }
+
+        const hours      = (endMinutes - startMinutes) / 60;
         const totalPrice = hours * venue.pricePerHour;
         const finalBid   = bidAmount && bidAmount > totalPrice ? bidAmount : totalPrice;
 
@@ -179,6 +210,15 @@ const raiseBid = async (req, res) => {
 ══════════════════════════════════════ */
 const getVenueBookings = async (req, res) => {
     try {
+        const venueRecord = await Venue.findById(req.params.venueId).select('owner');
+        if (!venueRecord) {
+            return res.status(404).json({ message: 'Venue not found' });
+        }
+
+        if (req.user.role !== 'admin' && venueRecord.owner.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Access denied. Only the venue owner can view these bids.' });
+        }
+
         const bookings = await Booking.find({ venue: req.params.venueId })
             .populate('booker', 'name username email avatar phone')
             .populate('venue', 'name location')

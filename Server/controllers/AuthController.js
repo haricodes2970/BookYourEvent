@@ -4,6 +4,14 @@ const { sendOTPEmail, sendWelcomeEmail } = require('../utils/emailService');
 
 const USERNAME_REGEX = /^[a-z0-9._]{3,24}$/;
 
+const isStrongPassword = (password = '') =>
+    typeof password === 'string' &&
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password);
+
 const generateToken = (user) =>
     jwt.sign(
         {
@@ -15,7 +23,7 @@ const generateToken = (user) =>
             avatar: user.avatar || '',
         },
         process.env.JWT_SECRET,
-        { expiresIn: '30d' }
+        { expiresIn: '7d' }
     );
 
 const normalizeEmail = (value = '') => value.trim().toLowerCase();
@@ -92,6 +100,12 @@ const register = async (req, res) => {
 
         if (!name || !normalizedUsername || !normalizedEmail || !password || !phone) {
             return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        if (!isStrongPassword(password)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters and include upper, lower, number, and symbol.',
+            });
         }
 
         if (!USERNAME_REGEX.test(normalizedUsername)) {
@@ -215,12 +229,8 @@ const login = async (req, res) => {
             ? await User.findOne({ email: normalizeEmail(rawIdentifier) })
             : await User.findOne({ username: normalizeUsername(rawIdentifier) });
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (!user.isVerified) {
-            return res.status(401).json({ message: 'Please verify your email first' });
+        if (!user || !user.isVerified) {
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const match = await user.comparePassword(password);
@@ -279,8 +289,19 @@ const savePaymentDetails = async (req, res) => {
             { paymentDetails: { paymentType, upiId, accountName, accountNo, ifsc, bankName } },
             { new: true }
         ).select('-password -otp -otpExpiry');
+        const mask = (value = '') =>
+            value ? value.replace(/.(?=.{4})/g, '•') : '';
 
-        res.status(200).json({ message: 'Payment details saved!', paymentDetails: user.paymentDetails });
+        const maskedDetails = {
+            paymentType: user.paymentDetails.paymentType,
+            upiId: mask(user.paymentDetails.upiId),
+            accountName: user.paymentDetails.accountName,
+            accountNo: mask(user.paymentDetails.accountNo),
+            ifsc: mask(user.paymentDetails.ifsc),
+            bankName: user.paymentDetails.bankName,
+        };
+
+        res.status(200).json({ message: 'Payment details saved!', paymentDetails: maskedDetails });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
@@ -291,7 +312,7 @@ const forgotPassword = async (req, res) => {
         const { email } = req.body;
         const user = await User.findOne({ email: normalizeEmail(email) });
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
         }
 
         const previousOtp = user.otp;
@@ -314,7 +335,7 @@ const forgotPassword = async (req, res) => {
             });
         }
 
-        res.status(200).json({ message: 'OTP sent to your email' });
+        res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
@@ -326,15 +347,21 @@ const resetPassword = async (req, res) => {
         const user = await User.findOne({ email: normalizeEmail(email) });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
         }
 
         if (user.otp !== otp) {
-            return res.status(400).json({ message: 'Invalid OTP' });
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
         }
 
         if (new Date() > user.otpExpiry) {
-            return res.status(400).json({ message: 'OTP expired' });
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters and include upper, lower, number, and symbol.',
+            });
         }
 
         user.password = newPassword;
@@ -359,7 +386,25 @@ const getUsers = async (req, res) => {
 
 const deleteUser = async (req, res) => {
     try {
-        await User.findByIdAndDelete(req.params.id);
+        const targetId = req.params.id;
+
+        if (targetId === req.user.id) {
+            return res.status(400).json({ message: 'Admins cannot delete themselves' });
+        }
+
+        const targetUser = await User.findById(targetId);
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (targetUser.role === 'admin') {
+            const adminCount = await User.countDocuments({ role: 'admin' });
+            if (adminCount <= 1) {
+                return res.status(400).json({ message: 'Cannot delete the last admin user' });
+            }
+        }
+
+        await User.findByIdAndDelete(targetId);
         res.status(200).json({ message: 'User deleted' });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
@@ -369,7 +414,25 @@ const deleteUser = async (req, res) => {
 const updateUserRole = async (req, res) => {
     try {
         const { role } = req.body;
-        const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
+        const targetId = req.params.id;
+        const targetUser = await User.findById(targetId);
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (targetUser._id.toString() === req.user.id && role !== 'admin') {
+            return res.status(400).json({ message: 'Admins cannot remove their own admin role' });
+        }
+
+        if (targetUser.role === 'admin' && role !== 'admin') {
+            const adminCount = await User.countDocuments({ role: 'admin' });
+            if (adminCount <= 1) {
+                return res.status(400).json({ message: 'Cannot remove the last admin user' });
+            }
+        }
+
+        const user = await User.findByIdAndUpdate(targetId, { role }, { new: true }).select('-password');
         res.status(200).json({ message: 'Role updated', user });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
