@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { getVenueReviews, addReview } from '../services/reviewService';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import ChatModal from '../components/ChatModal';
+import { useLanguage } from '../context/LanguageContext';
 
 /* ══════════════════════════════════════ DARK MODE ══════════════════════════════════════ */
 const useDark = () => { const [dark, setDark] = useState(false); return { dark, toggle: () => setDark(d => !d) }; };
@@ -85,6 +87,7 @@ const VenueDetail = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { dark, toggle } = useDark();
+    const { t } = useLanguage();
 
     const [venue, setVenue]             = useState(null);
     const [loading, setLoading]         = useState(true);
@@ -99,6 +102,7 @@ const VenueDetail = () => {
     const [reviewError, setReviewError] = useState('');
     const [reviewSuccess, setReviewSuccess] = useState('');
     const [activeThumb, setActiveThumb] = useState(0);
+    const [chatOpen, setChatOpen] = useState(false);
 
     const [bookingData, setBookingData] = useState({
         eventDate:'', startTime:'', endTime:'', guestCount:'', bidAmount:'', message:''
@@ -149,11 +153,11 @@ const VenueDetail = () => {
         setError(''); setSuccess('');
 
         const basePrice = calculatePrice();
-        if (basePrice <= 0) { setError('Please select valid start and end times.'); return; }
+        if (basePrice <= 0) { setError(t('venue.error.invalidTime')); return; }
 
         const bidAmount = bookingData.bidAmount ? Number(bookingData.bidAmount) : basePrice;
         if (bidAmount < basePrice) {
-            setError(`Bid must be at least ₹${basePrice.toLocaleString('en-IN')} (base price)`);
+            setError(t('venue.error.minBid', { amount: basePrice.toLocaleString('en-IN') }));
             return;
         }
 
@@ -168,10 +172,10 @@ const VenueDetail = () => {
                 bidAmount,
                 message:    bookingData.message,
             });
-            setSuccess('🎉 Bid placed! The owner will review all bids and notify you by email when approved. Check My Bookings for status.');
+            setSuccess(t('venue.success.bidPlaced'));
             setBookingData({ eventDate:'', startTime:'', endTime:'', guestCount:'', bidAmount:'', message:'' });
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to place bid');
+            setError(err.response?.data?.message || t('venue.error.placeBidFailed'));
         } finally {
             setBidLoading(false);
         }
@@ -196,6 +200,30 @@ const VenueDetail = () => {
         const q = encodeURIComponent(`${v.location?.address}, ${v.location?.city}`);
         return `https://www.google.com/maps/search/?api=1&query=${q}`;
     };
+
+    const canShowOwnerChat = Boolean(venue?.owner?._id && user?.id !== venue.owner._id);
+
+    const handleOpenOwnerChat = () => {
+        if (!venue?.owner?._id) return;
+
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        if (user.id === venue.owner._id) {
+            setError(t('chat.cannotChatSelf'));
+            return;
+        }
+
+        setChatOpen(true);
+    };
+
+    const bidAmountDisplay = bookingData.bidAmount
+        ? Number(bookingData.bidAmount).toLocaleString('en-IN')
+        : calculatePrice() > 0
+            ? calculatePrice().toLocaleString('en-IN')
+            : '';
 
     /* ── THEME ── */
     const T = {
@@ -304,12 +332,12 @@ const VenueDetail = () => {
                         <motion.button whileHover={{color:T.gold}} onClick={()=>navigate('/booker/dashboard')}
                             style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none',
                                 cursor:'pointer', color:T.sub, fontSize:13, fontWeight:500, fontFamily:'inherit', transition:'color 0.2s' }}>
-                            ← Browse Venues
+                            {t('venue.navBrowse')}
                         </motion.button>
                         <motion.button whileHover={{color:T.gold}} onClick={()=>navigate('/booker/my-bookings')}
                             style={{ background:'none', border:'none', cursor:'pointer', color:T.sub,
                                 fontSize:13, fontWeight:500, fontFamily:'inherit', padding:'6px 12px', transition:'color 0.2s' }}>
-                            My Bookings
+                            {t('venue.navMyBookings')}
                         </motion.button>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -317,7 +345,7 @@ const VenueDetail = () => {
                         <motion.button whileHover={{scale:1.03}} onClick={()=>navigate('/booker/dashboard')}
                             style={{ padding:'7px 18px', borderRadius:50, background:T.goldLight,
                                 border:`1.5px solid ${T.goldBorder}`, color:T.gold, fontSize:13,
-                                fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Dashboard</motion.button>
+                                fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>{t('venue.navDashboard')}</motion.button>
                         <div style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 8px',
                             borderRadius:50, background:T.goldLight, border:`1.5px solid ${T.goldBorder}` }}>
                             <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
@@ -336,11 +364,11 @@ const VenueDetail = () => {
                     <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:T.goldLight,
                         borderRadius:50, padding:'4px 14px', border:`1px solid ${T.goldBorder}`, marginBottom:8 }}>
                         <span style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                            textTransform:'uppercase', color:T.gold }}>🏛️ Venue Details</span>
+                            textTransform:'uppercase', color:T.gold }}>🏛️ {t('venue.badge')}</span>
                     </div>
                     <h1 style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(1.6rem,3vw,2.2rem)',
-                        fontWeight:900, color:T.title, marginBottom:4 }}>Review & Bid for This Venue</h1>
-                    <p style={{ fontSize:13, color:T.sub }}>Place your bid — owner reviews all bids and picks the best one</p>
+                        fontWeight:900, color:T.title, marginBottom:4 }}>{t('venue.title')}</h1>
+                    <p style={{ fontSize:13, color:T.sub }}>{t('venue.subtitle')}</p>
                 </motion.div>
             </div>
 
@@ -363,7 +391,7 @@ const VenueDetail = () => {
                                 style={{ marginLeft:12, padding:'4px 14px', borderRadius:50, border:'none',
                                     background:'rgba(34,197,94,0.2)', color:'#16a34a', fontSize:12,
                                     fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                                View My Bookings →
+                                {t('venue.viewMyBookings')}
                             </button>
                         </motion.div>
                     )}
@@ -493,10 +521,31 @@ const VenueDetail = () => {
                                     </div>
                                     <div>
                                         <p style={{ fontSize:11, color:T.sub, textTransform:'uppercase',
-                                            letterSpacing:'0.8px', fontWeight:600, marginBottom:2 }}>Venue Owner</p>
+                                            letterSpacing:'0.8px', fontWeight:600, marginBottom:2 }}>{t('venue.ownerLabel')}</p>
                                         <p style={{ fontSize:14, fontWeight:700, color:T.title }}>{venue.owner?.name}</p>
                                         {venue.owner?.phone && <p style={{ fontSize:12, color:T.sub }}>📞 {venue.owner.phone}</p>}
                                     </div>
+                                    {canShowOwnerChat && (
+                                        <motion.button
+                                            whileHover={{scale:1.03, boxShadow:'0 8px 20px rgba(30,77,92,0.16)'}}
+                                            whileTap={{scale:0.98}}
+                                            onClick={handleOpenOwnerChat}
+                                            style={{
+                                                marginLeft: 'auto',
+                                                border: '1.5px solid rgba(30,77,92,0.25)',
+                                                background: 'rgba(30,77,92,0.06)',
+                                                color: '#1e4d5c',
+                                                borderRadius: 50,
+                                                padding: '9px 14px',
+                                                fontSize: 12,
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                fontFamily: 'inherit',
+                                            }}
+                                        >
+                                            {t('chat.withOwner')}
+                                        </motion.button>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>
@@ -513,13 +562,13 @@ const VenueDetail = () => {
                                     <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:T.goldLight,
                                         borderRadius:50, padding:'4px 12px', border:`1px solid ${T.goldBorder}`, marginBottom:10 }}>
                                         <span style={{ fontSize:10, fontWeight:700, letterSpacing:'1px',
-                                            textTransform:'uppercase', color:T.gold }}>🏷️ Place Bid</span>
+                                            textTransform:'uppercase', color:T.gold }}>🏷️ {t('venue.bidBadge')}</span>
                                     </div>
                                     <h3 style={{ fontFamily:"'Playfair Display', serif", fontSize:22,
-                                        fontWeight:900, color:T.title, marginBottom:4 }}>Bid for This Venue</h3>
+                                        fontWeight:900, color:T.title, marginBottom:4 }}>{t('venue.bidTitle')}</h3>
                                     <p style={{ fontSize:12, color:T.sub, lineHeight:1.6 }}>
-                                        Owner reviews all bids and approves the best one.<br/>
-                                        You'll get an email when approved — then pay within 4 hours.
+                                        {t('venue.bidSubtitle1')}<br/>
+                                        {t('venue.bidSubtitle2')}
                                     </p>
                                 </div>
 
@@ -527,10 +576,10 @@ const VenueDetail = () => {
                                 <div style={{ background:T.goldLight, border:`1px solid ${T.goldBorder}`,
                                     borderRadius:14, padding:'14px 16px', marginBottom:20 }}>
                                     {[
-                                        { step:'1', text:'Fill details & place bid' },
-                                        { step:'2', text:'Owner reviews & approves best bid' },
-                                        { step:'3', text:'You get email notification' },
-                                        { step:'4', text:'Pay within 4 hours to confirm' },
+                                        { step:'1', text:t('venue.step1') },
+                                        { step:'2', text:t('venue.step2') },
+                                        { step:'3', text:t('venue.step3') },
+                                        { step:'4', text:t('venue.step4') },
                                     ].map((s,i)=>(
                                         <div key={i} style={{ display:'flex', alignItems:'center', gap:10,
                                             marginBottom:i<3?8:0 }}>
@@ -570,7 +619,7 @@ const VenueDetail = () => {
                                             onChange={e=>{
                                                 const d=e.target.value;
                                                 const blocked=venue.blockedDates?.map(bd=>new Date(bd).toISOString().split('T')[0])||[];
-                                                if(blocked.includes(d)){setError('This date is unavailable.');return;}
+                                                if(blocked.includes(d)){setError(t('venue.error.dateUnavailable'));return;}
                                                 setError(''); setBookingData({...bookingData,eventDate:d});
                                             }}
                                             required style={inputStyle}/>
@@ -627,17 +676,17 @@ const VenueDetail = () => {
                                     </GoldInput>
 
                                     {/* Message to owner */}
-                                    <GoldInput dark={dark} label="Message to Owner (Optional)">
+                                    <GoldInput dark={dark} label={t('venue.messageLabel')}>
                                         <input type="text" name="message" value={bookingData.message}
                                             onChange={handleChange}
-                                            placeholder="Tell the owner about your event..."
+                                            placeholder={t('venue.messagePlaceholder')}
                                             style={inputStyle}/>
                                     </GoldInput>
 
                                     {/* Availability calendar */}
                                     <div>
                                         <p style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                            textTransform:'uppercase', color:T.gold, marginBottom:10 }}>Availability</p>
+                                            textTransform:'uppercase', color:T.gold, marginBottom:10 }}>{t('venue.availability')}</p>
                                         <div style={{ borderRadius:14, overflow:'hidden', border:`1px solid ${T.border}` }}>
                                             <AvailabilityCalendar blockedDates={venue.blockedDates||[]} mode="view"/>
                                         </div>
@@ -660,13 +709,13 @@ const VenueDetail = () => {
                                                     style={{ display:'inline-block', width:14, height:14,
                                                         border:'2px solid rgba(255,255,255,0.3)',
                                                         borderTopColor:'white', borderRadius:'50%' }}/>
-                                                Placing Bid...
+                                                {t('venue.placingBid')}
                                             </span>
-                                        ) : `🏷️ Place Bid${bookingData.bidAmount ? ` — ₹${Number(bookingData.bidAmount).toLocaleString('en-IN')}` : calculatePrice()>0 ? ` — ₹${calculatePrice().toLocaleString('en-IN')}` : ''}`}
+                                        ) : `${t('venue.placeBidBtn')}${bidAmountDisplay ? ` - Rs ${bidAmountDisplay}` : ''}`}
                                     </motion.button>
 
                                     <p style={{ fontSize:11, color:T.sub, textAlign:'center', lineHeight:1.6 }}>
-                                        No payment now · Owner will notify you by email if approved · Pay within 4 hours of approval
+                                        {t('venue.paymentNote')}
                                     </p>
                                 </form>
                             </div>
@@ -760,6 +809,17 @@ const VenueDetail = () => {
                         </div>
                     </motion.div>
                 </div>
+            )}
+            {chatOpen && venue?.owner?._id && (
+                <ChatModal
+                    isOpen={chatOpen}
+                    otherUser={{
+                        id: venue.owner._id,
+                        name: venue.owner.name || 'Venue Owner',
+                        role: 'venueOwner',
+                    }}
+                    onClose={() => setChatOpen(false)}
+                />
             )}
 
             <p style={{ textAlign:'center', padding:'20px 0 32px',
