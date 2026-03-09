@@ -1,13 +1,21 @@
 const express = require('express');
-const router = express.Router();
-const { createBooking, getVenueBookings, getMyBookings, updateBookingStatus, getAllBookingsAdmin } = require('../controllers/BookingController');
-const { protect } = require('../middleware/authMiddleware');
-const { authorizeRoles, adminOnly } = require('../middleware/roleMiddleware');
+const router  = express.Router();
+const {
+    createBooking,
+    raiseBid,
+    getVenueBookings,
+    getMyBookings,
+    updateBookingStatus,
+    getAllBookingsAdmin,
+} = require('../controllers/BookingController');
+const { protect }   = require('../middleware/authMiddleware');
+const { adminOnly } = require('../middleware/roleMiddleware');
 
-router.post('/create', protect, authorizeRoles('booker'), createBooking);
-router.get('/my-bookings', protect, authorizeRoles('booker'), getMyBookings);
-router.get('/all', protect, adminOnly, getAllBookingsAdmin);
-router.get('/venue/:venueId', protect, authorizeRoles('venueOwner', 'admin'), getVenueBookings);
-router.patch('/:id/status', protect, authorizeRoles('venueOwner', 'admin'), updateBookingStatus);
+router.post('/create',                    protect, createBooking);
+router.patch('/:id/raise-bid',            protect, raiseBid);
+router.get('/venue/:venueId',             protect, getVenueBookings);
+router.get('/my-bookings',                protect, getMyBookings);
+router.patch('/:id/status',               protect, updateBookingStatus);
+router.get('/admin/all',                  protect, adminOnly, getAllBookingsAdmin);
 
 module.exports = router;

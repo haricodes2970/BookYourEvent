@@ -1,11 +1,11 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
+const express  = require('express');
+const dotenv   = require('dotenv');
+const cors     = require('cors');
 const passport = require('passport');
 const connectDB = require('./config/db');
+const { expireUnpaidBookings } = require('./controllers/BookingController');
 
 dotenv.config({ path: __dirname + '/.env' });
-
 require('./config/passport');
 
 const app = express();
@@ -17,7 +17,7 @@ app.use(cors({
         'https://spontaneous-pixie-eb33b8.netlify.app',
         process.env.CLIENT_URL,
     ],
-    credentials: true
+    credentials: true,
 }));
 
 app.use(express.json());
@@ -41,7 +41,10 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Keep Render awake every 14 minutes
+// ── Run every 15 mins — expire unpaid bookings + send reminders ──
+setInterval(expireUnpaidBookings, 15 * 60 * 1000);
+
+// ── Keep Render awake every 14 mins ──
 setInterval(() => {
     fetch('https://bookyourevent.onrender.com/')
         .then(() => console.log('Server kept alive'))

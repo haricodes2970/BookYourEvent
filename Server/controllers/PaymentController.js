@@ -1,15 +1,12 @@
 const Razorpay = require('razorpay');
-const crypto = require('crypto');
-const Booking = require('../models/Booking');
-const Venue = require('../models/Venue');
+const crypto   = require('crypto');
+const Booking  = require('../models/Booking');
 
-// ── Init Razorpay ──────────────────────────────────
 const razorpay = new Razorpay({
     key_id:     process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ── Commission logic ───────────────────────────────
 const getCommission = (amount) => {
     if (amount >= 10000) return { rate: 0.08, ownerRate: 0.92 };
     return { rate: 0.05, ownerRate: 0.95 };
@@ -17,69 +14,56 @@ const getCommission = (amount) => {
 
 /* ══════════════════════════════════════
    POST /api/payments/create-order
-   Body: { bookingData }
-   Creates booking + Razorpay order
+   Only works if booking is payment_pending
+   and deadline has not passed
 ══════════════════════════════════════ */
 const createOrder = async (req, res) => {
     try {
-        const {
-            venue,
-            eventDate,
-            startTime,
-            endTime,
-            guestCount,
-            totalPrice,
-        } = req.body;
+        const { bookingId } = req.body;
 
-        const bookerId = req.user.id;
+        const booking = await Booking.findById(bookingId).populate('venue');
+        if (!booking)
+            return res.status(404).json({ message: 'Booking not found' });
 
-        // ── Double booking check ──
-        const conflict = await Booking.findOne({
-            venue,
-            eventDate: new Date(eventDate),
-            status: { $in: ['pending', 'approved'] },
-            $or: [
-                { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
-            ],
-        });
-        if (conflict)
-            return res.status(400).json({ message: 'Venue already booked for this time slot' });
+        // ── Must be approved by owner first ──
+        if (booking.status !== 'payment_pending')
+            return res.status(400).json({ message: 'Booking has not been approved yet or is already confirmed.' });
 
-        // ── Commission calculation ──
-        const { rate, ownerRate } = getCommission(totalPrice);
-        const platformFee = Math.round(totalPrice * rate);
-        const ownerAmount = Math.round(totalPrice * ownerRate);
+        // ── Check deadline ──
+        if (new Date() > booking.paymentDeadline) {
+            booking.status = 'expired';
+            await booking.save();
+            return res.status(400).json({ message: 'Payment deadline expired. Slot has been reopened.' });
+        }
 
-        // ── Create Razorpay order ──
+        // ── Must be the booker ──
+        if (booking.booker.toString() !== req.user.id)
+            return res.status(403).json({ message: 'Unauthorized' });
+
+        const amount = booking.bidAmount; // pay the bid amount
+        const { rate, ownerRate } = getCommission(amount);
+        const platformFee = Math.round(amount * rate);
+        const ownerAmount = Math.round(amount * ownerRate);
+
         const order = await razorpay.orders.create({
-            amount:   totalPrice * 100, // paise
+            amount:   amount * 100,
             currency: 'INR',
             receipt:  `bye_${Date.now()}`,
         });
 
-        // ── Save booking as unpaid ──
-        const booking = await Booking.create({
-            venue,
-            booker:          bookerId,
-            eventDate:       new Date(eventDate),
-            startTime,
-            endTime,
-            guestCount,
-            totalPrice,
-            status:          'pending',
-            paymentStatus:   'unpaid',
-            razorpayOrderId: order.id,
-            commissionRate:  rate,
-            platformFee,
-            ownerAmount,
-        });
+        // ── Save order details to booking ──
+        booking.razorpayOrderId = order.id;
+        booking.commissionRate  = rate;
+        booking.platformFee     = platformFee;
+        booking.ownerAmount     = ownerAmount;
+        await booking.save();
 
         res.status(200).json({
-            orderId:   order.id,
-            amount:    order.amount,
-            currency:  order.currency,
+            orderId:  order.id,
+            amount:   order.amount,
+            currency: order.currency,
             bookingId: booking._id,
-            key:       process.env.RAZORPAY_KEY_ID,
+            key:      process.env.RAZORPAY_KEY_ID,
         });
     } catch (err) {
         console.error('Create order error:', err);
@@ -89,20 +73,13 @@ const createOrder = async (req, res) => {
 
 /* ══════════════════════════════════════
    POST /api/payments/verify
-   Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId }
-   Verifies signature → marks booking paid + approved
+   Verifies signature → marks confirmed
 ══════════════════════════════════════ */
 const verifyPayment = async (req, res) => {
     try {
-        const {
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
-            bookingId,
-        } = req.body;
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId } = req.body;
 
-        // ── Signature verification ──
-        const sign = razorpay_order_id + '|' + razorpay_payment_id;
+        const sign    = razorpay_order_id + '|' + razorpay_payment_id;
         const expected = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
             .update(sign)
@@ -111,12 +88,11 @@ const verifyPayment = async (req, res) => {
         if (expected !== razorpay_signature)
             return res.status(400).json({ message: 'Payment verification failed — invalid signature' });
 
-        // ── Update booking → paid + approved (instant booking) ──
         const booking = await Booking.findByIdAndUpdate(
             bookingId,
             {
-                paymentStatus:    'paid',
-                status:           'approved',
+                paymentStatus:     'paid',
+                status:            'confirmed',
                 razorpayPaymentId: razorpay_payment_id,
             },
             { new: true }
@@ -125,10 +101,7 @@ const verifyPayment = async (req, res) => {
         if (!booking)
             return res.status(404).json({ message: 'Booking not found' });
 
-        res.status(200).json({
-            message: 'Payment successful! Booking confirmed.',
-            booking,
-        });
+        res.status(200).json({ message: 'Payment successful! Booking confirmed.', booking });
     } catch (err) {
         console.error('Verify payment error:', err);
         res.status(500).json({ message: 'Payment verification failed', error: err.message });
@@ -137,7 +110,6 @@ const verifyPayment = async (req, res) => {
 
 /* ══════════════════════════════════════
    GET /api/payments/my-payments
-   Booker sees their payment history
 ══════════════════════════════════════ */
 const getMyPayments = async (req, res) => {
     try {
@@ -156,18 +128,17 @@ const getMyPayments = async (req, res) => {
 
 /* ══════════════════════════════════════
    GET /api/payments/admin-stats
-   Admin sees total revenue + commission
 ══════════════════════════════════════ */
 const getAdminRevenue = async (req, res) => {
     try {
         const paid = await Booking.find({ paymentStatus: 'paid' });
 
-        const totalRevenue   = paid.reduce((s, b) => s + b.totalPrice,  0);
-        const totalCommission = paid.reduce((s, b) => s + b.platformFee, 0);
-        const totalOwnerPaid  = paid.reduce((s, b) => s + b.ownerAmount, 0);
+        const totalRevenue    = paid.reduce((s, b) => s + b.bidAmount,    0);
+        const totalCommission = paid.reduce((s, b) => s + b.platformFee,  0);
+        const totalOwnerPaid  = paid.reduce((s, b) => s + b.ownerAmount,  0);
 
         res.status(200).json({
-            totalBookings:  paid.length,
+            totalBookings: paid.length,
             totalRevenue,
             totalCommission,
             totalOwnerPaid,

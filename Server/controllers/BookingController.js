@@ -1,93 +1,119 @@
 const Booking = require('../models/Booking');
-const Venue = require('../models/Venue');
+const Venue   = require('../models/Venue');
+const User    = require('../models/User');
+const { sendBookingApprovedEmail, sendPaymentReminderEmail } = require('../utils/emailService');
 
+/* ══════════════════════════════════════
+   CREATE BOOKING / PLACE BID
+   POST /api/bookings/create
+══════════════════════════════════════ */
 const createBooking = async (req, res) => {
     try {
-        const { venueId, eventDate, startTime, endTime, guestCount } = req.body;
-        
-        
-        // 1. Check all fields exist
+        const { venueId, eventDate, startTime, endTime, guestCount, bidAmount, message } = req.body;
+
         if (!venueId || !eventDate || !startTime || !endTime || !guestCount)
             return res.status(400).json({ message: 'Please fill all fields' });
-        
-        
-        // 2. Check venue exists and is approved
+
         const venue = await Venue.findById(venueId);
         if (!venue)
             return res.status(404).json({ message: 'Venue not found' });
         if (!venue.isApproved)
             return res.status(400).json({ message: 'Venue is not available for booking' });
-        
-        
-        // 3. Check guest count doesn't exceed capacity
-        if (guestCount > venue.capacity)
-            return res.status(400).json({ 
-                message: `Venue capacity is ${venue.capacity} guests maximum` 
-            });
-        
-        
-        // 4. THIS IS THE DOUBLE BOOKING PREVENTION
-        const clash = await Booking.findOne({
-            venue: venueId,
-            eventDate: eventDate,
-            status: { $in: ['pending', 'approved'] },
-            $and: [
-                { startTime: { $lt: endTime } },
-                { endTime: { $gt: startTime } }
-            ]
-        });
 
-        if (clash)
-            return res.status(400).json({ 
-                message: 'This time slot is already booked. Please choose another time.' 
-            });
-        
-        
-        // 5. Calculate total price
-        const start = parseInt(startTime.split(':')[0]);
-        const end = parseInt(endTime.split(':')[0]);
-        const hours = end - start;
+        if (guestCount > venue.capacity)
+            return res.status(400).json({ message: `Venue capacity is ${venue.capacity} guests maximum` });
+
+        // ── Check if this booker already has a pending bid for this slot ──
+        const existingBid = await Booking.findOne({
+            venue:     venueId,
+            booker:    req.user.id,
+            eventDate: new Date(eventDate),
+            status:    { $in: ['pending', 'payment_pending'] },
+        });
+        if (existingBid)
+            return res.status(400).json({ message: 'You already have a bid for this slot. Raise your bid instead.' });
+
+        // ── Check for already confirmed booking on same slot ──
+        const confirmed = await Booking.findOne({
+            venue:     venueId,
+            eventDate: new Date(eventDate),
+            status:    'confirmed',
+            $and: [{ startTime: { $lt: endTime } }, { endTime: { $gt: startTime } }],
+        });
+        if (confirmed)
+            return res.status(400).json({ message: 'This slot is already confirmed. Please choose another time.' });
+
+        // ── Calculate price ──
+        const start      = parseInt(startTime.split(':')[0]);
+        const end        = parseInt(endTime.split(':')[0]);
+        const hours      = end - start;
         const totalPrice = hours * venue.pricePerHour;
-        
-        
-        // 6. Create the booking
-        const booking = new Booking({
-            venue: venueId,
-            booker: req.user.id,
-            eventDate,
+        const finalBid   = bidAmount && bidAmount > totalPrice ? bidAmount : totalPrice;
+
+        const booking = await Booking.create({
+            venue:      venueId,
+            booker:     req.user.id,
+            eventDate:  new Date(eventDate),
             startTime,
             endTime,
             guestCount,
             totalPrice,
-            status: venue.bookingType === 'instant' ? 'approved' : 'pending'
+            bidAmount:  finalBid,
+            status:     'pending',
+            bids: [{
+                booker:    req.user.id,
+                bidAmount: finalBid,
+                message:   message || '',
+            }],
         });
 
-        await booking.save();
-
-        
-        
-        res.status(201).json({ 
-            message: venue.bookingType === 'instant' 
-                ? 'Booking confirmed!' 
-                : 'Booking request sent. Waiting for owner approval.',
-            booking 
+        res.status(201).json({
+            message: 'Bid placed! Waiting for owner to review all bids.',
+            booking,
         });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
+/* ══════════════════════════════════════
+   RAISE BID
+   PATCH /api/bookings/:id/raise-bid
+══════════════════════════════════════ */
+const raiseBid = async (req, res) => {
+    try {
+        const { newBidAmount, message } = req.body;
+        const booking = await Booking.findById(req.params.id);
 
+        if (!booking)
+            return res.status(404).json({ message: 'Booking not found' });
+        if (booking.booker.toString() !== req.user.id)
+            return res.status(403).json({ message: 'Unauthorized' });
+        if (!['pending'].includes(booking.status))
+            return res.status(400).json({ message: 'Cannot raise bid at this stage' });
+        if (newBidAmount <= booking.bidAmount)
+            return res.status(400).json({ message: `New bid must be higher than current bid ₹${booking.bidAmount}` });
 
+        booking.bidAmount = newBidAmount;
+        booking.bids.push({ booker: req.user.id, bidAmount: newBidAmount, message: message || '' });
+        await booking.save();
 
+        res.status(200).json({ message: 'Bid raised successfully!', booking });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
 
-// GET ALL BOOKINGS FOR A VENUE — venue owner sees this
+/* ══════════════════════════════════════
+   GET ALL BIDS FOR A VENUE SLOT — owner sees ranked bids
+   GET /api/bookings/venue/:venueId
+══════════════════════════════════════ */
 const getVenueBookings = async (req, res) => {
     try {
         const bookings = await Booking.find({ venue: req.params.venueId })
             .populate('booker', 'name email phone')
-            .populate('venue', 'name location');
+            .populate('venue', 'name location')
+            .sort({ bidAmount: -1 }); // highest bid first
 
         res.status(200).json({ count: bookings.length, bookings });
     } catch (err) {
@@ -95,11 +121,15 @@ const getVenueBookings = async (req, res) => {
     }
 };
 
-// GET ALL BOOKINGS BY A BOOKER — booker sees their own history
+/* ══════════════════════════════════════
+   GET MY BOOKINGS — booker sees own bids
+   GET /api/bookings/my-bookings
+══════════════════════════════════════ */
 const getMyBookings = async (req, res) => {
     try {
         const bookings = await Booking.find({ booker: req.user.id })
-            .populate('venue', 'name location pricePerHour');
+            .populate('venue', 'name location pricePerHour images')
+            .sort({ createdAt: -1 });
 
         res.status(200).json({ count: bookings.length, bookings });
     } catch (err) {
@@ -107,9 +137,14 @@ const getMyBookings = async (req, res) => {
     }
 };
 
-
-
-// UPDATE BOOKING STATUS — venue owner approves or rejects
+/* ══════════════════════════════════════
+   APPROVE / REJECT BOOKING — owner action
+   PATCH /api/bookings/:id/status
+   When approved:
+     - payment_deadline = now + 4hrs
+     - email + in-app notification to booker
+     - other bids on same slot → rejected
+══════════════════════════════════════ */
 const updateBookingStatus = async (req, res) => {
     try {
         const { status } = req.body;
@@ -118,7 +153,8 @@ const updateBookingStatus = async (req, res) => {
             return res.status(400).json({ message: 'Invalid status' });
 
         const booking = await Booking.findById(req.params.id)
-            .populate('venue');
+            .populate('venue')
+            .populate('booker', 'name email');
 
         if (!booking)
             return res.status(404).json({ message: 'Booking not found' });
@@ -126,15 +162,114 @@ const updateBookingStatus = async (req, res) => {
         if (booking.venue.owner.toString() !== req.user.id)
             return res.status(403).json({ message: 'Unauthorized' });
 
-        booking.status = status;
+        if (status === 'approved') {
+            // ── Set 4hr payment deadline ──
+            const deadline = new Date(Date.now() + 4 * 60 * 60 * 1000);
+            booking.status          = 'payment_pending';
+            booking.paymentDeadline = deadline;
+
+            // ── Reject all other bids on same slot ──
+            await Booking.updateMany(
+                {
+                    venue:     booking.venue._id,
+                    eventDate: booking.eventDate,
+                    _id:       { $ne: booking._id },
+                    status:    'pending',
+                },
+                { status: 'rejected' }
+            );
+
+            // ── Send approval email to booker ──
+            try {
+                await sendBookingApprovedEmail(
+                    booking.booker.email,
+                    booking.booker.name,
+                    {
+                        venueName: booking.venue.name,
+                        eventDate: booking.eventDate,
+                        startTime: booking.startTime,
+                        endTime:   booking.endTime,
+                        bidAmount: booking.bidAmount,
+                        deadline:  deadline,
+                    }
+                );
+            } catch (emailErr) {
+                console.error('Approval email failed:', emailErr.message);
+            }
+
+        } else {
+            booking.status = 'rejected';
+        }
+
         await booking.save();
 
-        res.status(200).json({ message: `Booking ${status}`, booking });
+        res.status(200).json({
+            message: status === 'approved'
+                ? 'Booking approved! Booker notified. They have 4 hours to pay.'
+                : 'Booking rejected.',
+            booking,
+        });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
 };
 
+/* ══════════════════════════════════════
+   EXPIRE UNPAID BOOKINGS — cron job
+   Called by setInterval in Server.js every 15 mins
+   Expires bookings past deadline
+   Sends 1hr reminder email
+══════════════════════════════════════ */
+const expireUnpaidBookings = async () => {
+    try {
+        const now = new Date();
+
+        // ── Find bookings past deadline → expire ──
+        const expired = await Booking.find({
+            status:          'payment_pending',
+            paymentDeadline: { $lt: now },
+        }).populate('booker', 'name email').populate('venue', 'name');
+
+        for (const booking of expired) {
+            booking.status = 'expired';
+            await booking.save();
+            console.log(`Booking ${booking._id} expired — slot reopened`);
+        }
+
+        // ── Find bookings within 1hr of deadline → send reminder ──
+        const reminderWindow = new Date(now.getTime() + 60 * 60 * 1000); // now + 1hr
+        const needsReminder  = await Booking.find({
+            status:          'payment_pending',
+            reminderSent:    false,
+            paymentDeadline: { $gt: now, $lt: reminderWindow },
+        }).populate('booker', 'name email').populate('venue', 'name');
+
+        for (const booking of needsReminder) {
+            try {
+                await sendPaymentReminderEmail(
+                    booking.booker.email,
+                    booking.booker.name,
+                    {
+                        venueName: booking.venue.name,
+                        deadline:  booking.paymentDeadline,
+                        bidAmount: booking.bidAmount,
+                    }
+                );
+                booking.reminderSent = true;
+                await booking.save();
+                console.log(`Reminder sent to ${booking.booker.email}`);
+            } catch (e) {
+                console.error('Reminder email failed:', e.message);
+            }
+        }
+    } catch (err) {
+        console.error('Expiry job error:', err.message);
+    }
+};
+
+/* ══════════════════════════════════════
+   ADMIN — GET ALL BOOKINGS
+══════════════════════════════════════ */
 const getAllBookingsAdmin = async (req, res) => {
     try {
         const bookings = await Booking.find()
@@ -147,5 +282,12 @@ const getAllBookingsAdmin = async (req, res) => {
     }
 };
 
-module.exports = { createBooking, getVenueBookings, getMyBookings, updateBookingStatus, getAllBookingsAdmin };
-
+module.exports = {
+    createBooking,
+    raiseBid,
+    getVenueBookings,
+    getMyBookings,
+    updateBookingStatus,
+    getAllBookingsAdmin,
+    expireUnpaidBookings,
+};
