@@ -1,1191 +1,1202 @@
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createVenueWithImages, getAllVenues, deleteVenue, blockDates, unblockDate } from '../services/venueService';
-import { getVenueBookings, updateBookingStatus } from '../services/bookingService';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
-import AvailabilityCalendar from '../components/AvailabilityCalendar';
-import PaymentDetailsForm from '../components/PaymentDetailsForm';
-import ChatModal from '../components/ChatModal';
+import { gsap } from 'gsap';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import {
+    blockDates,
+    createVenueWithImages,
+    deleteVenue,
+    getAllVenues,
+    unblockDate,
+} from '../services/venueService';
+import { getVenueBookings, updateBookingStatus } from '../services/bookingService';
+import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import ChatModal from '../components/ChatModal';
+import './OwnerDashboard.css';
 
 const VENUE_TYPES = [
-    'Marriage Hall','Party Hall','Conference Room','Shop/Retail','Farmhouse',
-    'Rooftop','Studio','Theatre','Sports Ground','Banquet Hall','Resort',
-    'Turf','Swimming Pool','Auditorium','Warehouse','Photoshoot Studio','Terrace','Community Hall'
+    'Marriage Hall',
+    'Party Hall',
+    'Conference Room',
+    'Shop/Retail',
+    'Farmhouse',
+    'Rooftop',
+    'Studio',
+    'Theatre',
+    'Sports Ground',
+    'Banquet Hall',
+    'Resort',
+    'Turf',
+    'Swimming Pool',
+    'Auditorium',
+    'Warehouse',
+    'Photoshoot Studio',
+    'Terrace',
+    'Community Hall',
 ];
-const AMENITIES_LIST = [
-    'AC','Parking','WiFi','Stage','Sound System','Projector','Catering Kitchen',
-    'Generator','Washrooms','Changing Rooms','Security','Swimming Pool','Floodlights','Unlimited Food'
+
+const AMENITIES = [
+    'AC',
+    'Parking',
+    'WiFi',
+    'Stage',
+    'Sound System',
+    'Projector',
+    'Catering Kitchen',
+    'Generator',
+    'Washrooms',
+    'Changing Rooms',
+    'Security',
+    'Swimming Pool',
+    'Floodlights',
+    'Unlimited Food',
 ];
-const venueEmoji = t => ({'Resort':'🏖️','Rooftop':'🌆','Farmhouse':'🌾','Marriage Hall':'💒',
-    'Party Hall':'🎉','Conference Room':'🏢','Banquet Hall':'🍽️','Turf':'⚽',
-    'Studio':'🎨','Auditorium':'🎭','Terrace':'🌅'}[t] || '🏛️');
 
-/* ── Theme toggle ── */
-const useDark = () => { const [d,s]=useState(false); return {dark:d,toggle:()=>s(x=>!x)}; };
-const ThemeToggle = ({dark,toggle}) => (
-    <motion.button onClick={toggle} whileTap={{scale:0.95}} style={{
-        width:60,height:30,borderRadius:999,padding:3,display:'flex',
-        alignItems:'center',cursor:'pointer',border:'none',flexShrink:0,
-        background:dark?'#2a2a2a':'#f1ede5',transition:'background 0.35s ease',
-    }}>
-        <motion.div layout animate={{x:dark?30:0}} transition={{type:'spring',stiffness:500,damping:30}}
-            style={{width:24,height:24,borderRadius:'50%',background:dark?'#D4AF37':'#C8A45B',
-                display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>
-            {dark?'🌙':'☀️'}
-        </motion.div>
-    </motion.button>
-);
+const STATUS_META = {
+    approved: { label: 'Confirmed', tone: 'confirmed' },
+    confirmed: { label: 'Confirmed', tone: 'confirmed' },
+    expired: { label: 'Expired', tone: 'expired' },
+    payment_pending: { label: 'Payment Pending', tone: 'payment' },
+    pending: { label: 'Pending', tone: 'pending' },
+    rejected: { label: 'Rejected', tone: 'rejected' },
+};
 
-/* ── Stat card ── */
-const StatCard = ({icon,label,value,sub,color,dark,delay}) => (
-    <motion.div initial={{opacity:0,y:24}} animate={{opacity:1,y:0}}
-        transition={{duration:0.5,delay,ease:'easeOut'}}
-        whileHover={{y:-5}}
-        style={{
-            flex:'1 1 170px',background:dark?'#1E1E1E':'#FFFFFF',
-            border:`1px solid ${dark?'#2a2a2a':'#E6E2D9'}`,borderRadius:16,padding:'18px 20px',
-            boxShadow:dark?'0 4px 20px rgba(0,0,0,0.3)':'0 4px 20px rgba(0,0,0,0.06)',
-            display:'flex',alignItems:'flex-start',gap:14,transition:'box-shadow 0.3s ease',
-        }}>
-        <div style={{width:44,height:44,borderRadius:12,flexShrink:0,background:`${color}18`,
-            display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{icon}</div>
-        <div>
-            <p style={{fontSize:11,color:dark?'#9a9a9a':'#6b7280',textTransform:'uppercase',
-                letterSpacing:'0.8px',fontWeight:700,marginBottom:4}}>{label}</p>
-            <p style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:900,
-                color,lineHeight:1,marginBottom:2}}>{value}</p>
-            {sub && <p style={{fontSize:11,color:dark?'#666':'#9ca3af'}}>{sub}</p>}
-        </div>
-    </motion.div>
-);
+const createDefaultFormData = () => ({
+    name: '',
+    description: '',
+    type: VENUE_TYPES[0],
+    location: { address: '', city: 'Bangalore', pincode: '' },
+    capacity: '',
+    pricePerHour: '',
+    pricePerDay: '',
+    amenities: [],
+    bookingType: 'manual',
+});
 
-/* ── Gold label ── */
-const GL = ({label,dark}) => (
-    <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',
-        color:dark?'#D4AF37':'#C8A45B',marginBottom:6}}>{label}</p>
-);
+const formatCurrency = (value = 0) =>
+    new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(value) || 0);
 
-/* ── Section pill ── */
-const Pill = ({label,gold,goldB,goldL}) => (
-    <div style={{display:'inline-flex',alignItems:'center',gap:6,background:goldL,
-        borderRadius:50,padding:'4px 14px',border:`1px solid ${goldB}`,marginBottom:10}}>
-        <span style={{fontSize:11,fontWeight:700,letterSpacing:'1px',
-            textTransform:'uppercase',color:gold}}>{label}</span>
-    </div>
-);
+const formatDate = (value) => {
+    if (!value) {
+        return '--';
+    }
 
-/* ═══════════════════════════════════════
-   OWNER DASHBOARD
-═══════════════════════════════════════ */
-const OwnerDashboard = () => {
-    const {user,logout} = useAuth();
-    const navigate = useNavigate();
-    const {dark,toggle} = useDark();
-    const { t } = useLanguage();
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '--';
+    }
 
-    const [venues,setVenues]                 = useState([]);
-    const [loading,setLoading]               = useState(true);
-    const [showForm,setShowForm]             = useState(false);
-    const [formLoading,setFormLoading]       = useState(false);
-    const [error,setError]                   = useState('');
-    const [success,setSuccess]               = useState('');
-    const [bookings,setBookings]             = useState([]);
-    const [bookingsLoading,setBookingsLoading] = useState(false);
-    const [activeTab,setActiveTab]           = useState('overview');
-    const [searchQuery,setSearchQuery]       = useState('');
-    const [images,setImages]                 = useState([]);
-    const [imagePreviews,setImagePreviews]   = useState([]);
-    const [selCalVenue,setSelCalVenue]       = useState(null);
-    const [selBkVenue,setSelBkVenue]         = useState(null);
-    const [profileOpen,setProfileOpen]       = useState(false);
-    const [chatOpen,setChatOpen]             = useState(false);
-    const [chatTarget,setChatTarget]         = useState(null);
-    const [chatBookingId,setChatBookingId]   = useState(null);
-
-    const venuesRef  = useRef(null);
-    const venuesView = useInView(venuesRef,{once:true,amount:0.1});
-
-    const [formData,setFormData] = useState({
-        name:'',description:'',type:'Marriage Hall',
-        location:{address:'',city:'Bangalore',pincode:''},
-        capacity:'',pricePerHour:'',pricePerDay:'',
-        amenities:[],bookingType:'manual',
+    return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
     });
+};
 
-    useEffect(()=>{fetchMyVenues();},[]);
+const toTimeAgo = (value) => {
+    if (!value) {
+        return 'Recently';
+    }
 
-    const fetchMyVenues = async () => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return 'Recently';
+    }
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) {
+        return 'Just now';
+    }
+    if (diffMinutes < 60) {
+        return `${diffMinutes}m ago`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+        return `${diffHours}h ago`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+};
+
+const OwnerDashboard = () => {
+    const { user, logout } = useAuth();
+    const { t } = useLanguage();
+    const navigate = useNavigate();
+    const ownerId = user?.id || user?._id || '';
+
+    const dashboardRef = useRef(null);
+    const heroRef = useRef(null);
+    const previewUrlsRef = useRef([]);
+
+    const [venues, setVenues] = useState([]);
+    const [selectedVenueId, setSelectedVenueId] = useState('');
+    const [calendarVenueId, setCalendarVenueId] = useState('');
+    const [bookings, setBookings] = useState([]);
+
+    const [loading, setLoading] = useState(true);
+    const [bookingsLoading, setBookingsLoading] = useState(false);
+    const [formLoading, setFormLoading] = useState(false);
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showForm, setShowForm] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const [formData, setFormData] = useState(createDefaultFormData());
+    const [images, setImages] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatTarget, setChatTarget] = useState(null);
+    const [chatBookingId, setChatBookingId] = useState(null);
+
+    const clearImagePreviews = useCallback(() => {
+        previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+        previewUrlsRef.current = [];
+        setImages([]);
+        setImagePreviews([]);
+    }, []);
+
+    const resetVenueForm = useCallback(() => {
+        setFormData(createDefaultFormData());
+        clearImagePreviews();
+    }, [clearImagePreviews]);
+
+    const fetchBookingsForVenue = useCallback(async (venueId) => {
+        if (!venueId) {
+            setBookings([]);
+            return;
+        }
+
+        setBookingsLoading(true);
         try {
-            const data = await getAllVenues();
-            setVenues(data.venues.filter(v=>v.owner._id===user.id));
-        } catch { setError('Failed to load venues'); }
-        finally { setLoading(false); }
-    };
+            const data = await getVenueBookings(venueId);
+            const venueBookings = Array.isArray(data?.bookings) ? data.bookings : [];
+            venueBookings.sort((a, b) => (b.bidAmount || b.totalPrice || 0) - (a.bidAmount || a.totalPrice || 0));
+            setBookings(venueBookings);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to load bookings.');
+            setBookings([]);
+        } finally {
+            setBookingsLoading(false);
+        }
+    }, []);
 
-    const fetchVenueBookings = async id => {
-        setBookingsLoading(true); setSelBkVenue(id);
-        try { const d=await getVenueBookings(id); setBookings(d.bookings); }
-        catch { setError('Failed to load bookings'); }
-        finally { setBookingsLoading(false); }
-    };
-
-    const handleStatusUpdate = async (id,status) => {
-        try {
-            await updateBookingStatus(id,status);
-            setBookings(p=>p.map(b=>b._id===id?{...b,status}:b));
-            setSuccess(`Booking ${status} ✓`);
-            setTimeout(()=>setSuccess(''),3000);
-        } catch { setError('Failed to update booking'); }
-    };
-
-    const handleChange = e => {
-        const {name,value} = e.target;
-        if (name==='address'||name==='pincode')
-            setFormData({...formData,location:{...formData.location,[name]:value}});
-        else setFormData({...formData,[name]:value});
-    };
-
-    const handleAmenityToggle = a =>
-        setFormData({...formData,amenities:formData.amenities.includes(a)
-            ?formData.amenities.filter(x=>x!==a):[...formData.amenities,a]});
-
-    const handleImageChange = e => {
-        const files=Array.from(e.target.files);
-        setImages(files);
-        setImagePreviews(files.map(f=>URL.createObjectURL(f)));
-    };
-
-    const handleSubmit = async e => {
-        e.preventDefault(); setFormLoading(true); setError('');
-        try {
-            const d=new FormData();
-            ['name','description','type','capacity','pricePerHour','pricePerDay','bookingType']
-                .forEach(k=>d.append(k,formData[k]));
-            d.append('location',JSON.stringify(formData.location));
-            d.append('amenities',JSON.stringify(formData.amenities));
-            images.forEach(img=>d.append('images',img));
-            await createVenueWithImages(d);
-            setSuccess('✓ Venue created! Awaiting admin approval.');
-            setShowForm(false); setImages([]); setImagePreviews([]);
-            fetchMyVenues(); setTimeout(()=>setSuccess(''),4000);
-        } catch(err) { setError(err.response?.data?.message||'Failed to create venue'); }
-        finally { setFormLoading(false); }
-    };
-
-    const handleDelete = async id => {
-        if (!window.confirm('Delete this venue permanently?')) return;
-        try { await deleteVenue(id); setVenues(p=>p.filter(v=>v._id!==id)); }
-        catch { setError('Failed to delete venue'); }
-    };
-
-    const handleCalDateClick = async date => {
-        if (!selCalVenue) return;
-        const venue=venues.find(v=>v._id===selCalVenue);
-        const blocked=venue.blockedDates?.map(d=>new Date(d).toISOString().split('T')[0])||[];
-        try {
-            if (blocked.includes(date)) {
-                const d=await unblockDate(selCalVenue,date);
-                setVenues(p=>p.map(v=>v._id===selCalVenue?{...v,blockedDates:d.blockedDates}:v));
-                setSuccess('✓ Date unblocked!');
-            } else {
-                const d=await blockDates(selCalVenue,[date]);
-                setVenues(p=>p.map(v=>v._id===selCalVenue?{...v,blockedDates:d.blockedDates}:v));
-                setSuccess('✓ Date blocked!');
+    const fetchOwnerVenues = useCallback(
+        async (showLoader = false) => {
+            if (!ownerId) {
+                setVenues([]);
+                setLoading(false);
+                return;
             }
-            setTimeout(()=>setSuccess(''),3000);
-        } catch { setError('Failed to update availability'); }
-    };
 
-    const handleLogout = () => { logout(); navigate('/login'); };
+            if (showLoader) {
+                setLoading(true);
+            }
 
-    /* ── Derived ── */
-    const upcoming = bookings.filter(b=>b.status==='confirmed' || b.status==='payment_pending').length;
-    const revenue  = bookings.filter(b=>b.status==='confirmed').reduce((s,b)=>s+(b.bidAmount||b.totalPrice||0),0);
-    const pending  = bookings.filter(b=>b.status==='pending').length;
+            try {
+                const data = await getAllVenues();
+                const allVenues = Array.isArray(data?.venues) ? data.venues : [];
+                const ownedVenues = allVenues.filter((venue) => {
+                    const venueOwnerId = venue?.owner?._id || venue?.owner?.id || venue?.owner;
+                    return String(venueOwnerId) === String(ownerId);
+                });
 
-    /* ── Theme ── */
-    const G = dark?'#D4AF37':'#C8A45B';
-    const GL2 = dark?'rgba(212,175,55,0.1)':'rgba(200,164,91,0.08)';
-    const GB  = dark?'rgba(212,175,55,0.3)':'rgba(200,164,91,0.3)';
-    const T = {
-        bg:dark?'#121212':'#F8F6F2', navBg:dark?'rgba(18,18,18,0.92)':'rgba(248,246,242,0.92)',
-        navBorder:dark?'#2a2a2a':'#E6E2D9', card:dark?'#1E1E1E':'#FFFFFF',
-        card2:dark?'#191919':'#FDFBF7', border:dark?'#2a2a2a':'#E6E2D9',
-        title:dark?'#F3F3F3':'#1F1F1F', sub:dark?'#9a9a9a':'#6b7280',
-        gold:G, goldL:GL2, goldB:GB,
-        shadow:dark?'0 8px 32px rgba(0,0,0,0.5)':'0 8px 32px rgba(0,0,0,0.07)',
-        statBg:dark?'#252525':'#F5F0E8', divider:dark?'#2a2a2a':'#EDE8DE',
-        inp:{width:'100%',background:'transparent',
-            borderBottom:`2px solid ${dark?'rgba(212,175,55,0.3)':'rgba(200,164,91,0.35)'}`,
-            color:dark?'#F3F3F3':'#1F1F1F',padding:'8px 4px',fontSize:14,
-            outline:'none',fontFamily:'inherit',caretColor:'#C8A45B'},
-    };
+                setVenues(ownedVenues);
 
-    const TABS=[{id:'overview',label:'My Venues'},{id:'bookings',label:'Bookings'},{id:'calendar',label:'Availability'}];
-
-    /* ── Venue card component (inline) ── */
-    const VenueCard = ({venue,index,inView}) => {
-        const isLive = venue.isApproved;
-        return (
-            <motion.div initial={{opacity:0,y:32}} animate={inView?{opacity:1,y:0}:{}}
-                transition={{duration:0.5,delay:index*0.09}}
-                whileHover={{y:-8,boxShadow:dark?'0 22px 44px rgba(212,175,55,0.12)':'0 22px 44px rgba(200,164,91,0.18)'}}
-                style={{background:T.card,borderRadius:18,border:`1px solid ${T.border}`,
-                    overflow:'hidden',boxShadow:T.shadow,transition:'box-shadow 0.3s ease'}}>
-                <div style={{position:'relative',height:155,overflow:'hidden',background:dark?'#1a1a1a':'#ede8de'}}>
-                    {venue.images?.length>0
-                        ?<motion.img src={venue.images[0]} alt={venue.name}
-                            whileHover={{scale:1.08}} transition={{duration:0.4}}
-                            style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-                        :<div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',
-                            justifyContent:'center',fontSize:48}}>{venueEmoji(venue.type)}</div>
+                setSelectedVenueId((current) => {
+                    if (!ownedVenues.length) {
+                        return '';
                     }
-                    <div style={{position:'absolute',inset:0,
-                        background:'linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 55%)'}}/>
-                    <div style={{position:'absolute',top:10,right:10,
-                        background:isLive?'rgba(34,197,94,0.9)':'rgba(234,179,8,0.9)',
-                        backdropFilter:'blur(6px)',borderRadius:50,padding:'3px 10px',
-                        fontSize:10,fontWeight:800,color:'white'}}>
-                        {isLive?'✓ Active':'⏳ Pending'}
-                    </div>
-                    <div style={{position:'absolute',bottom:10,left:10,
-                        background:'rgba(0,0,0,0.6)',backdropFilter:'blur(6px)',
-                        borderRadius:50,padding:'3px 10px',fontSize:10,
-                        fontWeight:700,color:'#D4AF37',border:'1px solid rgba(212,175,55,0.4)'}}>
-                        {venue.type}
-                    </div>
-                </div>
-                <div style={{padding:'14px 16px 16px'}}>
-                    <p style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:800,
-                        color:T.title,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',
-                        textOverflow:'ellipsis'}}>{venue.name}</p>
-                    <p style={{fontSize:11,color:T.sub,marginBottom:8,whiteSpace:'nowrap',
-                        overflow:'hidden',textOverflow:'ellipsis'}}>
-                        📍 {venue.location?.address}, {venue.location?.city}
-                    </p>
-                    {/* Stars */}
-                    <div style={{display:'flex',gap:1,marginBottom:10}}>
-                        {[1,2,3,4,5].map(s=><span key={s} style={{fontSize:11,
-                            color:s<=4?'#D4AF37':dark?'#333':'#e2d9c8'}}>★</span>)}
-                        <span style={{fontSize:11,color:T.sub,marginLeft:5}}>
-                            ₹{venue.pricePerHour?.toLocaleString('en-IN')} per hour
-                        </span>
-                    </div>
-                    <div style={{borderTop:`1px solid ${T.divider}`,paddingTop:10,
-                        display:'flex',justifyContent:'space-between',alignItems:'center',gap:6}}>
-                        <p style={{fontFamily:"'Playfair Display',serif",fontSize:16,
-                            fontWeight:900,color:T.gold}}>₹{venue.pricePerHour?.toLocaleString('en-IN')}
-                            <span style={{fontSize:10,fontWeight:400,color:T.sub}}>/hr</span></p>
-                        <div style={{display:'flex',gap:6}}>
-                            <motion.button
-                                whileHover={{background:'linear-gradient(135deg,#C8A45B,#E3C67A)',color:'white'}}
-                                onClick={()=>{fetchVenueBookings(venue._id);setActiveTab('bookings')}}
-                                style={{padding:'5px 10px',borderRadius:50,fontSize:10,fontWeight:700,
-                                    cursor:'pointer',fontFamily:'inherit',background:T.goldL,
-                                    border:`1.5px solid ${T.goldB}`,color:T.gold,transition:'all 0.2s'}}>
-                                View Bookings
-                            </motion.button>
-                            <motion.button whileHover={{background:'rgba(239,68,68,0.15)'}}
-                                onClick={()=>handleDelete(venue._id)}
-                                style={{padding:'5px 10px',borderRadius:50,fontSize:10,fontWeight:700,
-                                    cursor:'pointer',fontFamily:'inherit',
-                                    background:'rgba(239,68,68,0.07)',
-                                    border:'1.5px solid rgba(239,68,68,0.25)',
-                                    color:'#ef4444',transition:'all 0.2s'}}>Delete</motion.button>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
+
+                    return ownedVenues.some((venue) => venue._id === current)
+                        ? current
+                        : ownedVenues[0]._id;
+                });
+
+                setCalendarVenueId((current) => {
+                    if (!ownedVenues.length) {
+                        return '';
+                    }
+
+                    return ownedVenues.some((venue) => venue._id === current)
+                        ? current
+                        : ownedVenues[0]._id;
+                });
+            } catch (err) {
+                setError(err.response?.data?.message || 'Failed to load venues.');
+            } finally {
+                if (showLoader) {
+                    setLoading(false);
+                }
+            }
+        },
+        [ownerId]
+    );
+
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        void fetchOwnerVenues(true);
+    }, [fetchOwnerVenues, navigate, user]);
+
+    useEffect(() => {
+        if (!selectedVenueId) {
+            setBookings([]);
+            return;
+        }
+
+        void fetchBookingsForVenue(selectedVenueId);
+    }, [fetchBookingsForVenue, selectedVenueId]);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from('.od-nav', {
+                y: -18,
+                opacity: 0,
+                duration: 0.65,
+                ease: 'power3.out',
+            });
+
+            gsap.from('.od-hero-copy > *', {
+                y: 24,
+                opacity: 0,
+                duration: 0.65,
+                stagger: 0.12,
+                ease: 'power2.out',
+                delay: 0.1,
+            });
+
+            gsap.from('.od-primary-btn', {
+                scale: 0.95,
+                opacity: 0,
+                duration: 0.45,
+                delay: 0.35,
+                ease: 'power2.out',
+            });
+
+            gsap.from('.od-stat-card', {
+                y: 20,
+                opacity: 0,
+                duration: 0.6,
+                stagger: 0.08,
+                ease: 'power2.out',
+                delay: 0.35,
+            });
+
+            gsap.from('.od-section', {
+                y: 24,
+                opacity: 0,
+                duration: 0.55,
+                stagger: 0.12,
+                ease: 'power2.out',
+                delay: 0.45,
+            });
+
+            gsap.to('.od-orb', {
+                x: 12,
+                y: -16,
+                duration: 5,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut',
+                stagger: 0.4,
+            });
+        }, dashboardRef);
+
+        return () => ctx.revert();
+    }, []);
+
+    const activityItems = useMemo(() => {
+        return bookings
+            .slice()
+            .sort((a, b) => {
+                const aDate = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                const bDate = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                return bDate - aDate;
+            })
+            .slice(0, 6)
+            .map((booking) => {
+                const status = STATUS_META[booking.status] || {
+                    label: booking.status || 'Update',
+                    tone: 'default',
+                };
+
+                const userName = booking.booker?.name || 'Booker';
+
+                return {
+                    id: booking._id,
+                    tone: status.tone,
+                    title: `${userName}: ${status.label}`,
+                    subtitle: toTimeAgo(booking.updatedAt || booking.createdAt),
+                };
+            });
+    }, [bookings]);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            if (bookings.length) {
+                gsap.from('.od-booking-row', {
+                    y: 16,
+                    opacity: 0,
+                    duration: 0.45,
+                    stagger: 0.05,
+                    ease: 'power2.out',
+                });
+            }
+
+            if (activityItems.length) {
+                gsap.from('.od-activity-item', {
+                    x: 16,
+                    opacity: 0,
+                    duration: 0.4,
+                    stagger: 0.05,
+                    ease: 'power2.out',
+                });
+            }
+        }, dashboardRef);
+
+        return () => ctx.revert();
+    }, [activityItems.length, bookings.length, selectedVenueId]);
+
+    useEffect(() => {
+        const heroElement = heroRef.current;
+        if (!heroElement) {
+            return undefined;
+        }
+
+        const handleMouseMove = (event) => {
+            const rect = heroElement.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width - 0.5;
+            const y = (event.clientY - rect.top) / rect.height - 0.5;
+
+            gsap.to(heroElement, {
+                backgroundPosition: `${50 + x * 8}% ${50 + y * 10}%`,
+                duration: 0.9,
+                ease: 'power2.out',
+                overwrite: true,
+            });
+        };
+
+        const handleMouseLeave = () => {
+            gsap.to(heroElement, {
+                backgroundPosition: '50% 50%',
+                duration: 1,
+                ease: 'power2.out',
+            });
+        };
+
+        heroElement.addEventListener('mousemove', handleMouseMove);
+        heroElement.addEventListener('mouseleave', handleMouseLeave);
+
+        return () => {
+            heroElement.removeEventListener('mousemove', handleMouseMove);
+            heroElement.removeEventListener('mouseleave', handleMouseLeave);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!error && !success) {
+            return undefined;
+        }
+
+        const timerId = setTimeout(() => {
+            setError('');
+            setSuccess('');
+        }, 4200);
+
+        return () => clearTimeout(timerId);
+    }, [error, success]);
+
+    useEffect(() => {
+        return () => {
+            previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+            previewUrlsRef.current = [];
+        };
+    }, []);
+
+    const selectedVenue = useMemo(
+        () => venues.find((venue) => venue._id === selectedVenueId) || null,
+        [selectedVenueId, venues]
+    );
+
+    const calendarVenue = useMemo(
+        () => venues.find((venue) => venue._id === calendarVenueId) || null,
+        [calendarVenueId, venues]
+    );
+
+    const filteredBookings = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return bookings;
+        }
+
+        const query = searchQuery.trim().toLowerCase();
+        return bookings.filter((booking) => {
+            const record = [
+                booking.booker?.name,
+                booking.booker?.email,
+                booking.status,
+                booking.startTime,
+                booking.endTime,
+                String(booking.bidAmount || booking.totalPrice || ''),
+                formatDate(booking.eventDate),
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return record.includes(query);
+        });
+    }, [bookings, searchQuery]);
+
+    const upcomingBookings = useMemo(() => {
+        const now = new Date().setHours(0, 0, 0, 0);
+        return bookings.filter((booking) => {
+            const eventTime = new Date(booking.eventDate).getTime();
+            const activeStatuses = ['pending', 'payment_pending', 'confirmed'];
+            return activeStatuses.includes(booking.status) && eventTime >= now;
+        }).length;
+    }, [bookings]);
+
+    const totalRevenue = useMemo(() => {
+        return bookings
+            .filter((booking) => booking.status === 'confirmed')
+            .reduce((sum, booking) => sum + (booking.bidAmount || booking.totalPrice || 0), 0);
+    }, [bookings]);
+
+    const pendingRequests = useMemo(
+        () => bookings.filter((booking) => booking.status === 'pending').length,
+        [bookings]
+    );
+
+    const blockedDatesSorted = useMemo(() => {
+        if (!calendarVenue?.blockedDates) {
+            return [];
+        }
+
+        return [...calendarVenue.blockedDates].sort(
+            (a, b) => new Date(a).getTime() - new Date(b).getTime()
         );
+    }, [calendarVenue]);
+
+    const stats = useMemo(
+        () => [
+            { icon: 'VN', label: 'Total Venues', value: venues.length },
+            { icon: 'BK', label: 'Upcoming Bookings', value: upcomingBookings },
+            { icon: 'RV', label: 'Total Revenue', value: `INR ${formatCurrency(totalRevenue)}` },
+            { icon: 'RQ', label: 'Pending Requests', value: pendingRequests },
+        ],
+        [pendingRequests, totalRevenue, upcomingBookings, venues.length]
+    );
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
     };
 
-    /* ── Booking status config ── */
-    const sCfg = s => ({
-        confirmed:       {color:'#16a34a',bg:'rgba(34,197,94,0.12)',  label:'✅ Confirmed'},
-        approved:        {color:'#16a34a',bg:'rgba(34,197,94,0.12)',  label:'✅ Confirmed'},
-        rejected:        {color:'#ef4444',bg:'rgba(239,68,68,0.1)',   label:'❌ Rejected'},
-        pending:         {color:'#b45309',bg:'rgba(234,179,8,0.12)',  label:'⏳ Pending Bid'},
-        payment_pending: {color:'#1d4ed8',bg:'rgba(59,130,246,0.1)', label:'💳 Awaiting Payment'},
-        expired:         {color:'#6b7280',bg:'rgba(107,114,128,0.1)',label:'🕐 Expired'},
-    }[s] || {color:'#6b7280',bg:'rgba(107,114,128,0.1)',label:s});
+    const jumpToSection = (sectionId) => {
+        const target = document.getElementById(sectionId);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    const openChatForBooking = (booking) => {
+        if (!booking?.booker?._id) {
+            return;
+        }
+
+        setChatTarget({
+            id: booking.booker._id,
+            name: booking.booker.name || 'Booker',
+            role: 'booker',
+        });
+        setChatBookingId(booking._id);
+        setChatOpen(true);
+    };
+
+    const handleStatusUpdate = async (bookingId, nextStatus) => {
+        try {
+            await updateBookingStatus(bookingId, nextStatus);
+            setSuccess(
+                nextStatus === 'approved'
+                    ? 'Booking approved and payment window started.'
+                    : 'Booking rejected successfully.'
+            );
+            await fetchBookingsForVenue(selectedVenueId);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to update booking status.');
+        }
+    };
+
+    const handleDeleteVenue = async (venueId) => {
+        const confirmDelete = window.confirm('Delete this venue permanently?');
+        if (!confirmDelete) {
+            return;
+        }
+
+        try {
+            await deleteVenue(venueId);
+            setSuccess('Venue deleted successfully.');
+            await fetchOwnerVenues();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to delete venue.');
+        }
+    };
+
+    const handleCalendarDateClick = async (dateValue) => {
+        if (!calendarVenueId) {
+            return;
+        }
+
+        const activeVenue = venues.find((venue) => venue._id === calendarVenueId);
+        const blockedSet = new Set(
+            (activeVenue?.blockedDates || []).map((date) => new Date(date).toISOString().split('T')[0])
+        );
+
+        try {
+            let response;
+            if (blockedSet.has(dateValue)) {
+                response = await unblockDate(calendarVenueId, dateValue);
+                setSuccess('Date unblocked.');
+            } else {
+                response = await blockDates(calendarVenueId, [dateValue]);
+                setSuccess('Date blocked.');
+            }
+
+            const updatedBlockedDates = response?.blockedDates || [];
+            setVenues((current) =>
+                current.map((venue) =>
+                    venue._id === calendarVenueId
+                        ? { ...venue, blockedDates: updatedBlockedDates }
+                        : venue
+                )
+            );
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to update calendar date.');
+        }
+    };
+
+    const handleInputChange = (event) => {
+        const { name, value } = event.target;
+
+        if (name.startsWith('location.')) {
+            const locationKey = name.split('.')[1];
+            setFormData((current) => ({
+                ...current,
+                location: {
+                    ...current.location,
+                    [locationKey]: value,
+                },
+            }));
+            return;
+        }
+
+        setFormData((current) => ({ ...current, [name]: value }));
+    };
+
+    const handleAmenityToggle = (amenity) => {
+        setFormData((current) => ({
+            ...current,
+            amenities: current.amenities.includes(amenity)
+                ? current.amenities.filter((item) => item !== amenity)
+                : [...current.amenities, amenity],
+        }));
+    };
+
+    const handleImageChange = (event) => {
+        const files = Array.from(event.target.files || []);
+
+        previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+        const previews = files.map((file) => URL.createObjectURL(file));
+
+        previewUrlsRef.current = previews;
+        setImages(files);
+        setImagePreviews(previews);
+    };
+
+    const closeVenueModal = () => {
+        setShowForm(false);
+        resetVenueForm();
+    };
+
+    const handleVenueCreate = async (event) => {
+        event.preventDefault();
+        setFormLoading(true);
+
+        try {
+            const payload = new FormData();
+            payload.append('name', formData.name.trim());
+            payload.append('description', formData.description.trim());
+            payload.append('type', formData.type);
+            payload.append('capacity', formData.capacity);
+            payload.append('pricePerHour', formData.pricePerHour || 0);
+            payload.append('pricePerDay', formData.pricePerDay || 0);
+            payload.append('bookingType', formData.bookingType);
+            payload.append('location', JSON.stringify(formData.location));
+            payload.append('amenities', JSON.stringify(formData.amenities));
+
+            images.forEach((imageFile) => payload.append('images', imageFile));
+
+            await createVenueWithImages(payload);
+            setSuccess('Venue created and submitted for admin approval.');
+            closeVenueModal();
+            await fetchOwnerVenues();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to create venue.');
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    if (!user) {
+        return null;
+    }
+
+    if (loading) {
+        return (
+            <div className="owner-dashboard owner-loading-state">
+                <div className="od-loading-card">
+                    <div className="od-loader" />
+                    <p>Loading owner dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div style={{minHeight:'100vh',background:T.bg,fontFamily:"'DM Sans',sans-serif",position:'relative'}}>
-            <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap');
-                ::-webkit-scrollbar{width:5px;height:5px}
-                ::-webkit-scrollbar-track{background:${dark?'#1a1a1a':'#f1ede5'}}
-                ::-webkit-scrollbar-thumb{background:#C8A45B;border-radius:10px}
-                textarea{resize:none} select{appearance:none}
-                input::placeholder,textarea::placeholder{color:${T.sub}}
-                input[type=radio]{accent-color:#C8A45B}
-                input[type=file]::file-selector-button{background:${T.goldL};border:1px solid ${T.goldB};
-                    color:${T.gold};padding:5px 14px;border-radius:50px;font-size:12px;
-                    font-weight:700;cursor:pointer;margin-right:10px;font-family:inherit;}
-            `}</style>
+        <div className="owner-dashboard" ref={dashboardRef}>
+            <header className="od-nav">
+                <button className="od-brand" onClick={() => navigate('/')}>
+                    <span className="od-brand-mark">BYE</span>
+                    <span className="od-brand-text">BookYourEvent</span>
+                </button>
 
-            {/* ── NAVBAR ── */}
-            <motion.nav initial={{y:-24,opacity:0}} animate={{y:0,opacity:1}} transition={{duration:0.5}}
-                style={{position:'sticky',top:0,zIndex:100,background:T.navBg,
-                    backdropFilter:'blur(20px)',borderBottom:`1px solid ${T.navBorder}`,
-                    padding:'0 28px',
-                    boxShadow:dark?'0 4px 24px rgba(0,0,0,0.4)':'0 4px 24px rgba(0,0,0,0.05)'}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',height:64}}>
-                    {/* Left */}
-                    <div style={{display:'flex',alignItems:'center',gap:4}}>
-                        <motion.div whileHover={{scale:1.05}} onClick={()=>navigate('/')}
-                            style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',marginRight:16}}>
-                            <img src="/logo.png" alt="BYE" className="h-10 w-10 rounded-full object-cover"
-                                style={{boxShadow:`0 0 0 2px ${T.gold}`}}
-                                onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex'}}/>
-                            <div style={{display:'none',width:38,height:38,borderRadius:'50%',
-                                background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                alignItems:'center',justifyContent:'center',
-                                color:'white',fontSize:10,fontWeight:800}}>BYE</div>
-                            <span style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:15,color:T.title}}>
-                                BookYourEvent
-                            </span>
-                        </motion.div>
-                        {TABS.map(tab=>(
-                            <motion.button key={tab.id} whileHover={{color:T.gold}}
-                                onClick={()=>setActiveTab(tab.id)}
-                                style={{padding:'6px 14px',borderRadius:8,border:'none',
-                                    background:activeTab===tab.id?T.goldL:'transparent',
-                                    borderBottom:activeTab===tab.id?`2px solid ${T.gold}`:'2px solid transparent',
-                                    color:activeTab===tab.id?T.gold:T.sub,
-                                    fontSize:13,fontWeight:activeTab===tab.id?700:500,
-                                    cursor:'pointer',fontFamily:'inherit',transition:'all 0.2s'}}>
-                                {tab.label}
-                            </motion.button>
-                        ))}
-                        {[{l:'About',to:'/about'},{l:'Contact',to:'/#contact'}].map(item=>(
-                            <motion.button key={item.l} whileHover={{color:T.gold}}
-                                onClick={()=>navigate(item.to)}
-                                style={{padding:'6px 12px',borderRadius:8,border:'none',
-                                    background:'transparent',color:T.sub,fontSize:13,
-                                    fontWeight:500,cursor:'pointer',fontFamily:'inherit',transition:'color 0.2s'}}>
-                                {item.l}
-                            </motion.button>
-                        ))}
+                <nav className="od-nav-links" aria-label="Owner sections">
+                    <button className="od-nav-link" onClick={() => jumpToSection('od-venues-section')}>
+                        My Venues
+                    </button>
+                    <button className="od-nav-link" onClick={() => jumpToSection('od-bookings-section')}>
+                        Bookings
+                    </button>
+                    <button className="od-nav-link" onClick={() => jumpToSection('od-availability-section')}>
+                        Availability
+                    </button>
+                    <button className="od-nav-link" onClick={() => jumpToSection('od-bookings-section')}>
+                        Analytics
+                    </button>
+                    <button className="od-nav-link" onClick={() => jumpToSection('od-bookings-section')}>
+                        Messages
+                    </button>
+                </nav>
+
+                <div className="od-nav-tools">
+                    <label className="od-search-shell" htmlFor="owner-search-input">
+                        <span className="od-search-label">Search</span>
+                        <input
+                            id="owner-search-input"
+                            type="text"
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="Search bookings"
+                        />
+                    </label>
+
+                    <div className="od-user-chip">
+                        <span className="od-avatar">{(user?.name || 'O').charAt(0).toUpperCase()}</span>
+                        <span className="od-user-name">{user?.name || 'Owner'}</span>
                     </div>
-                    {/* Right */}
-                    <div style={{display:'flex',alignItems:'center',gap:12}}>
-                        <div style={{display:'flex',alignItems:'center',gap:8,background:T.card,
-                            borderRadius:50,padding:'7px 16px',border:`1px solid ${T.border}`,width:220}}>
-                            <span style={{color:T.gold,fontSize:13}}>🔍</span>
-                            <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
-                                placeholder="Search venues..."
-                                style={{background:'transparent',border:'none',outline:'none',
-                                    fontSize:13,color:T.title,width:'100%',fontFamily:'inherit'}}/>
-                        </div>
-                        <ThemeToggle dark={dark} toggle={toggle}/>
-                        <div style={{position:'relative'}}>
-                            <motion.button whileHover={{scale:1.03}} whileTap={{scale:0.97}}
-                                onClick={()=>setProfileOpen(o=>!o)}
-                                style={{display:'flex',alignItems:'center',gap:8,padding:'6px 14px 6px 8px',
-                                    borderRadius:50,background:T.goldL,border:`1.5px solid ${T.goldB}`,
-                                    cursor:'pointer',fontFamily:'inherit'}}>
-                                <div style={{width:28,height:28,borderRadius:'50%',
-                                    background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                    display:'flex',alignItems:'center',justifyContent:'center',
-                                    color:'white',fontSize:12,fontWeight:800}}>
-                                    {user?.name?.charAt(0)?.toUpperCase()||'O'}
-                                </div>
-                                <span style={{fontSize:13,fontWeight:600,color:T.title}}>
-                                    Hi, {user?.name?.split(' ')[0]||'Owner'}
-                                </span>
-                                <span style={{fontSize:10,color:T.sub}}>▼</span>
-                            </motion.button>
-                            <AnimatePresence>
-                                {profileOpen && (
-                                    <motion.div initial={{opacity:0,y:-8,scale:0.95}}
-                                        animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:0.95}}
-                                        transition={{duration:0.2}}
-                                        style={{position:'absolute',right:0,top:'110%',background:T.card,
-                                            border:`1px solid ${T.border}`,borderRadius:14,padding:'8px 0',
-                                            boxShadow:T.shadow,minWidth:190,zIndex:200}}>
-                                        {[
-                                            {label:'➕ Add Venue',action:()=>{setShowForm(true);setProfileOpen(false)},gold:true},
-                                            {label:'⚙️ Account Settings',action:()=>setProfileOpen(false)},
-                                            {label:t('common.logout'),action:()=>{handleLogout();setProfileOpen(false)},danger:true},
-                                        ].map((item,i)=>(
-                                            <motion.button key={i} whileHover={{background:T.goldL}}
-                                                onClick={item.action}
-                                                style={{width:'100%',padding:'10px 18px',textAlign:'left',
-                                                    background:item.gold?T.goldL:'transparent',border:'none',
-                                                    color:item.danger?'#ef4444':item.gold?T.gold:T.title,
-                                                    fontSize:13,fontWeight:item.gold?700:500,
-                                                    cursor:'pointer',fontFamily:'inherit',
-                                                    borderTop:i===2?`1px solid ${T.divider}`:'none',
-                                                    marginTop:i===2?4:0}}>
-                                                {item.label}
-                                            </motion.button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+
+                    <button className="od-logout-btn" onClick={handleLogout}>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main className="od-main">
+                {(error || success) && (
+                    <div className="od-toast-stack">
+                        {error && <p className="od-toast od-toast-error">{error}</p>}
+                        {success && <p className="od-toast od-toast-success">{success}</p>}
                     </div>
-                </div>
-            </motion.nav>
-
-            {/* ── HERO BANNER ── */}
-            <div style={{
-                background:dark
-                    ?'linear-gradient(135deg,#1a2a1a 0%,#1e3a2a 50%,#1a2a3a 100%)'
-                    :'linear-gradient(135deg,#2e7d52 0%,#3a9a62 45%,#1e5c70 100%)',
-                padding:'44px 28px 56px',position:'relative',overflow:'hidden',
-            }}>
-                {/* decorative circles */}
-                {[['8%','15%',280,0.06],['75%','5%',200,0.05],['50%','55%',160,0.04]].map(([l,t,s,o],i)=>(
-                    <div key={i} style={{position:'absolute',left:l,top:t,width:s,height:s,
-                        borderRadius:'50%',background:`rgba(255,255,255,${o})`,
-                        border:`1px solid rgba(255,255,255,${o*1.5})`,pointerEvents:'none'}}/>
-                ))}
-                {[[12,35],[78,22],[42,72],[88,58],[25,80]].map(([x,y],i)=>(
-                    <motion.div key={i} animate={{scale:[1,1.6,1],opacity:[0.25,0.65,0.25]}}
-                        transition={{duration:2.2+i*0.35,repeat:Infinity,delay:i*0.4}}
-                        style={{position:'absolute',left:`${x}%`,top:`${y}%`,
-                            width:6,height:6,borderRadius:'50%',
-                            background:'rgba(212,175,55,0.55)',pointerEvents:'none'}}/>
-                ))}
-                <div style={{position:'relative',zIndex:1,maxWidth:1400,margin:'0 auto',
-                    display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:20}}>
-                    <motion.div initial={{opacity:0,x:-30}} animate={{opacity:1,x:0}} transition={{duration:0.7}}>
-                        <div style={{display:'inline-flex',alignItems:'center',gap:6,
-                            background:'rgba(212,175,55,0.18)',borderRadius:50,padding:'4px 16px',
-                            marginBottom:14,border:'1px solid rgba(212,175,55,0.35)'}}>
-                            <span style={{fontSize:11,fontWeight:700,letterSpacing:'1.2px',
-                                textTransform:'uppercase',color:'#D4AF37'}}>🏛️ Owner Portal</span>
-                        </div>
-                        <h1 style={{fontFamily:"'Playfair Display',serif",
-                            fontSize:'clamp(2.2rem,4.5vw,3.2rem)',fontWeight:900,
-                            color:'white',lineHeight:1.08,marginBottom:10}}>Owner Dashboard</h1>
-                        <p style={{color:'rgba(255,255,255,0.62)',fontSize:15}}>Oversee Venues & Bookings</p>
-                    </motion.div>
-                    <motion.button initial={{opacity:0,x:30}} animate={{opacity:1,x:0}}
-                        transition={{duration:0.7,delay:0.15}}
-                        whileHover={{scale:1.04,boxShadow:'0 14px 38px rgba(212,175,55,0.4)'}}
-                        whileTap={{scale:0.97}}
-                        onClick={()=>setShowForm(true)}
-                        style={{padding:'13px 32px',borderRadius:50,border:'none',
-                            background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                            color:'white',fontWeight:800,fontSize:14,cursor:'pointer',
-                            fontFamily:'inherit',boxShadow:'0 8px 24px rgba(200,164,91,0.38)'}}>
-                        ➕ Add New Venue
-                    </motion.button>
-                </div>
-                <div style={{position:'absolute',bottom:0,left:0,right:0}}>
-                    <svg viewBox="0 0 1440 36" preserveAspectRatio="none"
-                        style={{width:'100%',height:36,display:'block'}}>
-                        <path d="M0,18 C360,36 1080,0 1440,18 L1440,36 L0,36 Z"
-                            fill={dark?'#121212':'#F8F6F2'}/>
-                    </svg>
-                </div>
-            </div>
-
-            {/* ── STATS ── */}
-            <div style={{padding:'24px 28px 0',maxWidth:1400,margin:'0 auto'}}>
-                <div style={{display:'flex',gap:14,flexWrap:'wrap'}}>
-                    <StatCard icon="🏛️" label="Total Venues" value={venues.length}
-                        sub={`${venues.filter(v=>v.isApproved).length} live`}
-                        color="#C8A45B" dark={dark} delay={0}/>
-                    <StatCard icon="📅" label="Upcoming Bookings" value={upcoming}
-                        sub="confirmed" color="#2e7d52" dark={dark} delay={0.1}/>
-                    <StatCard icon="💰" label="Total Revenue"
-                        value={`₹${revenue.toLocaleString('en-IN')}`}
-                        sub="from approved" color="#D4AF37" dark={dark} delay={0.2}/>
-                    <StatCard icon="⏳" label="Pending Requests"
-                        value={`${pending}/${bookings.length}`}
-                        sub="need action" color="#ef4444" dark={dark} delay={0.3}/>
-                </div>
-            </div>
-
-            {/* ── ALERTS ── */}
-            <div style={{padding:'14px 28px 0',maxWidth:1400,margin:'0 auto'}}>
-                <AnimatePresence>
-                    {error && (
-                        <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0}}
-                            style={{background:dark?'rgba(239,68,68,0.1)':'#fef2f2',
-                                border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',
-                                padding:'12px 18px',borderRadius:12,marginBottom:12,fontSize:13}}>
-                            {error}
-                            <button onClick={()=>setError('')}
-                                style={{float:'right',background:'none',border:'none',
-                                    color:'#ef4444',cursor:'pointer',fontSize:14}}>✕</button>
-                        </motion.div>
-                    )}
-                    {success && (
-                        <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0}}
-                            style={{background:dark?'rgba(34,197,94,0.1)':'#f0fdf4',
-                                border:'1px solid rgba(34,197,94,0.3)',color:'#16a34a',
-                                padding:'12px 18px',borderRadius:12,marginBottom:12,
-                                fontSize:13,fontWeight:600}}>{success}</motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* ── ADD VENUE FORM ── */}
-            <AnimatePresence>
-                {showForm && (
-                    <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}}
-                        exit={{opacity:0,height:0}} transition={{duration:0.4,ease:'easeOut'}}
-                        style={{overflow:'hidden',padding:'14px 28px 0',maxWidth:1400,margin:'0 auto'}}>
-                        <div style={{background:T.card,borderRadius:20,border:`1px solid ${T.border}`,
-                            padding:'28px',boxShadow:T.shadow}}>
-                            <div style={{display:'flex',alignItems:'center',
-                                justifyContent:'space-between',marginBottom:22}}>
-                                <div>
-                                    <Pill label="➕ New Venue" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
-                                    <h3 style={{fontFamily:"'Playfair Display',serif",fontSize:20,
-                                        fontWeight:900,color:T.title}}>Create New Venue</h3>
-                                </div>
-                                <motion.button whileHover={{scale:1.1}} onClick={()=>setShowForm(false)}
-                                    style={{width:36,height:36,borderRadius:'50%',background:T.goldL,
-                                        border:`1px solid ${T.goldB}`,color:T.gold,cursor:'pointer',
-                                        fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                                    ✕
-                                </motion.button>
-                            </div>
-                            <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:20}}>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-                                    <div><GL label="Venue Name" dark={dark}/>
-                                        <input name="name" value={formData.name} onChange={handleChange}
-                                            placeholder="Enter venue name" required style={T.inp}/></div>
-                                    <div><GL label="Venue Type" dark={dark}/>
-                                        <select name="type" value={formData.type} onChange={handleChange} style={T.inp}>
-                                            {VENUE_TYPES.map(t=><option key={t} value={t}
-                                                style={{background:T.card,color:T.title}}>{t}</option>)}
-                                        </select></div>
-                                </div>
-                                <div><GL label="Description" dark={dark}/>
-                                    <textarea name="description" value={formData.description}
-                                        onChange={handleChange} placeholder="Describe your venue..."
-                                        rows={2} required style={T.inp}/></div>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-                                    <div><GL label="Address" dark={dark}/>
-                                        <input name="address" value={formData.location.address}
-                                            onChange={handleChange} placeholder="Street address"
-                                            required style={T.inp}/></div>
-                                    <div><GL label="Pincode" dark={dark}/>
-                                        <input name="pincode" value={formData.location.pincode}
-                                            onChange={handleChange} placeholder="560001"
-                                            required style={T.inp}/></div>
-                                </div>
-                                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20}}>
-                                    <div><GL label="Capacity" dark={dark}/>
-                                        <input type="number" name="capacity" value={formData.capacity}
-                                            onChange={handleChange} placeholder="Max guests" required style={T.inp}/></div>
-                                    <div><GL label="Price/Hour (₹)" dark={dark}/>
-                                        <input type="number" name="pricePerHour" value={formData.pricePerHour}
-                                            onChange={handleChange} placeholder="2000" style={T.inp}/></div>
-                                    <div><GL label="Price/Day (₹)" dark={dark}/>
-                                        <input type="number" name="pricePerDay" value={formData.pricePerDay}
-                                            onChange={handleChange} placeholder="15000" style={T.inp}/></div>
-                                </div>
-                                <div><GL label="Booking Type" dark={dark}/>
-                                    <div style={{display:'flex',gap:24}}>
-                                        {[{v:'manual',l:'📋 Manual Approval'},{v:'instant',l:'⚡ Instant Booking'}].map(o=>(
-                                            <label key={o.v} style={{display:'flex',alignItems:'center',
-                                                gap:8,cursor:'pointer',fontSize:13,color:T.title}}>
-                                                <input type="radio" name="bookingType" value={o.v}
-                                                    checked={formData.bookingType===o.v} onChange={handleChange}/>
-                                                {o.l}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div><GL label="Amenities" dark={dark}/>
-                                    <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-                                        {AMENITIES_LIST.map(a=>{
-                                            const on=formData.amenities.includes(a);
-                                            return (
-                                                <motion.button type="button" key={a}
-                                                    whileHover={{scale:1.04}} whileTap={{scale:0.97}}
-                                                    onClick={()=>handleAmenityToggle(a)}
-                                                    style={{padding:'5px 14px',borderRadius:50,fontSize:12,
-                                                        fontWeight:600,cursor:'pointer',fontFamily:'inherit',
-                                                        background:on?'linear-gradient(135deg,#C8A45B,#E3C67A)':T.goldL,
-                                                        border:`1.5px solid ${on?'transparent':T.goldB}`,
-                                                        color:on?'white':T.gold,transition:'all 0.2s ease'}}>
-                                                    {a}
-                                                </motion.button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <div><GL label="Venue Images (max 5)" dark={dark}/>
-                                    <input type="file" accept="image/*" multiple onChange={handleImageChange}/>
-                                    {imagePreviews.length>0 && (
-                                        <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
-                                            {imagePreviews.map((src,i)=>(
-                                                <motion.img key={i} src={src} alt="preview"
-                                                    whileHover={{scale:1.08}}
-                                                    style={{width:68,height:58,objectFit:'cover',
-                                                        borderRadius:10,border:`2px solid ${T.goldB}`}}/>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{display:'flex',gap:12}}>
-                                    <motion.button type="submit" disabled={formLoading}
-                                        whileHover={!formLoading?{scale:1.03,boxShadow:'0 12px 30px rgba(200,164,91,0.35)'}:{}}
-                                        whileTap={!formLoading?{scale:0.97}:{}}
-                                        style={{padding:'12px 32px',borderRadius:50,border:'none',
-                                            background:formLoading?'#9a8a6a':'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                            color:'white',fontWeight:700,fontSize:14,
-                                            cursor:formLoading?'not-allowed':'pointer',fontFamily:'inherit',
-                                            boxShadow:formLoading?'none':'0 6px 18px rgba(200,164,91,0.28)'}}>
-                                        {formLoading?(
-                                            <span style={{display:'flex',alignItems:'center',gap:8}}>
-                                                <motion.span animate={{rotate:360}}
-                                                    transition={{duration:0.8,repeat:Infinity,ease:'linear'}}
-                                                    style={{display:'inline-block',width:14,height:14,
-                                                        border:'2px solid rgba(255,255,255,0.4)',
-                                                        borderTopColor:'white',borderRadius:'50%'}}/>
-                                                Creating...
-                                            </span>
-                                        ):'Create Venue →'}
-                                    </motion.button>
-                                    <motion.button type="button" onClick={()=>setShowForm(false)}
-                                        whileHover={{scale:1.03}} whileTap={{scale:0.97}}
-                                        style={{padding:'12px 24px',borderRadius:50,
-                                            background:'transparent',border:`1.5px solid ${T.border}`,
-                                            color:T.sub,fontWeight:600,fontSize:14,
-                                            cursor:'pointer',fontFamily:'inherit'}}>Cancel</motion.button>
-                                </div>
-                            </form>
-                        </div>
-                    </motion.div>
                 )}
-            </AnimatePresence>
 
-            {/* ══════════════════════════════
-                MAIN CONTENT
-            ══════════════════════════════ */}
-            <div style={{padding:'22px 28px 80px',maxWidth:1400,margin:'0 auto'}}>
+                <section className="od-hero od-section" ref={heroRef}>
+                    <span className="od-orb od-orb-a" />
+                    <span className="od-orb od-orb-b" />
+                    <span className="od-orb od-orb-c" />
 
-                {/* ── OVERVIEW TAB ── */}
-                {activeTab==='overview' && (
-                    <div style={{display:'flex',flexDirection:'column',gap:24}}>
-                        {/* ── PAYMENT DETAILS BANNER ── */}
-                        <PaymentDetailsForm dark={dark} />
+                    <div className="od-hero-copy">
+                        <p className="od-tag">OWNER PORTAL</p>
+                        <h1>Owner Dashboard</h1>
+                        <p>Manage venues, bookings and revenue from one workspace.</p>
+                    </div>
 
-                        {/* My Venues */}
-                        <div>
-                            <div style={{display:'flex',alignItems:'flex-end',
-                                justifyContent:'space-between',marginBottom:16}}>
-                                <div>
-                                    <Pill label="🏛️ My Venues" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
-                                    <h2 style={{fontFamily:"'Playfair Display',serif",
-                                        fontSize:22,fontWeight:900,color:T.title}}>My Venues</h2>
-                                </div>
-                                <motion.button whileHover={{color:T.gold}} onClick={()=>setActiveTab('bookings')}
-                                    style={{background:'none',border:'none',color:T.sub,
-                                        fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
-                                    View all →
-                                </motion.button>
+                    <button className="od-primary-btn" onClick={() => setShowForm(true)}>
+                        Add New Venue
+                    </button>
+                </section>
+
+                <section className="od-stats-grid">
+                    {stats.map((item) => (
+                        <article key={item.label} className="od-stat-card">
+                            <span className="od-stat-icon">{item.icon}</span>
+                            <div>
+                                <p className="od-stat-label">{item.label}</p>
+                                <p className="od-stat-value">{item.value}</p>
+                            </div>
+                        </article>
+                    ))}
+                </section>
+
+                <section className="od-section od-booking-section" id="od-bookings-section">
+                    <div className="od-section-header">
+                        <h2>Manage Bookings and Bids</h2>
+                        <p>
+                            Bids are ranked highest first. Approve top bids quickly and keep communication
+                            moving.
+                        </p>
+                    </div>
+
+                    <div className="od-chip-row">
+                        {venues.map((venue) => {
+                            const active = selectedVenueId === venue._id;
+                            return (
+                                <button
+                                    key={venue._id}
+                                    className={`od-chip ${active ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setSelectedVenueId(venue._id);
+                                        setCalendarVenueId(venue._id);
+                                    }}
+                                >
+                                    {venue.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="od-booking-layout">
+                        <div className="od-table-panel">
+                            <div className="od-table-head">
+                                <h3>Booking Table</h3>
+                                <p>{selectedVenue ? selectedVenue.name : 'Select a venue to view bookings'}</p>
                             </div>
 
-                            {loading ? (
-                                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:16}}>
-                                    {[1,2,3,4].map(i=>(
-                                        <motion.div key={i} animate={{opacity:[0.4,0.8,0.4]}}
-                                            transition={{duration:1.4,repeat:Infinity,delay:i*0.1}}
-                                            style={{height:220,borderRadius:18,background:T.statBg,border:`1px solid ${T.border}`}}/>
-                                    ))}
-                                </div>
-                            ) : venues.length===0 ? (
-                                <div style={{textAlign:'center',padding:'60px',background:T.card,
-                                    borderRadius:20,border:`1px dashed ${T.goldB}`}}>
-                                    <div style={{fontSize:48,marginBottom:14}}>🏛️</div>
-                                    <p style={{color:T.sub,fontSize:14,marginBottom:16}}>No venues yet. Create your first venue!</p>
-                                    <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.97}}
-                                        onClick={()=>setShowForm(true)}
-                                        style={{padding:'11px 26px',borderRadius:50,border:'none',
-                                            background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                            color:'white',fontWeight:700,fontSize:13,
-                                            cursor:'pointer',fontFamily:'inherit',
-                                            boxShadow:'0 6px 18px rgba(200,164,91,0.3)'}}>
-                                        Create Venue
-                                    </motion.button>
-                                </div>
-                            ) : (
-                                <div ref={venuesRef} style={{display:'grid',
-                                    gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:16}}>
-                                    {venues.filter(v=>v.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                                        .slice(0,4).map((venue,i)=>(
-                                        <VenueCard key={venue._id} venue={venue} index={i} inView={venuesView}/>
-                                    ))}
-                                </div>
+                            <div className="od-table-scroll">
+                                <table className="od-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Event Name</th>
+                                            <th>Venue</th>
+                                            <th>Date</th>
+                                            <th>Bid Amount</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bookingsLoading && (
+                                            <tr>
+                                                <td colSpan={6} className="od-empty-row">
+                                                    Loading bookings...
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {!bookingsLoading && filteredBookings.length === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="od-empty-row">
+                                                    {selectedVenueId
+                                                        ? 'No bookings found for this venue.'
+                                                        : 'Create a venue and start receiving bookings.'}
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {!bookingsLoading &&
+                                            filteredBookings.map((booking) => {
+                                                const status = STATUS_META[booking.status] || {
+                                                    label: booking.status || 'Unknown',
+                                                    tone: 'default',
+                                                };
+
+                                                return (
+                                                    <tr className="od-booking-row" key={booking._id}>
+                                                        <td>{booking.booker?.name || 'Event Booking'}</td>
+                                                        <td>{selectedVenue?.name || booking.venue?.name || '--'}</td>
+                                                        <td>{formatDate(booking.eventDate)}</td>
+                                                        <td>
+                                                            INR {formatCurrency(booking.bidAmount || booking.totalPrice || 0)}
+                                                        </td>
+                                                        <td>
+                                                            <span className={`od-status od-status-${status.tone}`}>
+                                                                {status.label}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div className="od-row-actions">
+                                                                {booking.status === 'pending' && (
+                                                                    <>
+                                                                        <button
+                                                                            className="od-action-btn approve"
+                                                                            onClick={() =>
+                                                                                handleStatusUpdate(
+                                                                                    booking._id,
+                                                                                    'approved'
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Approve
+                                                                        </button>
+                                                                        <button
+                                                                            className="od-action-btn reject"
+                                                                            onClick={() =>
+                                                                                handleStatusUpdate(
+                                                                                    booking._id,
+                                                                                    'rejected'
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Reject
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                {booking.booker?._id && (
+                                                                    <button
+                                                                        className="od-action-btn message"
+                                                                        onClick={() => openChatForBooking(booking)}
+                                                                    >
+                                                                        {t('chat.withBooker')}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <aside className="od-activity-panel">
+                            <h3>Recent Activity</h3>
+                            {activityItems.length === 0 && (
+                                <p className="od-empty-text">No recent activity for this venue yet.</p>
                             )}
-                        </div>
 
-                        {/* Booking Activity */}
-                        <div>
-                            <div style={{marginBottom:16}}>
-                                <Pill label="📅 Booking Activity" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
-                                <h2 style={{fontFamily:"'Playfair Display',serif",
-                                    fontSize:22,fontWeight:900,color:T.title}}>Booking Activity</h2>
-                            </div>
-
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 340px',gap:16}}>
-
-                                {/* Recent bookings table */}
-                                <div style={{background:T.card,borderRadius:20,
-                                    border:`1px solid ${T.border}`,padding:'22px',boxShadow:T.shadow}}>
-                                    <div style={{display:'flex',alignItems:'center',
-                                        justifyContent:'space-between',marginBottom:16}}>
-                                        <p style={{fontFamily:"'Playfair Display',serif",
-                                            fontSize:16,fontWeight:900,color:T.title}}>Recent Bookings</p>
-                                        <motion.button whileHover={{color:T.gold}} onClick={()=>setActiveTab('bookings')}
-                                            style={{background:'none',border:'none',color:T.sub,
-                                                fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
-                                            Manage →
-                                        </motion.button>
-                                    </div>
-                                    {/* Header */}
-                                    <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:12,
-                                        paddingBottom:10,borderBottom:`1px solid ${T.divider}`,marginBottom:4}}>
-                                        {['Recent Bookings','Guests','Status'].map((h,i)=>(
-                                            <p key={i} style={{fontSize:10,fontWeight:700,
-                                                textTransform:'uppercase',letterSpacing:'0.8px',color:T.gold}}>{h}</p>
-                                        ))}
-                                    </div>
-                                    {bookings.length===0?(
-                                        <div style={{textAlign:'center',padding:'32px 0'}}>
-                                            <div style={{fontSize:30,marginBottom:10}}>📭</div>
-                                            <p style={{color:T.sub,fontSize:13}}>
-                                                Select a venue in Bookings tab to view activity
-                                            </p>
-                                        </div>
-                                    ):bookings.slice(0,5).map((b,i)=>{
-                                        const sc=sCfg(b.status);
-                                        return (
-                                            <div key={b._id} style={{display:'grid',
-                                                gridTemplateColumns:'1fr auto auto',gap:12,
-                                                alignItems:'center',padding:'11px 0',
-                                                borderBottom:`1px solid ${T.divider}`}}>
-                                                <div style={{display:'flex',alignItems:'center',gap:9}}>
-                                                    <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,
-                                                        background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                                        display:'flex',alignItems:'center',justifyContent:'center',
-                                                        color:'white',fontSize:12,fontWeight:800}}>
-                                                        {b.booker?.name?.charAt(0)?.toUpperCase()||'?'}
-                                                    </div>
-                                                    <div>
-                                                        <p style={{fontSize:12,fontWeight:700,color:T.title}}>{b.booker?.name}</p>
-                                                        <p style={{fontSize:10,color:T.sub}}>
-                                                            {new Date(b.eventDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div style={{display:'flex',alignItems:'center',gap:3}}>
-                                                    <span style={{fontSize:11,color:T.sub}}>👥</span>
-                                                    <span style={{fontSize:12,fontWeight:600,color:T.title}}>{b.guestCount}</span>
-                                                </div>
-                                                <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',
-                                                    borderRadius:50,background:sc.bg,color:sc.color,
-                                                    border:`1px solid ${sc.color}40`,whiteSpace:'nowrap'}}>
-                                                    {sc.label}
-                                                </span>
+                            {activityItems.length > 0 && (
+                                <ul className="od-activity-list">
+                                    {activityItems.map((item) => (
+                                        <li key={item.id} className="od-activity-item">
+                                            <span className={`od-activity-dot ${item.tone}`} />
+                                            <div>
+                                                <p>{item.title}</p>
+                                                <span>{item.subtitle}</span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Quick venue switcher */}
-                                <div style={{background:T.card,borderRadius:20,
-                                    border:`1px solid ${T.border}`,padding:'22px',boxShadow:T.shadow}}>
-                                    <p style={{fontFamily:"'Playfair Display',serif",fontSize:16,
-                                        fontWeight:900,color:T.title,marginBottom:14}}>Quick Actions</p>
-                                    {venues.length===0?(
-                                        <p style={{color:T.sub,fontSize:13}}>No venues yet.</p>
-                                    ):(
-                                        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                                            {venues.slice(0,5).map(venue=>(
-                                                <motion.div key={venue._id} whileHover={{x:4}}
-                                                    style={{display:'flex',alignItems:'center',
-                                                        justifyContent:'space-between',
-                                                        padding:'10px 12px',borderRadius:12,
-                                                        background:T.statBg,border:`1px solid ${T.border}`}}>
-                                                    <div style={{display:'flex',alignItems:'center',gap:10}}>
-                                                        <div style={{width:32,height:32,borderRadius:10,
-                                                            overflow:'hidden',background:dark?'#2a2a2a':'#ede8de',flexShrink:0}}>
-                                                            {venue.images?.[0]
-                                                                ?<img src={venue.images[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                                                                :<div style={{width:'100%',height:'100%',display:'flex',
-                                                                    alignItems:'center',justifyContent:'center',fontSize:14}}>
-                                                                    {venueEmoji(venue.type)}</div>
-                                                            }
-                                                        </div>
-                                                        <div>
-                                                            <p style={{fontSize:12,fontWeight:700,color:T.title,
-                                                                whiteSpace:'nowrap',overflow:'hidden',
-                                                                textOverflow:'ellipsis',maxWidth:110}}>{venue.name}</p>
-                                                            <p style={{fontSize:10,color:T.gold}}>
-                                                                ₹{venue.pricePerHour?.toLocaleString('en-IN')}/hr
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <motion.button
-                                                        whileHover={{background:'linear-gradient(135deg,#C8A45B,#E3C67A)',color:'white'}}
-                                                        onClick={()=>{fetchVenueBookings(venue._id);setActiveTab('bookings')}}
-                                                        style={{padding:'4px 10px',borderRadius:50,fontSize:10,
-                                                            fontWeight:700,cursor:'pointer',fontFamily:'inherit',
-                                                            background:T.goldL,border:`1px solid ${T.goldB}`,
-                                                            color:T.gold,transition:'all 0.2s',whiteSpace:'nowrap'}}>
-                                                        Bookings
-                                                    </motion.button>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Availability calendar widget */}
-                                <div style={{background:T.card,borderRadius:20,
-                                    border:`1px solid ${T.border}`,padding:'22px',boxShadow:T.shadow}}>
-                                    <p style={{fontFamily:"'Playfair Display',serif",fontSize:16,
-                                        fontWeight:900,color:T.title,marginBottom:6}}>
-                                        📅 Availability Calendar
-                                    </p>
-                                    <p style={{fontSize:12,color:T.sub,marginBottom:14}}>Manage your dates</p>
-                                    {venues.length===0?(
-                                        <div style={{textAlign:'center',padding:'24px 0'}}>
-                                            <div style={{fontSize:36,marginBottom:10}}>🏛️</div>
-                                            <p style={{color:T.sub,fontSize:12,marginBottom:14}}>
-                                                No venues yet.<br/>Create your first venue!
-                                            </p>
-                                            <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.97}}
-                                                onClick={()=>setShowForm(true)}
-                                                style={{padding:'9px 22px',borderRadius:50,border:'none',
-                                                    background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                                    color:'white',fontWeight:700,fontSize:13,
-                                                    cursor:'pointer',fontFamily:'inherit',
-                                                    boxShadow:'0 5px 16px rgba(200,164,91,0.3)'}}>
-                                                Create Venue
-                                            </motion.button>
-                                        </div>
-                                    ):!selCalVenue?(
-                                        <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                                            {venues.slice(0,3).map(v=>(
-                                                <motion.button key={v._id} whileHover={{x:4}}
-                                                    onClick={()=>setSelCalVenue(v._id)}
-                                                    style={{padding:'8px 12px',borderRadius:10,
-                                                        background:T.statBg,border:`1px solid ${T.border}`,
-                                                        color:T.title,fontSize:12,fontWeight:600,
-                                                        cursor:'pointer',fontFamily:'inherit',
-                                                        textAlign:'left',transition:'transform 0.2s'}}>
-                                                    {venueEmoji(v.type)} {v.name}
-                                                </motion.button>
-                                            ))}
-                                            <motion.button whileHover={{color:T.gold}}
-                                                onClick={()=>setActiveTab('calendar')}
-                                                style={{background:'none',border:'none',color:T.sub,
-                                                    fontSize:12,fontWeight:600,cursor:'pointer',
-                                                    fontFamily:'inherit',textAlign:'center',marginTop:4}}>
-                                                Manage all →
-                                            </motion.button>
-                                        </div>
-                                    ):(
-                                        <div>
-                                            <p style={{fontSize:12,color:T.gold,fontWeight:700,marginBottom:8}}>
-                                                {venues.find(v=>v._id===selCalVenue)?.name}
-                                                <button onClick={()=>setSelCalVenue(null)}
-                                                    style={{marginLeft:8,background:'none',border:'none',
-                                                        color:T.sub,cursor:'pointer',fontSize:12}}>✕</button>
-                                            </p>
-                                            <div style={{borderRadius:12,overflow:'hidden',border:`1px solid ${T.border}`}}>
-                                                <AvailabilityCalendar
-                                                    blockedDates={venues.find(v=>v._id===selCalVenue)?.blockedDates||[]}
-                                                    onDateClick={handleCalDateClick} mode="owner"/>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </aside>
                     </div>
-                )}
+                </section>
 
-                {/* ── BOOKINGS TAB ── */}
-                {activeTab==='bookings' && (
-                    <div>
-                        <div style={{marginBottom:20}}>
-                            <Pill label="📅 Manage Bookings" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
-                            <h2 style={{fontFamily:"'Playfair Display',serif",
-                                fontSize:22,fontWeight:900,color:T.title,marginBottom:4}}>Manage Bookings & Bids</h2>
-                            <p style={{fontSize:13,color:T.sub}}>Bids are ranked highest first — approve the best bid to notify booker & start 4hr payment window</p>
+                <section className="od-section od-bottom-grid">
+                    <div className="od-panel" id="od-venues-section">
+                        <div className="od-panel-head">
+                            <h3>My Venues</h3>
+                            <span>{venues.length} listed</span>
                         </div>
-                        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
-                            {venues.map(venue=>{
-                                const active=selBkVenue===venue._id;
-                                return (
-                                    <motion.button key={venue._id} whileHover={{scale:1.03}} whileTap={{scale:0.97}}
-                                        onClick={()=>fetchVenueBookings(venue._id)}
-                                        style={{padding:'8px 20px',borderRadius:50,fontSize:13,fontWeight:600,
-                                            cursor:'pointer',fontFamily:'inherit',
-                                            background:active?'linear-gradient(135deg,#C8A45B,#E3C67A)':T.card,
-                                            border:`1.5px solid ${active?'transparent':T.border}`,
-                                            color:active?'white':T.sub,
-                                            boxShadow:active?'0 4px 14px rgba(200,164,91,0.3)':T.shadow,
-                                            transition:'all 0.2s ease'}}>
-                                        {venue.name}
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                        {bookingsLoading?(
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-                                {[1,2,3].map(i=>(
-                                    <motion.div key={i} animate={{opacity:[0.4,0.8,0.4]}}
-                                        transition={{duration:1.4,repeat:Infinity,delay:i*0.15}}
-                                        style={{height:180,borderRadius:16,background:T.statBg,border:`1px solid ${T.border}`}}/>
-                                ))}
-                            </div>
-                        ):!selBkVenue?(
-                            <div style={{textAlign:'center',padding:'70px 0'}}>
-                                <div style={{fontSize:44,marginBottom:14}}>📅</div>
-                                <p style={{color:T.sub,fontSize:14}}>Select a venue above to see its bookings.</p>
-                            </div>
-                        ):bookings.length===0?(
-                            <div style={{textAlign:'center',padding:'70px 0'}}>
-                                <div style={{fontSize:44,marginBottom:14}}>📭</div>
-                                <p style={{color:T.sub,fontSize:14}}>No bookings for this venue yet.</p>
-                            </div>
-                        ):(
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(310px,1fr))',gap:16}}>
-                                {bookings.map((booking,i)=>{
-                                    const sc=sCfg(booking.status);
+
+                        {venues.length === 0 && (
+                            <p className="od-empty-text">No venues yet. Add your first venue to start.</p>
+                        )}
+
+                        {venues.length > 0 && (
+                            <div className="od-venue-grid">
+                                {venues.map((venue) => {
+                                    const active = selectedVenueId === venue._id;
                                     return (
-                                        <motion.div key={booking._id}
-                                            initial={{opacity:0,y:28}} animate={{opacity:1,y:0}}
-                                            transition={{duration:0.5,delay:i*0.08}}
-                                            style={{background:T.card,borderRadius:18,
-                                                border:`1px solid ${T.border}`,padding:'20px',boxShadow:T.shadow}}>
-                                            <div style={{display:'flex',alignItems:'center',
-                                                justifyContent:'space-between',marginBottom:14}}>
-                                                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                                                    <div style={{width:38,height:38,borderRadius:'50%',flexShrink:0,
-                                                        background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                                        display:'flex',alignItems:'center',justifyContent:'center',
-                                                        color:'white',fontSize:14,fontWeight:800}}>
-                                                        {booking.booker?.name?.charAt(0)?.toUpperCase()||'?'}
-                                                    </div>
-                                                    <div>
-                                                        <p style={{fontSize:13,fontWeight:700,color:T.title}}>
-                                                            {booking.booker?.name}
-                                                        </p>
-                                                        <p style={{fontSize:11,color:T.sub}}>{booking.booker?.email}</p>
-                                                    </div>
-                                                </div>
-                                                <span style={{fontSize:11,fontWeight:700,padding:'4px 12px',
-                                                    borderRadius:50,background:sc.bg,color:sc.color,
-                                                    border:`1px solid ${sc.color}40`}}>{sc.label}</span>
+                                        <article
+                                            className={`od-venue-card ${active ? 'active' : ''}`}
+                                            key={venue._id}
+                                        >
+                                            <div className="od-venue-cover">
+                                                {venue.images?.[0] ? (
+                                                    <img src={venue.images[0]} alt={venue.name} />
+                                                ) : (
+                                                    <span>{venue.name.slice(0, 2).toUpperCase()}</span>
+                                                )}
                                             </div>
-                                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',
-                                                gap:10,marginBottom:16}}>
-                                                {[
-                                                    {l:'Date',v:new Date(booking.eventDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})},
-                                                    {l:'Time',v:`${booking.startTime} – ${booking.endTime}`},
-                                                    {l:'Guests',v:`${booking.guestCount} people`},
-                                                    {l:'Bid Amount',v:`₹${(booking.bidAmount||booking.totalPrice||0).toLocaleString('en-IN')}`,gold:true},
-                                                ].map((item,j)=>(
-                                                    <div key={j} style={{background:T.statBg,borderRadius:10,padding:'10px 12px'}}>
-                                                        <p style={{fontSize:10,color:T.sub,textTransform:'uppercase',
-                                                            letterSpacing:'0.6px',fontWeight:600,marginBottom:3}}>{item.l}</p>
-                                                        <p style={{fontSize:13,fontWeight:700,
-                                                            color:item.gold?T.gold:T.title}}>{item.v}</p>
-                                                    </div>
-                                                ))}
+                                            <div className="od-venue-content">
+                                                <p className="od-venue-name">{venue.name}</p>
+                                                <p className="od-venue-meta">
+                                                    {venue.location?.city || 'City'}, Cap {venue.capacity || '--'}
+                                                </p>
+                                                <div className="od-venue-actions">
+                                                    <button
+                                                        className="od-mini-btn"
+                                                        onClick={() => setSelectedVenueId(venue._id)}
+                                                    >
+                                                        View bookings
+                                                    </button>
+                                                    <button
+                                                        className="od-mini-btn danger"
+                                                        onClick={() => handleDeleteVenue(venue._id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
-                                            {/* Rank badge — highest bid */}
-                                            {booking.status==='pending' && i===0 && (
-                                                <div style={{background:'rgba(212,175,55,0.1)',border:'1px solid rgba(212,175,55,0.3)',
-                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
-                                                    <p style={{fontSize:11,fontWeight:700,color:'#b45309'}}>
-                                                        🏆 Highest Bid — Approve to confirm this booker
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {booking.status==='payment_pending' && (
-                                                <div style={{background:'rgba(59,130,246,0.08)',border:'1px solid rgba(59,130,246,0.25)',
-                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
-                                                    <p style={{fontSize:11,fontWeight:700,color:'#1d4ed8'}}>
-                                                        💳 Approved — Waiting for booker to pay
-                                                    </p>
-                                                    {booking.paymentDeadline && (
-                                                        <p style={{fontSize:10,color:'#6b7280',marginTop:2}}>
-                                                            Deadline: {new Date(booking.paymentDeadline).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {booking.status==='confirmed' && (
-                                                <div style={{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.25)',
-                                                    borderRadius:10,padding:'8px 12px',marginBottom:10}}>
-                                                    <p style={{fontSize:11,fontWeight:700,color:'#16a34a'}}>
-                                                        ✅ Payment received — Booking confirmed!
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {booking.booker?._id && (
-                                                <motion.button
-                                                    whileHover={{scale:1.02,boxShadow:'0 8px 20px rgba(30,77,92,0.16)'}}
-                                                    whileTap={{scale:0.98}}
-                                                    onClick={() => {
-                                                        setChatTarget({
-                                                            id: booking.booker._id,
-                                                            name: booking.booker.name || 'Booker',
-                                                            role: 'booker',
-                                                        });
-                                                        setChatBookingId(booking._id);
-                                                        setChatOpen(true);
-                                                    }}
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '10px',
-                                                        borderRadius: 50,
-                                                        border: '1.5px solid rgba(30,77,92,0.25)',
-                                                        background: 'rgba(30,77,92,0.06)',
-                                                        color: '#1e4d5c',
-                                                        fontSize: 13,
-                                                        fontWeight: 700,
-                                                        cursor: 'pointer',
-                                                        fontFamily: 'inherit',
-                                                        marginBottom: booking.status === 'pending' ? 8 : 0,
-                                                    }}
-                                                >
-                                                    {t('chat.withBooker')}
-                                                </motion.button>
-                                            )}
-
-                                            {booking.status==='pending' && (
-                                                <div style={{display:'flex',gap:8}}>
-                                                    <motion.button
-                                                        whileHover={{scale:1.03,boxShadow:'0 8px 20px rgba(34,197,94,0.2)'}}
-                                                        whileTap={{scale:0.97}}
-                                                        onClick={()=>handleStatusUpdate(booking._id,'approved')}
-                                                        style={{flex:1,padding:'10px',borderRadius:50,
-                                                            background:'rgba(34,197,94,0.12)',
-                                                            border:'1.5px solid rgba(34,197,94,0.3)',
-                                                            color:'#16a34a',fontSize:13,fontWeight:700,
-                                                            cursor:'pointer',fontFamily:'inherit'}}>
-                                                        ✓ Approve & Notify Booker
-                                                    </motion.button>
-                                                    <motion.button
-                                                        whileHover={{scale:1.03,boxShadow:'0 8px 20px rgba(239,68,68,0.15)'}}
-                                                        whileTap={{scale:0.97}}
-                                                        onClick={()=>handleStatusUpdate(booking._id,'rejected')}
-                                                        style={{flex:1,padding:'10px',borderRadius:50,
-                                                            background:'rgba(239,68,68,0.08)',
-                                                            border:'1.5px solid rgba(239,68,68,0.25)',
-                                                            color:'#ef4444',fontSize:13,fontWeight:700,
-                                                            cursor:'pointer',fontFamily:'inherit'}}>
-                                                        ✕ Reject
-                                                    </motion.button>
-                                                </div>
-                                            )}
-                                        </motion.div>
+                                        </article>
                                     );
                                 })}
                             </div>
                         )}
                     </div>
-                )}
 
-                {/* ── CALENDAR TAB ── */}
-                {activeTab==='calendar' && (
-                    <div>
-                        <div style={{marginBottom:20}}>
-                            <Pill label="🗓️ Availability" gold={T.gold} goldB={T.goldB} goldL={T.goldL}/>
-                            <h2 style={{fontFamily:"'Playfair Display',serif",
-                                fontSize:22,fontWeight:900,color:T.title,marginBottom:4}}>
-                                Manage Availability
-                            </h2>
-                            <p style={{fontSize:13,color:T.sub}}>Click a date to block or unblock it</p>
+                    <div className="od-panel" id="od-availability-section">
+                        <div className="od-panel-head">
+                            <h3>Availability Calendar</h3>
+                            <span>{calendarVenue ? calendarVenue.name : 'No venue selected'}</span>
                         </div>
-                        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
-                            {venues.map(venue=>{
-                                const active=selCalVenue===venue._id;
-                                return (
-                                    <motion.button key={venue._id} whileHover={{scale:1.03}} whileTap={{scale:0.97}}
-                                        onClick={()=>setSelCalVenue(venue._id)}
-                                        style={{padding:'8px 20px',borderRadius:50,fontSize:13,fontWeight:600,
-                                            cursor:'pointer',fontFamily:'inherit',
-                                            background:active?'linear-gradient(135deg,#C8A45B,#E3C67A)':T.card,
-                                            border:`1.5px solid ${active?'transparent':T.border}`,
-                                            color:active?'white':T.sub,
-                                            boxShadow:active?'0 4px 14px rgba(200,164,91,0.3)':T.shadow,
-                                            transition:'all 0.2s ease'}}>
+
+                        {venues.length > 0 && (
+                            <select
+                                className="od-select"
+                                value={calendarVenueId}
+                                onChange={(event) => setCalendarVenueId(event.target.value)}
+                            >
+                                {venues.map((venue) => (
+                                    <option key={venue._id} value={venue._id}>
                                         {venue.name}
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                        {venues.length===0&&<p style={{color:T.sub,fontSize:14}}>No venues yet.</p>}
-                        {selCalVenue && (
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:20}}>
-                                <div style={{background:T.card,borderRadius:20,
-                                    border:`1px solid ${T.border}`,padding:'24px',boxShadow:T.shadow}}>
-                                    <p style={{fontSize:13,fontWeight:700,color:T.title,marginBottom:14}}>
-                                        📅 {venues.find(v=>v._id===selCalVenue)?.name}
-                                        <span style={{color:T.sub,fontWeight:400}}> — Click date to block/unblock</span>
-                                    </p>
-                                    <div style={{borderRadius:14,overflow:'hidden',border:`1px solid ${T.border}`}}>
-                                        <AvailabilityCalendar
-                                            blockedDates={venues.find(v=>v._id===selCalVenue)?.blockedDates||[]}
-                                            onDateClick={handleCalDateClick} mode="owner"/>
-                                    </div>
-                                </div>
-                                <div style={{background:T.card,borderRadius:20,
-                                    border:`1px solid ${T.border}`,padding:'24px',boxShadow:T.shadow}}>
-                                    <p style={{fontFamily:"'Playfair Display',serif",fontSize:16,
-                                        fontWeight:900,color:T.title,marginBottom:14}}>🚫 Blocked Dates</p>
-                                    {(venues.find(v=>v._id===selCalVenue)?.blockedDates||[]).length===0?(
-                                        <div style={{textAlign:'center',padding:'30px 0'}}>
-                                            <div style={{fontSize:32,marginBottom:8}}>✅</div>
-                                            <p style={{color:T.sub,fontSize:13}}>No dates blocked</p>
-                                        </div>
-                                    ):(
-                                        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                                            {venues.find(v=>v._id===selCalVenue)?.blockedDates
-                                                .sort((a,b)=>new Date(a)-new Date(b))
-                                                .map((date,i)=>(
-                                                <motion.div key={i} initial={{opacity:0,x:-16}} animate={{opacity:1,x:0}}
-                                                    transition={{delay:i*0.05}}
-                                                    style={{display:'flex',alignItems:'center',
-                                                        justifyContent:'space-between',padding:'8px 14px',
-                                                        borderRadius:50,background:'rgba(239,68,68,0.08)',
-                                                        border:'1px solid rgba(239,68,68,0.25)'}}>
-                                                    <span style={{fontSize:12,color:'#ef4444',fontWeight:600}}>
-                                                        {new Date(date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
-                                                    </span>
-                                                    <motion.button whileHover={{scale:1.2}}
-                                                        onClick={()=>handleCalDateClick(new Date(date).toISOString().split('T')[0])}
-                                                        style={{background:'none',border:'none',
-                                                            color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:700}}>
-                                                        ✕
-                                                    </motion.button>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                    </option>
+                                ))}
+                            </select>
                         )}
-                        {!selCalVenue&&venues.length>0&&(
-                            <div style={{textAlign:'center',padding:'70px 0'}}>
-                                <div style={{fontSize:44,marginBottom:14}}>🗓️</div>
-                                <p style={{color:T.sub,fontSize:14}}>Select a venue above to manage its calendar.</p>
+
+                        {calendarVenue ? (
+                            <div className="od-calendar-wrap">
+                                <AvailabilityCalendar
+                                    blockedDates={calendarVenue.blockedDates || []}
+                                    onDateClick={handleCalendarDateClick}
+                                    mode="owner"
+                                />
+                            </div>
+                        ) : (
+                            <p className="od-empty-text">Select a venue to manage blocked dates.</p>
+                        )}
+
+                        {calendarVenue && (
+                            <div className="od-blocked-list">
+                                <h4>Blocked Dates</h4>
+                                {blockedDatesSorted.length === 0 && (
+                                    <p className="od-empty-text">No blocked dates yet.</p>
+                                )}
+                                {blockedDatesSorted.length > 0 && (
+                                    <div className="od-blocked-grid">
+                                        {blockedDatesSorted.map((date) => {
+                                            const dateKey = new Date(date).toISOString();
+                                            return (
+                                                <div key={dateKey} className="od-block-item">
+                                                    <span>{formatDate(date)}</span>
+                                                    <button
+                                                        onClick={() =>
+                                                            handleCalendarDateClick(
+                                                                new Date(date).toISOString().split('T')[0]
+                                                            )
+                                                        }
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
-            </div>
+                </section>
+            </main>
+
+            {showForm && (
+                <div className="od-modal-backdrop" onClick={closeVenueModal}>
+                    <div className="od-modal-card" onClick={(event) => event.stopPropagation()}>
+                        <div className="od-modal-head">
+                            <h3>Add New Venue</h3>
+                            <button className="od-modal-close" onClick={closeVenueModal}>
+                                x
+                            </button>
+                        </div>
+
+                        <form className="od-form" onSubmit={handleVenueCreate}>
+                            <div className="od-form-grid">
+                                <label>
+                                    Venue Name
+                                    <input
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    Venue Type
+                                    <select
+                                        name="type"
+                                        value={formData.type}
+                                        onChange={handleInputChange}
+                                        required
+                                    >
+                                        {VENUE_TYPES.map((type) => (
+                                            <option key={type} value={type}>
+                                                {type}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <label>
+                                    Capacity
+                                    <input
+                                        name="capacity"
+                                        type="number"
+                                        value={formData.capacity}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    Booking Type
+                                    <select
+                                        name="bookingType"
+                                        value={formData.bookingType}
+                                        onChange={handleInputChange}
+                                    >
+                                        <option value="manual">Manual Approval</option>
+                                        <option value="instant">Instant Booking</option>
+                                    </select>
+                                </label>
+
+                                <label>
+                                    Price per Hour
+                                    <input
+                                        name="pricePerHour"
+                                        type="number"
+                                        value={formData.pricePerHour}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    Price per Day
+                                    <input
+                                        name="pricePerDay"
+                                        type="number"
+                                        value={formData.pricePerDay}
+                                        onChange={handleInputChange}
+                                    />
+                                </label>
+
+                                <label className="od-form-span-2">
+                                    Address
+                                    <input
+                                        name="location.address"
+                                        value={formData.location.address}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    City
+                                    <input
+                                        name="location.city"
+                                        value={formData.location.city}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+
+                                <label>
+                                    Pincode
+                                    <input
+                                        name="location.pincode"
+                                        value={formData.location.pincode}
+                                        onChange={handleInputChange}
+                                    />
+                                </label>
+
+                                <label className="od-form-span-2">
+                                    Description
+                                    <textarea
+                                        name="description"
+                                        rows={4}
+                                        value={formData.description}
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="od-amenities-wrap">
+                                <p>Select Amenities</p>
+                                <div className="od-amenities-grid">
+                                    {AMENITIES.map((amenity) => {
+                                        const active = formData.amenities.includes(amenity);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={amenity}
+                                                className={`od-amenity-option ${active ? 'active' : ''}`}
+                                                onClick={() => handleAmenityToggle(amenity)}
+                                            >
+                                                {amenity}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <label className="od-file-field">
+                                Venue Images
+                                <input type="file" multiple accept="image/*" onChange={handleImageChange} />
+                            </label>
+
+                            {imagePreviews.length > 0 && (
+                                <div className="od-preview-strip">
+                                    {imagePreviews.map((preview) => (
+                                        <img key={preview} src={preview} alt="Venue preview" />
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="od-form-actions">
+                                <button type="button" className="od-secondary-btn" onClick={closeVenueModal}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="od-primary-btn small" disabled={formLoading}>
+                                    {formLoading ? 'Creating...' : 'Create Venue'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {chatOpen && chatTarget && (
                 <ChatModal
@@ -1200,8 +1211,7 @@ const OwnerDashboard = () => {
                 />
             )}
 
-            <p style={{textAlign:'center',padding:'16px 0 32px',color:T.sub,
-                fontSize:11,fontStyle:'italic',letterSpacing:'2px'}}>EASY. BOOK. ENJOY.</p>
+            <footer className="od-footer-note">Built for faster owner decisions and smoother bookings.</footer>
         </div>
     );
 };
