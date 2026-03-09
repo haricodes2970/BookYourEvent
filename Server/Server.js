@@ -35,6 +35,7 @@ app.use('/api/bookings', require('./routes/BookingRouter'));
 app.use('/api/reviews',  require('./routes/ReviewRouter'));
 app.use('/api/stats',    require('./routes/StatsRouter'));
 app.use('/api/payments', require('./routes/PaymentRouter'));
+app.use('/api/chats',    require('./routes/ChatRouter'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -50,3 +51,4 @@ setInterval(() => {
         .then(() => console.log('Server kept alive'))
         .catch(() => {});
 }, 14 * 60 * 1000);
+

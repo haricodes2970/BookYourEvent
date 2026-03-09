@@ -128,7 +128,7 @@ const getVenueBookings = async (req, res) => {
 const getMyBookings = async (req, res) => {
     try {
         const bookings = await Booking.find({ booker: req.user.id })
-            .populate('venue', 'name location pricePerHour images')
+            .populate({ path: 'venue', select: 'name location pricePerHour images owner', populate: { path: 'owner', select: 'name email role' } })
             .sort({ createdAt: -1 });
 
         res.status(200).json({ count: bookings.length, bookings });
@@ -291,3 +291,4 @@ module.exports = {
     getAllBookingsAdmin,
     expireUnpaidBookings,
 };
+

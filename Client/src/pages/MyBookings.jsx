@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getMyBookings, raiseBid } from '../services/bookingService';
 import PaymentModal from '../components/PaymentModal';
+import ChatModal from '../components/ChatModal';
+import { useLanguage } from '../context/LanguageContext';
 
 /* ── Countdown hook ── */
 const useCountdown = (deadline) => {
@@ -65,6 +67,7 @@ const FILTERS = ['all', 'pending', 'payment_pending', 'confirmed', 'rejected', '
 const MyBookings = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
     const [bookings, setBookings]         = useState([]);
     const [loading, setLoading]           = useState(true);
@@ -77,6 +80,9 @@ const MyBookings = () => {
     const [bidLoading, setBidLoading]     = useState(false);
     const [bidError, setBidError]         = useState('');
     const [success, setSuccess]           = useState('');
+    const [chatOpen, setChatOpen]           = useState(false);
+    const [chatTarget, setChatTarget]       = useState(null);
+    const [chatBookingId, setChatBookingId] = useState(null);
 
     const fetchBookings = async () => {
         try {
@@ -204,7 +210,7 @@ const MyBookings = () => {
                         border: '1px solid #e8e8e8', background: '#fff',
                         fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer',
                     }}>
-                    Log Out
+                    {t('common.logout')}
                 </button>
             </nav>
 
@@ -497,6 +503,33 @@ const MyBookings = () => {
                                                     {booking.venue?.owner?.name || '—'}
                                                 </span>
                                             </p>
+
+                                            {booking.venue?.owner?._id && (
+                                                <button
+                                                    onClick={() => {
+                                                        setChatTarget({
+                                                            id: booking.venue.owner._id,
+                                                            name: booking.venue.owner.name || 'Venue Owner',
+                                                            role: 'venueOwner',
+                                                        });
+                                                        setChatBookingId(booking._id);
+                                                        setChatOpen(true);
+                                                    }}
+                                                    style={{
+                                                        marginTop: 10,
+                                                        border: '1px solid #cbd5e1',
+                                                        background: '#f8fafc',
+                                                        color: '#0f172a',
+                                                        borderRadius: 8,
+                                                        padding: '7px 12px',
+                                                        fontSize: 12,
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    {t('chat.withOwner')}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -528,6 +561,20 @@ const MyBookings = () => {
                         setShowPayment(false); setPayBooking(null);
                         setSuccess('🎉 Payment successful! Booking confirmed.');
                         fetchBookings();
+                    }}
+                />
+            )}
+
+            {/* Chat Modal */}
+            {chatOpen && chatTarget && (
+                <ChatModal
+                    isOpen={chatOpen}
+                    otherUser={chatTarget}
+                    bookingId={chatBookingId}
+                    onClose={() => {
+                        setChatOpen(false);
+                        setChatTarget(null);
+                        setChatBookingId(null);
                     }}
                 />
             )}

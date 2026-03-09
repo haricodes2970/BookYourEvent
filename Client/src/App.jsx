@@ -12,10 +12,15 @@ import GoogleAuthSuccess from './pages/GoogleAuthSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import HelpContact from './pages/HelpContact';
 import VerifyOTP from './pages/VerifyOTP';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 function App() {
     return (
         <BrowserRouter>
+            <div style={{ position: 'fixed', right: 12, bottom: 12, zIndex: 2000 }}>
+                <LanguageSwitcher />
+            </div>
+
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />

@@ -6,6 +6,8 @@ import { getVenueBookings, updateBookingStatus } from '../services/bookingServic
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
 import PaymentDetailsForm from '../components/PaymentDetailsForm';
+import ChatModal from '../components/ChatModal';
+import { useLanguage } from '../context/LanguageContext';
 
 const VENUE_TYPES = [
     'Marriage Hall','Party Hall','Conference Room','Shop/Retail','Farmhouse',
@@ -81,6 +83,7 @@ const OwnerDashboard = () => {
     const {user,logout} = useAuth();
     const navigate = useNavigate();
     const {dark,toggle} = useDark();
+    const { t } = useLanguage();
 
     const [venues,setVenues]                 = useState([]);
     const [loading,setLoading]               = useState(true);
@@ -97,6 +100,9 @@ const OwnerDashboard = () => {
     const [selCalVenue,setSelCalVenue]       = useState(null);
     const [selBkVenue,setSelBkVenue]         = useState(null);
     const [profileOpen,setProfileOpen]       = useState(false);
+    const [chatOpen,setChatOpen]             = useState(false);
+    const [chatTarget,setChatTarget]         = useState(null);
+    const [chatBookingId,setChatBookingId]   = useState(null);
 
     const venuesRef  = useRef(null);
     const venuesView = useInView(venuesRef,{once:true,amount:0.1});
@@ -403,7 +409,7 @@ const OwnerDashboard = () => {
                                         {[
                                             {label:'➕ Add Venue',action:()=>{setShowForm(true);setProfileOpen(false)},gold:true},
                                             {label:'⚙️ Account Settings',action:()=>setProfileOpen(false)},
-                                            {label:'🚪 Log Out',action:()=>{handleLogout();setProfileOpen(false)},danger:true},
+                                            {label:t('common.logout'),action:()=>{handleLogout();setProfileOpen(false)},danger:true},
                                         ].map((item,i)=>(
                                             <motion.button key={i} whileHover={{background:T.goldL}}
                                                 onClick={item.action}
@@ -1026,6 +1032,37 @@ const OwnerDashboard = () => {
                                                     </p>
                                                 </div>
                                             )}
+                                            {booking.booker?._id && (
+                                                <motion.button
+                                                    whileHover={{scale:1.02,boxShadow:'0 8px 20px rgba(30,77,92,0.16)'}}
+                                                    whileTap={{scale:0.98}}
+                                                    onClick={() => {
+                                                        setChatTarget({
+                                                            id: booking.booker._id,
+                                                            name: booking.booker.name || 'Booker',
+                                                            role: 'booker',
+                                                        });
+                                                        setChatBookingId(booking._id);
+                                                        setChatOpen(true);
+                                                    }}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px',
+                                                        borderRadius: 50,
+                                                        border: '1.5px solid rgba(30,77,92,0.25)',
+                                                        background: 'rgba(30,77,92,0.06)',
+                                                        color: '#1e4d5c',
+                                                        fontSize: 13,
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                        fontFamily: 'inherit',
+                                                        marginBottom: booking.status === 'pending' ? 8 : 0,
+                                                    }}
+                                                >
+                                                    {t('chat.withBooker')}
+                                                </motion.button>
+                                            )}
+
                                             {booking.status==='pending' && (
                                                 <div style={{display:'flex',gap:8}}>
                                                     <motion.button
@@ -1149,6 +1186,19 @@ const OwnerDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {chatOpen && chatTarget && (
+                <ChatModal
+                    isOpen={chatOpen}
+                    otherUser={chatTarget}
+                    bookingId={chatBookingId}
+                    onClose={() => {
+                        setChatOpen(false);
+                        setChatTarget(null);
+                        setChatBookingId(null);
+                    }}
+                />
+            )}
 
             <p style={{textAlign:'center',padding:'16px 0 32px',color:T.sub,
                 fontSize:11,fontStyle:'italic',letterSpacing:'2px'}}>EASY. BOOK. ENJOY.</p>
