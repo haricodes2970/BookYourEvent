@@ -519,7 +519,6 @@ const MyBookings = () => {
                     isOpen={showPayment}
                     bookingData={{
                         ...payBooking,
-                        bookingId: payBooking._id,
                         totalPrice: payBooking.bidAmount || payBooking.totalPrice,
                         venueName: payBooking.venue?.name,
                     }}
