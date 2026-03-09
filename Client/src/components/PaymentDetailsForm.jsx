@@ -48,7 +48,7 @@ const PaymentDetailsForm = ({ dark = false, onSaved }) => {
         borderBottom: `2px solid ${GB}`,
         color: text, padding: '8px 4px', fontSize: 14,
         outline: 'none', fontFamily: 'inherit', caretColor: G,
-        border: 'none', borderBottom: `2px solid ${GB}`,
+        border: 'none',
     };
 
     const handleSubmit = async () => {

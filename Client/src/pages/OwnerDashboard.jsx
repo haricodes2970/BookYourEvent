@@ -1032,7 +1032,7 @@ const OwnerDashboard = () => {
                                                         whileHover={{scale:1.03,boxShadow:'0 8px 20px rgba(34,197,94,0.2)'}}
                                                         whileTap={{scale:0.97}}
                                                         onClick={()=>handleStatusUpdate(booking._id,'approved')}
-                                                        style={{flex:1,padding:'10px',borderRadius:50,border:'none',
+                                                        style={{flex:1,padding:'10px',borderRadius:50,
                                                             background:'rgba(34,197,94,0.12)',
                                                             border:'1.5px solid rgba(34,197,94,0.3)',
                                                             color:'#16a34a',fontSize:13,fontWeight:700,
