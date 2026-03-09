@@ -4,6 +4,7 @@ const {
     createBooking,
     raiseBid,
     getVenueBookings,
+    getOwnerBookings,
     getMyBookings,
     updateBookingStatus,
     getAllBookingsAdmin,
@@ -13,6 +14,7 @@ const { adminOnly } = require('../middleware/roleMiddleware');
 
 router.post('/create',                    protect, createBooking);
 router.patch('/:id/raise-bid',            protect, raiseBid);
+router.get('/owner',                      protect, getOwnerBookings);
 router.get('/venue/:venueId',             protect, getVenueBookings);
 router.get('/my-bookings',                protect, getMyBookings);
 router.patch('/:id/status',               protect, updateBookingStatus);

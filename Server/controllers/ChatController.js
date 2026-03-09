@@ -2,17 +2,25 @@ const mongoose = require('mongoose');
 const Chat = require('../models/Chat');
 const Message = require('../models/Message');
 const Booking = require('../models/Booking');
+const User = require('../models/User');
 
 const toSortedParticipants = (id1, id2) => [id1.toString(), id2.toString()].sort();
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+const normalizeUsername = (value = '') =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/^@+/, '')
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9._]/g, '');
 
 const userInChat = (chat, userId) =>
     chat.participants.some((participantId) => participantId.toString() === userId);
 
 const getOrCreateChat = async (req, res) => {
     try {
-        const { otherUserId, bookingId } = req.body;
+        const { otherUserId, bookingId, username } = req.body;
         const currentUserId = req.user.id;
 
         let resolvedOtherUserId = otherUserId;
@@ -43,12 +51,26 @@ const getOrCreateChat = async (req, res) => {
             resolvedBookingId = booking._id;
             resolvedVenueId = booking.venue._id;
         } else {
-            if (!otherUserId)
-                return res.status(400).json({ message: 'otherUserId is required' });
-            if (!isValidObjectId(otherUserId))
+            if (!resolvedOtherUserId && username) {
+                const normalizedUsername = normalizeUsername(username);
+                const otherUser = await User.findOne({ username: normalizedUsername }).select('_id');
+                if (!otherUser) {
+                    return res.status(404).json({ message: 'User not found for this username' });
+                }
+                resolvedOtherUserId = otherUser._id;
+            }
+
+            if (!resolvedOtherUserId) {
+                return res.status(400).json({ message: 'otherUserId or username is required' });
+            }
+
+            if (!isValidObjectId(resolvedOtherUserId)) {
                 return res.status(400).json({ message: 'Invalid otherUserId' });
-            if (otherUserId.toString() === currentUserId)
+            }
+
+            if (resolvedOtherUserId.toString() === currentUserId) {
                 return res.status(400).json({ message: 'Cannot create a chat with yourself' });
+            }
         }
 
         if (!resolvedOtherUserId || resolvedOtherUserId.toString() === currentUserId)
@@ -73,7 +95,7 @@ const getOrCreateChat = async (req, res) => {
         }
 
         chat = await Chat.findById(chat._id)
-            .populate('participants', 'name role email')
+            .populate('participants', 'name username avatar role email')
             .populate('venue', 'name')
             .populate('booking', 'eventDate startTime endTime status');
 
@@ -86,7 +108,7 @@ const getOrCreateChat = async (req, res) => {
 const getMyChats = async (req, res) => {
     try {
         const chats = await Chat.find({ participants: req.user.id })
-            .populate('participants', 'name role email')
+            .populate('participants', 'name username avatar role email')
             .populate('venue', 'name')
             .populate('booking', 'eventDate startTime endTime status')
             .sort({ lastMessageAt: -1 });
@@ -118,7 +140,7 @@ const getChatMessages = async (req, res) => {
             return res.status(403).json({ message: 'Unauthorized' });
 
         const messages = await Message.find({ chat: chatId })
-            .populate('sender', 'name role')
+            .populate('sender', 'name username avatar role')
             .sort({ createdAt: 1 });
 
         res.status(200).json({ count: messages.length, messages });
@@ -155,7 +177,7 @@ const sendMessage = async (req, res) => {
         chat.lastMessageSender = req.user.id;
         await chat.save();
 
-        message = await message.populate('sender', 'name role');
+        message = await message.populate('sender', 'name username avatar role');
 
         res.status(201).json({ message: message });
     } catch (err) {
@@ -192,10 +214,36 @@ const markChatRead = async (req, res) => {
     }
 };
 
+const searchUsers = async (req, res) => {
+    try {
+        const query = normalizeUsername(req.query.q || '');
+        if (!query || query.length < 2) {
+            return res.status(200).json({ count: 0, users: [] });
+        }
+
+        const startsWithRegex = new RegExp(`^${query}`, 'i');
+        const containsRegex = new RegExp(query, 'i');
+
+        const users = await User.find({
+            _id: { $ne: req.user.id },
+            isVerified: true,
+            $or: [{ username: startsWithRegex }, { name: containsRegex }],
+        })
+            .select('name username avatar role')
+            .sort({ username: 1 })
+            .limit(12);
+
+        res.status(200).json({ count: users.length, users });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
 module.exports = {
     getOrCreateChat,
     getMyChats,
     getChatMessages,
     sendMessage,
     markChatRead,
+    searchUsers,
 };

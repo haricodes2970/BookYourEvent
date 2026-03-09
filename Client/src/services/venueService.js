@@ -11,6 +11,13 @@ export const getAllVenues = async () => {
     return response.data;
 };
 
+export const getOwnerVenues = async () => {
+    const response = await axios.get(`${API}/venues/owner/mine`, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    return response.data;
+};
+
 export const getVenueById = async (id) => {
     const response = await axios.get(`${API}/venues/${id}`, {
         headers: { Authorization: `Bearer ${getToken()}` }
@@ -32,6 +39,24 @@ export const deleteVenue = async (id) => {
     const response = await axios.delete(`${API}/venues/${id}`, {
         headers: { Authorization: `Bearer ${getToken()}` }
     });
+    return response.data;
+};
+
+export const updateVenue = async (id, payload) => {
+    const response = await axios.patch(`${API}/venues/${id}`, payload, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    return response.data;
+};
+
+export const toggleVenueActive = async (id, isActive) => {
+    const response = await axios.patch(
+        `${API}/venues/${id}/toggle-active`,
+        typeof isActive === 'boolean' ? { isActive } : {},
+        {
+            headers: { Authorization: `Bearer ${getToken()}` }
+        }
+    );
     return response.data;
 };
 

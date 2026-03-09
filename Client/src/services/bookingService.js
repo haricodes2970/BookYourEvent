@@ -12,6 +12,11 @@ export const createBooking = (data) =>
 export const getVenueBookings = (id) =>
     axios.get(`${API}/bookings/venue/${id}`, authHeaders()).then(r => r.data);
 
+export const getOwnerBookings = (venueId) =>
+    axios
+        .get(`${API}/bookings/owner${venueId ? `?venueId=${venueId}` : ''}`, authHeaders())
+        .then(r => r.data);
+
 export const getMyBookings = () =>
     axios.get(`${API}/bookings/my-bookings`, authHeaders()).then(r => r.data);
 

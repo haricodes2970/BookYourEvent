@@ -335,7 +335,7 @@ const FocusInput = ({ dark, type, name, value, onChange, placeholder, icon, requ
 ══════════════════════════════════════ */
 const Login = () => {
     const { dark, toggle } = useDark();
-    const [formData, setFormData] = useState({ email:'', password:'' });
+    const [formData, setFormData] = useState({ identifier:'', password:'' });
     const [error, setError]       = useState('');
     const [loading, setLoading]   = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
@@ -513,9 +513,9 @@ const Login = () => {
 
                             {/* Form */}
                             <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:18 }}>
-                                <FocusInput dark={dark} type="email" name="email"
-                                    value={formData.email} onChange={handleChange}
-                                    placeholder="Email" icon="✉" required />
+                                <FocusInput dark={dark} type="text" name="identifier"
+                                    value={formData.identifier} onChange={handleChange}
+                                    placeholder="Email or Username" icon="@" required />
 
                                 <FocusInput dark={dark} type="password" name="password"
                                     value={formData.password} onChange={handleChange}
@@ -612,5 +612,4 @@ const Login = () => {
 };
 
 export default Login;
-
 

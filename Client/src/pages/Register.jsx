@@ -437,7 +437,7 @@ const Register = () => {
     const [success, setSuccess] = useState(false);
 
     const [form, setForm] = useState({
-        fullName: '', email: '', phone: '',
+        fullName: '', username: '', email: '', phone: '',
         password: '', confirmPassword: '',
         venueName: '', venueCity: '',
         agreeTerms: false,
@@ -445,6 +445,11 @@ const Register = () => {
 
     const handleChange = e => {
         const { name, value, type, checked } = e.target;
+        if (name === 'username') {
+            const username = value.toLowerCase().replace(/[^a-z0-9._]/g, '');
+            setForm(f => ({ ...f, username }));
+            return;
+        }
         setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
     };
 
@@ -454,6 +459,9 @@ const Register = () => {
         if (step === 0) return true;
         if (step === 1) {
             if (!form.fullName.trim()) return setError('Full name is required'), false;
+            if (!form.username.trim()) return setError('Username is required'), false;
+            if (!/^[a-z0-9._]{3,24}$/.test(form.username.trim().toLowerCase()))
+                return setError('Username must be 3-24 chars (lowercase letters, numbers, . and _)'), false;
             if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
                 return setError('Valid email is required'), false;
             if (!form.phone.trim() || form.phone.length < 10)
@@ -485,6 +493,7 @@ const Register = () => {
         try {
             const payload = {
                 name: form.fullName, email: form.email,
+                username: form.username.trim().toLowerCase(),
                 phone: form.phone, password: form.password, role,
                 ...(role === 'venueOwner' && {
                     venueName: form.venueName,
@@ -755,6 +764,8 @@ const Register = () => {
                                                 >
                                                     <FocusInput dark={dark} name="fullName" value={form.fullName}
                                                         onChange={handleChange} placeholder="Full Name" icon="👤" required/>
+                                                    <FocusInput dark={dark} name="username" value={form.username}
+                                                        onChange={handleChange} placeholder="Username (e.g. alex_venue)" icon="@" required/>
                                                     <FocusInput dark={dark} type="email" name="email" value={form.email}
                                                         onChange={handleChange} placeholder="Email Address" icon="✉" required/>
                                                     <FocusInput dark={dark} type="tel" name="phone" value={form.phone}
@@ -887,4 +898,3 @@ const Register = () => {
 };
 
 export default Register;
-

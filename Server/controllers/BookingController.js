@@ -111,11 +111,70 @@ const raiseBid = async (req, res) => {
 const getVenueBookings = async (req, res) => {
     try {
         const bookings = await Booking.find({ venue: req.params.venueId })
-            .populate('booker', 'name email phone')
+            .populate('booker', 'name username email avatar phone')
             .populate('venue', 'name location')
             .sort({ bidAmount: -1 }); // highest bid first
 
         res.status(200).json({ count: bookings.length, bookings });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+const getOwnerBookings = async (req, res) => {
+    try {
+        const ownerVenueFilter = { owner: req.user.id };
+        if (req.query.venueId) {
+            ownerVenueFilter._id = req.query.venueId;
+        }
+
+        const ownerVenues = await Venue.find(ownerVenueFilter).select('_id');
+        const venueIds = ownerVenues.map((venue) => venue._id);
+
+        if (!venueIds.length) {
+            return res.status(200).json({
+                count: 0,
+                bookings: [],
+                stats: {
+                    totalBookings: 0,
+                    confirmedBookings: 0,
+                    pendingBookings: 0,
+                    paymentPendingBookings: 0,
+                    totalRevenue: 0,
+                },
+            });
+        }
+
+        const bookings = await Booking.find({ venue: { $in: venueIds } })
+            .populate('booker', 'name username email avatar')
+            .populate('venue', 'name location isApproved isActive')
+            .sort({ createdAt: -1 });
+
+        const stats = bookings.reduce(
+            (acc, booking) => {
+                acc.totalBookings += 1;
+                if (booking.status === 'confirmed') {
+                    acc.confirmedBookings += 1;
+                    acc.totalRevenue += booking.ownerAmount || booking.bidAmount || booking.totalPrice || 0;
+                }
+                if (booking.status === 'pending') {
+                    acc.pendingBookings += 1;
+                }
+                if (booking.status === 'payment_pending') {
+                    acc.paymentPendingBookings += 1;
+                }
+                return acc;
+            },
+            {
+                totalBookings: 0,
+                confirmedBookings: 0,
+                pendingBookings: 0,
+                paymentPendingBookings: 0,
+                totalRevenue: 0,
+            }
+        );
+
+        res.status(200).json({ count: bookings.length, bookings, stats });
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
     }
@@ -293,6 +352,7 @@ module.exports = {
     createBooking,
     raiseBid,
     getVenueBookings,
+    getOwnerBookings,
     getMyBookings,
     updateBookingStatus,
     getAllBookingsAdmin,

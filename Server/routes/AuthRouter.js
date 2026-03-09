@@ -1,6 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { register, verifyOTP, login, getMe, savePaymentDetails, getUsers, deleteUser, updateUserRole, forgotPassword, resetPassword } = require('../controllers/AuthController');
+const {
+    register,
+    verifyOTP,
+    login,
+    getMe,
+    savePaymentDetails,
+    getUsers,
+    deleteUser,
+    updateUserRole,
+    forgotPassword,
+    resetPassword,
+    normalizeUsername,
+    createAvatarUrl,
+    generateUniqueUsername,
+} = require('../controllers/AuthController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/roleMiddleware');
 const jwt = require('jsonwebtoken');
@@ -47,24 +61,44 @@ router.get('/google/callback', async (req, res) => {
         const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
             headers: { Authorization: `Bearer ${access_token}` },
         });
-        const { email, name } = userInfoResponse.data;
+        const { email, name, picture } = userInfoResponse.data;
+        const normalizedEmail = (email || '').trim().toLowerCase();
 
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: normalizedEmail });
         if (user) {
             user.isVerified = true;
+            if (!user.username) {
+                const seed = normalizeUsername(user.name || normalizedEmail.split('@')[0] || 'user');
+                user.username = await generateUniqueUsername(seed, user._id);
+            }
+            if (!user.avatar) {
+                user.avatar = picture || createAvatarUrl(user.name);
+            }
             await user.save();
         } else {
+            const seed = normalizeUsername(normalizedEmail.split('@')[0] || name || 'user');
+            const username = await generateUniqueUsername(seed);
             user = await User.create({
-                name, email,
+                name,
+                username,
+                email: normalizedEmail,
                 password: 'GOOGLE_AUTH_' + Math.random().toString(36),
                 phone: 'N/A',
                 role: 'booker',
                 isVerified: true,
+                avatar: picture || createAvatarUrl(name),
             });
         }
 
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            {
+                id: user._id,
+                role: user.role,
+                name: user.name,
+                email: user.email,
+                username: user.username || '',
+                avatar: user.avatar || '',
+            },
             process.env.JWT_SECRET,
             { expiresIn: '30d' }
         );
@@ -72,7 +106,9 @@ router.get('/google/callback', async (req, res) => {
         const userEncoded = encodeURIComponent(JSON.stringify({
             id: user._id,
             name: user.name,
+            username: user.username || '',
             email: user.email,
+            avatar: user.avatar || '',
             role: user.role,
             phone: user.phone,
         }));
