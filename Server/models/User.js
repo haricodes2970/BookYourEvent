@@ -2,14 +2,25 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true },
-    phone: { type: String, required: true },
-    role: { type: String, enum: ['booker', 'venueOwner', 'admin'], default: 'booker' },
+    name:       { type: String, required: true, trim: true },
+    email:      { type: String, required: true, unique: true, lowercase: true },
+    password:   { type: String, required: true },
+    phone:      { type: String, required: true },
+    role:       { type: String, enum: ['booker', 'venueOwner', 'admin'], default: 'booker' },
     isVerified: { type: Boolean, default: false },
-    otp: { type: String },
-    otpExpiry: { type: Date },
+    otp:        { type: String },
+    otpExpiry:  { type: Date },
+
+    // ── Venue Owner Payment Details ──────────────────
+    paymentDetails: {
+        upiId:       { type: String, default: '' },
+        accountName: { type: String, default: '' },
+        accountNo:   { type: String, default: '' },
+        ifsc:        { type: String, default: '' },
+        bankName:    { type: String, default: '' },
+        paymentType: { type: String, enum: ['upi', 'bank', ''], default: '' },
+    },
+
 }, { timestamps: true });
 
 UserSchema.pre('save', async function(next) {

@@ -5,6 +5,7 @@ import { createVenueWithImages, getAllVenues, deleteVenue, blockDates, unblockDa
 import { getVenueBookings, updateBookingStatus } from '../services/bookingService';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import AvailabilityCalendar from '../components/AvailabilityCalendar';
+import PaymentDetailsForm from '../components/PaymentDetailsForm';
 
 const VENUE_TYPES = [
     'Marriage Hall','Party Hall','Conference Room','Shop/Retail','Farmhouse',
@@ -663,6 +664,8 @@ const OwnerDashboard = () => {
                 {/* ── OVERVIEW TAB ── */}
                 {activeTab==='overview' && (
                     <div style={{display:'flex',flexDirection:'column',gap:24}}>
+                        {/* ── PAYMENT DETAILS BANNER ── */}
+                        <PaymentDetailsForm dark={dark} />
 
                         {/* My Venues */}
                         <div>

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, verifyOTP, login, getUsers, deleteUser, updateUserRole, forgotPassword, resetPassword } = require('../controllers/AuthController');
+const { register, verifyOTP, login, getMe, savePaymentDetails, getUsers, deleteUser, updateUserRole, forgotPassword, resetPassword } = require('../controllers/AuthController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/roleMiddleware');
 const jwt = require('jsonwebtoken');
@@ -12,9 +12,11 @@ router.post('/verify-otp', verifyOTP);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
-router.get('/users', protect, adminOnly, getUsers);
-router.delete('/users/:id', protect, adminOnly, deleteUser);
-router.patch('/users/:id/role', protect, adminOnly, updateUserRole);
+router.get('/me',                  protect, getMe);
+router.patch('/payment-details',   protect, savePaymentDetails);
+router.get('/users',               protect, adminOnly, getUsers);
+router.delete('/users/:id',        protect, adminOnly, deleteUser);
+router.patch('/users/:id/role',    protect, adminOnly, updateUserRole);
 
 // ── GOOGLE OAUTH ──────────────────────────────────
 router.get('/google', (req, res) => {
