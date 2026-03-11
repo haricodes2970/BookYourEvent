@@ -176,3 +176,37 @@ router.get('/google/callback', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── ADD THIS ROUTE to your existing AuthRouter.js ──────────────────────────
+// Place it with the other protected auth routes (after authMiddleware)
+
+// IMPORT at top of AuthRouter.js (already there):
+// const { protect } = require('../middleware/authMiddleware');
+
+// ADD THIS ROUTE:
+router.patch('/switch-role', protect, async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['booker', 'venueOwner'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be booker or venueOwner.' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { role },
+      { new: true }
+    ).select('-password -otp -otpExpiry');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role, name: user.name, email: user.email, isGoogleUser: user.isGoogleUser },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({ user, token });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
