@@ -1,725 +1,839 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
-import { getAllVenues } from '../services/venueService';
-import { getMyBookings, raiseBid } from '../services/bookingService';
-import { getMyPayments } from '../services/paymentService';
-import { getMyChats, getChatMessages, sendMessage, openChat, markChatRead } from '../services/chatService';
-import { formatINR, formatDateIN, statusColor, timeAgo } from '../utils/helpers';
-import api from '../utils/axiosInstance';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import api from "../utils/axiosInstance";
+import {
+  formatINR,
+  formatDateIN,
+  timeAgo,
+  truncate,
+} from "../utils/helpers";
 
-// ── Icons ─────────────────────────────────────────────────────────────────
-const Ic = ({ d, size = 20 }) => (
+// ─── Icons ────────────────────────────────────────────────────────────────────
+const Icon = ({ d, size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
+    stroke="currentColor" strokeWidth={2} strokeLinecap="round"
+    strokeLinejoin="round" className={className}>
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
   </svg>
 );
-const IC = {
-  overview:  'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z',
-  venues:    'M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z',
-  bookings:  'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  payments:  'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
-  chat:      'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z',
-  profile:   'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z',
-  logout:    'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9',
-  sun:       'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z',
-  moon:      'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z',
-  search:    'M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z',
-  send:      'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
-  edit:      'M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7 M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z',
-  switch:    'M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4',
-  filter:    'M3 4h18M7 8h10M11 12h2M13 16h-2',
-  bid:       'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
-  globe:     'M12 2a10 10 0 100 20A10 10 0 0012 2zM2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20',
-  check:     'M20 6L9 17l-5-5',
-  x:         'M18 6L6 18M6 6l12 12',
-  save:      'M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z M17 21v-8H7v8 M7 3v5h8',
+
+const ICONS = {
+  overview: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
+  venues: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
+  bookings: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  payments: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+  chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  profile: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
+  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  sun: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
+  moon: "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+  send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  x: "M18 6L6 18M6 6l12 12",
+  check: "M20 6L9 17l-5-5",
+  alert: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
+  arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
-// ── Theme ─────────────────────────────────────────────────────────────────
-const THEMES = {
-  dark: {
-    bg: '#080f14', surface: '#0d1821', surfaceAlt: '#111c27',
-    border: '#1a2a38', text: '#e8f0f7', muted: '#5a7a94',
-    primary: '#1e9e8c', primaryBg: 'rgba(30,158,140,0.12)',
-    sidebar: '#060d12', card: '#0d1821',
-  },
-  light: {
-    bg: '#f0f6fa', surface: '#ffffff', surfaceAlt: '#f7fbfd',
-    border: '#daeaf4', text: '#0d1821', muted: '#6a8fa8',
-    primary: '#1e7a6e', primaryBg: 'rgba(30,122,110,0.08)',
-    sidebar: '#0d1821', card: '#ffffff',
-  },
-};
-
-// ── Languages ─────────────────────────────────────────────────────────────
-const LANGS = {
-  en: { label: 'English', font: "'DM Sans', sans-serif", flag: '🇺🇸' },
-  hi: { label: 'हिन्दी', font: "'Noto Sans Devanagari', sans-serif", flag: '🇮🇳' },
-  te: { label: 'తెలుగు', font: "'Noto Sans Telugu', sans-serif", flag: '🇮🇳' },
-  ta: { label: 'தமிழ்', font: "'Noto Sans Tamil', sans-serif", flag: '🇮🇳' },
-  kn: { label: 'ಕನ್ನಡ', font: "'Noto Sans Kannada', sans-serif", flag: '🇮🇳' },
-};
-
-// ── Status Badge ──────────────────────────────────────────────────────────
-const Badge = ({ status }) => {
-  const c = statusColor(status);
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
   return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 50,
-      fontSize: 11, fontWeight: 700, background: c.bg, color: c.text,
-      textTransform: 'capitalize',
-    }}>{status}</span>
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div key={t.id}
+            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 60 }}
+            className={`px-4 py-3 rounded-xl text-sm font-medium shadow-2xl pointer-events-auto
+              ${t.type === "success" ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+            {t.msg}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
   );
-};
+}
 
-// ── Missing Credentials Popup ─────────────────────────────────────────────
-const MissingCredsPopup = ({ user, onClose, onGoProfile, T }) => {
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const push = useCallback((msg, type = "success") => {
+    const id = Date.now();
+    setToasts((p) => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 3000);
+  }, []);
+  return { toasts, push };
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+function Badge({ status }) {
+  const map = {
+    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    paid: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    expired: "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] || map.expired}`}>
+      {status?.replace("_", " ")}
+    </span>
+  );
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, accent }) {
+  const accents = {
+    violet: "from-violet-500/10 to-violet-500/5 border-violet-500/20",
+    emerald: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20",
+    amber: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
+    sky: "from-sky-500/10 to-sky-500/5 border-sky-500/20",
+  };
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className={`rounded-2xl border bg-gradient-to-br p-5 ${accents[accent] || accents.violet}`}>
+      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-2xl font-bold text-zinc-900 dark:text-white">{value}</p>
+    </motion.div>
+  );
+}
+
+// ─── Missing Credentials Popup ────────────────────────────────────────────────
+function MissingCredentials({ user, onLater, onUpdateNow }) {
   const missing = [];
-  if (!user?.phone) missing.push('Phone number');
-  if (!user?.username) missing.push('Username');
-  if (!user?.name) missing.push('Full name');
+  if (!user?.phone) missing.push("phone number");
+  if (!user?.username) missing.push("username");
+  if (!user?.name) missing.push("full name");
   if (missing.length === 0) return null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-        style={{ background: T.surface, borderRadius: 20, padding: 28, width: '100%', maxWidth: 380, border: `1px solid ${T.border}`, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>👋</div>
-        <h2 style={{ color: T.text, fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Complete your profile</h2>
-        <p style={{ color: T.muted, fontSize: 14, marginBottom: 16 }}>
-          The following details are missing from your account:
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-          {missing.map(m => (
-            <div key={m} style={{ background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', color: '#854d0e', fontWeight: 600, fontSize: 13 }}>
-              ⚠️ {m} is missing
-            </div>
-          ))}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+        className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+            <Icon d={ICONS.alert} size={18} className="text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-900 dark:text-white">Complete your profile</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              Your profile is missing: <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {missing.join(", ")}
+              </span>
+            </p>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${T.border}`, background: 'transparent', color: T.muted, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <div className="flex gap-3">
+          <button onClick={onLater}
+            className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+              text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Later
           </button>
-          <button onClick={onGoProfile} style={{ flex: 2, padding: '11px', borderRadius: 12, background: T.primary, border: 'none', color: 'white', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={onUpdateNow}
+            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700
+              text-white text-sm font-semibold transition-colors">
             Update Now
           </button>
         </div>
       </motion.div>
     </motion.div>
   );
-};
+}
 
-// ── Venue Card ────────────────────────────────────────────────────────────
-const VenueCard = ({ venue, T, onBook }) => (
-  <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-    whileHover={{ y: -4 }}
-    style={{ background: T.card, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
-    onClick={onBook}>
-    <div style={{ height: 150, background: T.surfaceAlt, position: 'relative', overflow: 'hidden' }}>
-      {venue.images?.[0]
-        ? <img src={venue.images[0]} alt={venue.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🏛️</div>}
-      <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.6)', borderRadius: 50, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: 'white' }}>
-        {venue.venueType || venue.type || 'Hall'}
-      </div>
-    </div>
-    <div style={{ padding: '14px 16px' }}>
-      <h3 style={{ color: T.text, fontWeight: 800, fontSize: 15, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{venue.name}</h3>
-      <p style={{ color: T.muted, fontSize: 12, margin: '0 0 10px' }}>📍 {venue.location?.city || 'N/A'}</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: T.primary, fontWeight: 800, fontSize: 15 }}>{formatINR(venue.pricePerHour)}<span style={{ color: T.muted, fontWeight: 400, fontSize: 12 }}>/hr</span></span>
-        <motion.button whileTap={{ scale: 0.95 }}
-          onClick={e => { e.stopPropagation(); onBook(); }}
-          style={{ padding: '7px 14px', borderRadius: 50, background: T.primary, border: 'none', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Book Now
-        </motion.button>
-      </div>
-    </div>
-  </motion.div>
-);
-
-// ── Main Component ─────────────────────────────────────────────────────────
-const BookerDashboard = () => {
-  const { user, logout, login } = useAuth();
-  const navigate = useNavigate();
-
-  const [theme, setTheme] = useState(() => localStorage.getItem('booker-theme') || 'dark');
-  const [lang, setLang] = useState(() => localStorage.getItem('bye-lang') || 'en');
-  const T = THEMES[theme];
-
-  const [tab, setTab] = useState('overview');
-  const [venues, setVenues] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [payments, setPayments] = useState([]);
+// ─── Chat Panel ───────────────────────────────────────────────────────────────
+function ChatPanel({ user }) {
   const [chats, setChats] = useState([]);
-  const [activeChat, setActiveChat] = useState(null);
+  const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [msgText, setMsgText] = useState('');
-  const [sendingMsg, setSendingMsg] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState('');
-  const [error, setError] = useState('');
-  const [showMissingCreds, setShowMissingCreds] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [bookingFilter, setBookingFilter] = useState('all');
-  const [raiseBidId, setRaiseBidId] = useState(null);
-  const [newBidAmount, setNewBidAmount] = useState('');
-  const [bidLoading, setBidLoading] = useState(false);
+  const [text, setText] = useState("");
+  const bottomRef = useRef(null);
 
-  // Profile editing
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: user?.name || '', phone: user?.phone || '', username: user?.username || '' });
-  const [savingProfile, setSavingProfile] = useState(false);
+  useEffect(() => { api.get("/api/chats").then((r) => setChats(r.data)).catch(() => {}); }, []);
 
-  const msgEndRef = useRef(null);
+  useEffect(() => {
+    if (!active) return;
+    api.get(`/api/chats/${active._id}/messages`)
+      .then((r) => { setMessages(r.data); scrollBottom(); })
+      .catch(() => {});
+    api.patch(`/api/chats/${active._id}/read`).catch(() => {});
+  }, [active]);
 
-  const showNotice = (msg, isErr = false) => {
-    if (isErr) setError(msg); else setNotice(msg);
-    setTimeout(() => { setNotice(''); setError(''); }, 3000);
+  useEffect(() => { scrollBottom(); }, [messages]);
+  const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
+  const send = async () => {
+    if (!text.trim() || !active) return;
+    const msg = text.trim(); setText("");
+    try {
+      const r = await api.post("/api/chats/message", { chatId: active._id, content: msg });
+      setMessages((p) => [...p, r.data]);
+    } catch {}
   };
 
-  // ── Check missing credentials on mount ──────────────────────────────
+  const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
+  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+
+  return (
+    <div className="flex h-full gap-4">
+      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200
+        dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
+        <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
+          <p className="font-semibold text-zinc-900 dark:text-white text-sm">Messages</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {chats.length === 0 && (
+            <p className="text-center text-zinc-400 text-sm mt-8">No conversations</p>
+          )}
+          {chats.map((c) => {
+            const op = opponent(c);
+            return (
+              <button key={c._id} onClick={() => setActive(c)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+                  ${active?._id === c._id
+                    ? "bg-violet-50 dark:bg-violet-900/20"
+                    : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{op?.name}</p>
+                  <p className="text-xs text-zinc-400 truncate">{op?.email}</p>
+                </div>
+                {c.unreadCount > 0 && (
+                  <span className="ml-auto w-5 h-5 bg-violet-600 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0">
+                    {c.unreadCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700
+        bg-white dark:bg-zinc-800/50 overflow-hidden">
+        {!active ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-zinc-400 text-sm">Select a conversation</p>
+          </div>
+        ) : (
+          <>
+            <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-700 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={avatar(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
+                <p className="font-semibold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
+              </div>
+              <button onClick={() => setActive(null)}
+                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
+                <Icon d={ICONS.x} size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
+              {messages.map((m) => {
+                const mine = m.sender?._id === user?._id || m.sender === user?._id;
+                return (
+                  <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
+                      ${mine
+                        ? "bg-violet-600 text-white rounded-br-sm"
+                        : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}>
+                      {m.content}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+            <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-700 flex gap-2">
+              <input value={text} onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+                placeholder="Type a message…"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700
+                  text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500
+                  placeholder:text-zinc-400" />
+              <button onClick={send}
+                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+                <Icon d={ICONS.send} size={16} />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function BookerDashboard() {
+  const { user, logout, login } = useAuth();
+  const navigate = useNavigate();
+  const { toasts, push } = useToast();
+
+  const [tab, setTab] = useState("overview");
+  const [dark, setDark] = useState(() => localStorage.getItem("bookerTheme") === "dark");
+
+  // Data
+  const [bookings, setBookings] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, paid: 0 });
+  const [loading, setLoading] = useState(true);
+
+  // UI state
+  const [venueSearch, setVenueSearch] = useState("");
+  const [bookingFilter, setBookingFilter] = useState("all");
+  const [raiseBidId, setRaiseBidId] = useState(null);
+  const [raiseBidAmount, setRaiseBidAmount] = useState("");
+  const [unreadChats, setUnreadChats] = useState(false);
+
+  // Missing credentials popup
+  const [showMissingPopup, setShowMissingPopup] = useState(false);
+
+  // Profile edit
+  const [editMode, setEditMode] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: "", username: "", phone: "" });
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Language
+  const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
+  const LANGS = [
+    { code: "en", label: "English", native: "English", font: "DM Sans" },
+    { code: "hi", label: "Hindi", native: "हिन्दी", font: "Noto Sans Devanagari" },
+    { code: "te", label: "Telugu", native: "తెలుగు", font: "Noto Sans Telugu" },
+    { code: "ta", label: "Tamil", native: "தமிழ்", font: "Noto Sans Tamil" },
+    { code: "kn", label: "Kannada", native: "ಕನ್ನಡ", font: "Noto Sans Kannada" },
+  ];
+  const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
+
   useEffect(() => {
-    if (user && (!user.phone || !user.username)) {
-      const dismissed = sessionStorage.getItem('creds-dismissed');
-      if (!dismissed) setShowMissingCreds(true);
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("bookerTheme", dark ? "dark" : "light");
+  }, [dark]);
+
+  useEffect(() => {
+    if (lang !== "en") {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
+      document.head.appendChild(link);
+    }
+    localStorage.setItem("appLang", lang);
+  }, [lang]);
+
+  // Missing creds check (session-based)
+  useEffect(() => {
+    if (!user) return;
+    const dismissed = sessionStorage.getItem("missingCredsDismissed");
+    if (!dismissed && (!user.phone || !user.username)) {
+      setShowMissingPopup(true);
     }
   }, [user]);
 
-  // ── Load language font ───────────────────────────────────────────────
-  useEffect(() => {
-    localStorage.setItem('bye-lang', lang);
-    const link = document.getElementById('lang-font');
-    if (lang !== 'en') {
-      const fontName = LANGS[lang].font.replace(/'/g, '').replace(/ /g, '+');
-      const href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@400;600;700&display=swap`;
-      if (link) { link.href = href; } else {
-        const el = document.createElement('link');
-        el.id = 'lang-font'; el.rel = 'stylesheet'; el.href = href;
-        document.head.appendChild(el);
-      }
-    }
-  }, [lang]);
-
-  // ── Data fetching ────────────────────────────────────────────────────
-  const fetchAll = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [vData, bData] = await Promise.all([
-        getAllVenues(),
-        getMyBookings(),
+      const [bRes, vRes, pRes] = await Promise.all([
+        api.get("/api/bookings/my"),
+        api.get("/api/venues"),
+        api.get("/api/payments/my-payments"),
       ]);
-      setVenues(vData.venues || vData || []);
-      setBookings(bData.bookings || bData || []);
-    } catch { showNotice('Failed to load data', true); }
+      const b = bRes.data;
+      setBookings(b);
+      setVenues(vRes.data);
+      setPayments(pRes.data);
+      setStats({
+        total: b.length,
+        pending: b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length,
+        confirmed: b.filter((x) => x.status === "approved").length,
+        paid: b.filter((x) => x.status === "paid").length,
+      });
+    } catch { push("Failed to load data", "error"); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Payments
   useEffect(() => {
-    if (tab === 'payments') {
-      getMyPayments().then(d => setPayments(d.payments || d || [])).catch(() => {});
-    }
-  }, [tab]);
+    api.get("/api/chats").then((r) => {
+      setUnreadChats(r.data.some((c) => c.unreadCount > 0));
+    }).catch(() => {});
+  }, []);
 
-  // Chats
   useEffect(() => {
-    if (tab === 'chat') {
-      getMyChats().then(d => setChats(d || [])).catch(() => {});
-    }
-  }, [tab]);
-
-  // Messages scroll
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  // ── Handlers ─────────────────────────────────────────────────────────
-  const handleOpenChat = async (chat) => {
-    setActiveChat(chat);
-    const msgs = await getChatMessages(chat._id);
-    setMessages(msgs || []);
-    await markChatRead(chat._id);
-  };
-
-  const handleSendMsg = async () => {
-    if (!msgText.trim() || !activeChat) return;
-    setSendingMsg(true);
-    try {
-      const msg = await sendMessage(activeChat._id, msgText.trim());
-      setMessages(p => [...p, msg]);
-      setMsgText('');
-    } finally { setSendingMsg(false); }
-  };
+    if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
+  }, [user]);
 
   const handleRaiseBid = async (bookingId) => {
-    if (!newBidAmount) return;
-    setBidLoading(true);
+    if (!raiseBidAmount || isNaN(raiseBidAmount)) return push("Enter a valid amount", "error");
     try {
-      await raiseBid(bookingId, { newBidAmount: Number(newBidAmount) });
-      showNotice('Bid raised! Owner will be notified.');
-      setRaiseBidId(null); setNewBidAmount('');
-      fetchAll();
-    } catch (e) { showNotice(e?.response?.data?.message || 'Failed to raise bid', true); }
-    finally { setBidLoading(false); }
-  };
-
-  const handleSwitchRole = async () => {
-    if (switchingRole) return;
-    setSwitchingRole(true);
-    try {
-      const { data } = await api.patch('/auth/switch-role', { role: 'venueOwner' });
-      login(data.user, data.token);
-      showNotice('Switched to Venue Owner!');
-      setTimeout(() => navigate('/owner/dashboard'), 800);
-    } catch { showNotice('Failed to switch role', true); }
-    finally { setSwitchingRole(false); }
+      await api.patch(`/api/bookings/${bookingId}/raise-bid`, { newBidAmount: Number(raiseBidAmount) });
+      push("Bid raised successfully!");
+      setRaiseBidId(null); setRaiseBidAmount("");
+      fetchData();
+    } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleSaveProfile = async () => {
-    setSavingProfile(true);
+    setProfileLoading(true);
     try {
-      const { data } = await api.patch('/auth/update-profile', profileForm);
-      login(data.user, data.token || localStorage.getItem('token'));
-      setEditingProfile(false);
-      showNotice('Profile updated!');
-    } catch (e) { showNotice(e?.response?.data?.message || 'Failed to update', true); }
-    finally { setSavingProfile(false); }
+      const r = await api.patch("/api/auth/update-profile", profileForm);
+      login(r.data.token);
+      push("Profile updated!");
+      setEditMode(false);
+    } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
+    finally { setProfileLoading(false); }
   };
 
-  // ── Filtered data ──────────────────────────────────────────────────
-  const filteredVenues = venues.filter(v => {
-    const q = searchQuery.toLowerCase();
-    return !q || v.name?.toLowerCase().includes(q) || v.location?.city?.toLowerCase().includes(q);
+  const handleSwitchRole = async () => {
+    try {
+      const r = await api.patch("/api/auth/switch-role", { role: "venueOwner" });
+      login(r.data.token);
+      push("Switched to Venue Owner!");
+      setTimeout(() => navigate("/owner/dashboard"), 800);
+    } catch { push("Switch failed", "error"); }
+  };
+
+  const filteredVenues = venues.filter((v) =>
+    v.isActive && (
+      v.name?.toLowerCase().includes(venueSearch.toLowerCase()) ||
+      v.city?.toLowerCase().includes(venueSearch.toLowerCase())
+    )
+  );
+
+  const filteredBookings = bookings.filter((b) => {
+    if (bookingFilter === "all") return true;
+    if (bookingFilter === "pending") return ["pending", "bid_raised"].includes(b.status);
+    return b.status === bookingFilter;
   });
 
-  const filteredBookings = bookings.filter(b => bookingFilter === 'all' || b.status === bookingFilter);
+  const recentBookings = [...bookings].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
-  const stats = {
-    totalBookings: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'approved' || b.status === 'confirmed').length,
-    paid: bookings.filter(b => b.status === 'paid').length,
-  };
+  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
 
-  // ── Nav ────────────────────────────────────────────────────────────
-  const NAV = [
-    { id: 'overview', icon: 'overview', label: 'Overview' },
-    { id: 'venues',   icon: 'venues',   label: 'Venues' },
-    { id: 'bookings', icon: 'bookings', label: 'My Bookings' },
-    { id: 'payments', icon: 'payments', label: 'Payments' },
-    { id: 'chat',     icon: 'chat',     label: 'Chat' },
-    { id: 'profile',  icon: 'profile',  label: 'Profile' },
+  const TABS = [
+    { key: "overview", icon: ICONS.overview },
+    { key: "venues", icon: ICONS.venues },
+    { key: "bookings", icon: ICONS.bookings },
+    { key: "payments", icon: ICONS.payments },
+    { key: "chat", icon: ICONS.chat, dot: unreadChats },
+    { key: "profile", icon: ICONS.profile },
   ];
 
-  const fontFamily = LANGS[lang]?.font || "'DM Sans', sans-serif";
+  const BOOKING_FILTERS = ["all", "pending", "approved", "paid", "rejected", "expired"];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily, color: T.text }}>
+    <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
+      className={`min-h-screen flex ${dark ? "dark" : ""} bg-zinc-50 dark:bg-zinc-950`}>
 
-      {/* ── Google Font for language ───────────────────────────────── */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');`}</style>
+      <Toast toasts={toasts} />
 
-      {/* ── Sidebar ───────────────────────────────────────────────── */}
-      <aside style={{
-        width: 68, background: T.sidebar, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', paddingTop: 20, paddingBottom: 20, gap: 4,
-        position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 100,
-        borderRight: `1px solid ${T.border}`,
-      }}>
-        {/* Logo */}
-        <div style={{ marginBottom: 20, cursor: 'pointer' }} onClick={() => navigate('/')}>
-          <img src="/logo.png" alt="BYE" style={{ width: 38, height: 38, borderRadius: 12, objectFit: 'cover' }}
-            onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-          <div style={{ display: 'none', width: 38, height: 38, borderRadius: 12, background: T.primary, alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900, fontSize: 12 }}>BYE</div>
-        </div>
+      {/* Missing credentials popup */}
+      {showMissingPopup && (
+        <MissingCredentials
+          user={user}
+          onLater={() => { sessionStorage.setItem("missingCredsDismissed", "1"); setShowMissingPopup(false); }}
+          onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }}
+        />
+      )}
 
-        {NAV.map(item => (
-          <motion.button key={item.id} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-            onClick={() => setTab(item.id)} title={item.label}
-            style={{
-              width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: tab === item.id ? T.primary : 'transparent',
-              color: tab === item.id ? 'white' : T.muted,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative', transition: 'all 0.2s',
-            }}>
-            <Ic d={IC[item.icon]} size={18} />
-            {item.id === 'chat' && chats.length > 0 && (
-              <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-            )}
-          </motion.button>
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
+        bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
+        <button onClick={() => navigate("/")}
+          className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center mb-4 flex-shrink-0">
+          <span className="text-white font-black text-sm">B</span>
+        </button>
+
+        {TABS.map(({ key, icon, dot }) => (
+          <button key={key} onClick={() => setTab(key)} title={key}
+            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
+              ${tab === key
+                ? "bg-violet-600 text-white shadow-lg shadow-violet-500/25"
+                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>
+            <Icon d={icon} size={18} />
+            {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
+          </button>
         ))}
 
-        <div style={{ flex: 1 }} />
+        <div className="flex-1" />
 
-        {/* Theme toggle */}
-        <motion.button whileTap={{ scale: 0.95 }}
-          onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); localStorage.setItem('booker-theme', t); }}
-          style={{ width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'transparent', color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Ic d={theme === 'dark' ? IC.sun : IC.moon} size={18} />
-        </motion.button>
+        <button onClick={() => setDark((p) => !p)}
+          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800
+            flex items-center justify-center transition-colors">
+          <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
+        </button>
 
-        {/* Logout */}
-        <motion.button whileTap={{ scale: 0.95 }}
-          onClick={() => { logout(); navigate('/login'); }}
-          style={{ width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'transparent', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Ic d={IC.logout} size={18} />
-        </motion.button>
+        <button onClick={() => setTab("profile")} className="mt-1">
+          <img src={avatar(user?.name)} alt="" className="w-9 h-9 rounded-full" />
+        </button>
 
-        {/* Avatar */}
-        <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', marginTop: 8, border: `2px solid ${T.primary}`, cursor: 'pointer' }} onClick={() => setTab('profile')}>
-          <img src={user?.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${user?.name}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
+        <button onClick={logout} title="Logout"
+          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
+            flex items-center justify-center transition-colors mt-1 mb-1">
+          <Icon d={ICONS.logout} size={18} />
+        </button>
       </aside>
 
-      {/* ── Main ──────────────────────────────────────────────────── */}
-      <main style={{ flex: 1, marginLeft: 68, minHeight: '100vh' }}>
-        {/* Top bar */}
-        <div style={{ padding: '20px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: T.text, margin: 0 }}>
-              {NAV.find(n => n.id === tab)?.label}
-            </h1>
-            <p style={{ fontSize: 13, color: T.muted, margin: '2px 0 0' }}>Welcome back, {user?.name?.split(' ')[0]}</p>
-          </div>
-          {tab === 'venues' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ position: 'relative' }}>
-                <Ic d={IC.search} size={16} />
-                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search venues..."
-                  style={{ paddingLeft: 32, paddingRight: 14, paddingTop: 10, paddingBottom: 10, borderRadius: 50, border: `1px solid ${T.border}`, background: T.surface, color: T.text, fontSize: 13, fontFamily, outline: 'none', width: 200 }} />
-                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, pointerEvents: 'none' }}>
-                  <Ic d={IC.search} size={14} />
+      {/* Main */}
+      <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
+        <AnimatePresence mode="wait">
+          <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
+            className="max-w-6xl mx-auto">
+
+            {/* ── Overview ── */}
+            {tab === "overview" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    Hey, {user?.name?.split(" ")[0]} 👋
+                  </h1>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Here's your booking summary</p>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Toast */}
-        <AnimatePresence>
-          {(notice || error) && (
-            <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              style={{ margin: '12px 24px 0', padding: '12px 18px', borderRadius: 12, background: error ? '#fef2f2' : T.primaryBg, border: `1px solid ${error ? '#fecaca' : T.primary}`, color: error ? '#dc2626' : T.primary, fontSize: 14, fontWeight: 600 }}>
-              {notice || error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div style={{ padding: '20px 24px' }}>
-
-          {/* ── OVERVIEW ───────────────────────────────────────────── */}
-          {tab === 'overview' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
-                {[
-                  { label: 'Total Bookings', value: stats.totalBookings, color: T.primary },
-                  { label: 'Pending', value: stats.pending, color: '#f59e0b' },
-                  { label: 'Confirmed', value: stats.confirmed, color: '#10b981' },
-                  { label: 'Paid', value: stats.paid, color: '#8b5cf6' },
-                ].map((s, i) => (
-                  <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                    style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '20px 22px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>{s.label}</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Recent bookings */}
-              <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between' }}>
-                  <h3 style={{ color: T.text, fontWeight: 700, fontSize: 15, margin: 0 }}>Recent Bookings</h3>
-                  <button onClick={() => setTab('bookings')} style={{ fontSize: 13, color: T.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View all →</button>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard label="Total Bookings" value={stats.total} accent="violet" />
+                  <StatCard label="Pending" value={stats.pending} accent="amber" />
+                  <StatCard label="Confirmed" value={stats.confirmed} accent="sky" />
+                  <StatCard label="Paid" value={stats.paid} accent="emerald" />
                 </div>
-                {bookings.slice(0, 5).map((b, i) => (
-                  <div key={b._id} style={{ padding: '14px 20px', borderBottom: i < 4 ? `1px solid ${T.border}` : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{b.venue?.name || 'Venue'}</div>
-                      <div style={{ fontSize: 12, color: T.muted }}>{formatDateIN(b.eventDate)} • {formatINR(b.bidAmount)}</div>
-                    </div>
-                    <Badge status={b.status} />
+
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <h2 className="font-semibold text-zinc-900 dark:text-white">Recent Bookings</h2>
+                    <button onClick={() => setTab("bookings")}
+                      className="flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline">
+                      View all <Icon d={ICONS.arrowRight} size={13} />
+                    </button>
                   </div>
-                ))}
-                {bookings.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: T.muted }}>No bookings yet</div>}
-              </div>
-            </div>
-          )}
-
-          {/* ── VENUES ──────────────────────────────────────────────── */}
-          {tab === 'venues' && (
-            loading ? <div style={{ textAlign: 'center', padding: 60, color: T.muted }}>Loading venues...</div>
-            : filteredVenues.length === 0 ? <div style={{ textAlign: 'center', padding: 60, color: T.muted }}>No venues found</div>
-            : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
-                {filteredVenues.map(v => (
-                  <VenueCard key={v._id} venue={v} T={T} onBook={() => navigate(`/venue/${v._id}`)} />
-                ))}
-              </div>
-            )
-          )}
-
-          {/* ── MY BOOKINGS ─────────────────────────────────────────── */}
-          {tab === 'bookings' && (
-            <div>
-              {/* Filter tabs */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-                {['all', 'pending', 'approved', 'paid', 'rejected', 'expired'].map(f => (
-                  <button key={f} onClick={() => setBookingFilter(f)}
-                    style={{ padding: '8px 16px', borderRadius: 50, border: `1px solid ${bookingFilter === f ? T.primary : T.border}`, background: bookingFilter === f ? T.primary : 'transparent', color: bookingFilter === f ? 'white' : T.muted, fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily, textTransform: 'capitalize' }}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {filteredBookings.length === 0
-                  ? <div style={{ textAlign: 'center', padding: 60, color: T.muted, background: T.surface, borderRadius: 16, border: `1px solid ${T.border}` }}>No bookings found</div>
-                  : filteredBookings.map(b => (
-                    <motion.div key={b._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, padding: '18px 20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 800, color: T.text, fontSize: 16, marginBottom: 4 }}>{b.venue?.name || 'Venue'}</div>
-                          <div style={{ fontSize: 13, color: T.muted, marginBottom: 8 }}>
-                            📅 {formatDateIN(b.eventDate)} &nbsp;•&nbsp; 💰 {formatINR(b.bidAmount)} &nbsp;•&nbsp; {timeAgo(b.createdAt)}
+                  {recentBookings.length === 0 ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
+                  ) : (
+                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                      {recentBookings.map((b) => (
+                        <div key={b._id} className="px-6 py-4 flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-zinc-900 dark:text-white text-sm truncate">
+                              {b.venue?.name || "Venue"}
+                            </p>
+                            <p className="text-xs text-zinc-400 mt-0.5">
+                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                            </p>
                           </div>
                           <Badge status={b.status} />
                         </div>
-                        {b.status === 'pending' && (
-                          <div>
-                            {raiseBidId === b._id ? (
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <input type="number" value={newBidAmount} onChange={e => setNewBidAmount(e.target.value)}
-                                  placeholder="New amount"
-                                  style={{ padding: '8px 12px', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.text, fontSize: 13, fontFamily, outline: 'none', width: 130 }} />
-                                <button onClick={() => handleRaiseBid(b._id)} disabled={bidLoading}
-                                  style={{ padding: '8px 14px', borderRadius: 10, background: T.primary, border: 'none', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily }}>
-                                  {bidLoading ? '...' : 'Raise'}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Venues ── */}
+            {tab === "venues" && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between gap-4">
+                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Browse Venues</h1>
+                  <div className="relative max-w-sm w-full">
+                    <Icon d={ICONS.search} size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                    <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
+                      placeholder="Search by name or city…"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+                        bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
+                        focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400" />
+                  </div>
+                </div>
+
+                {filteredVenues.length === 0 ? (
+                  <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                    <p className="text-zinc-400">No venues found</p>
+                    {venueSearch && (
+                      <button onClick={() => setVenueSearch("")}
+                        className="mt-2 text-sm text-violet-600 dark:text-violet-400 hover:underline">
+                        Clear search
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filteredVenues.map((v) => (
+                      <motion.div key={v._id} layout
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700
+                          bg-white dark:bg-zinc-900 overflow-hidden group">
+                        <div className="relative h-44 bg-zinc-100 dark:bg-zinc-800">
+                          {v.images?.[0] ? (
+                            <img src={v.images[0]} alt={v.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                            </div>
+                          )}
+                          {v.venueType && (
+                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold
+                              bg-black/50 text-white backdrop-blur-sm">
+                              {v.venueType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <p className="font-semibold text-zinc-900 dark:text-white truncate">{v.name}</p>
+                          <p className="text-sm text-zinc-400 mt-0.5">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
+                          <button onClick={() => navigate(`/venue/${v._id}`)}
+                            className="mt-3 w-full py-2 rounded-xl bg-violet-600 hover:bg-violet-700
+                              text-white text-sm font-semibold transition-colors">
+                            Book Now
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── My Bookings ── */}
+            {tab === "bookings" && (
+              <div className="space-y-5">
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">My Bookings</h1>
+
+                {/* Filter tabs */}
+                <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl w-fit flex-wrap">
+                  {BOOKING_FILTERS.map((f) => (
+                    <button key={f} onClick={() => setBookingFilter(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all
+                        ${bookingFilter === f
+                          ? "bg-white dark:bg-zinc-700 text-violet-600 dark:text-violet-400 shadow-sm"
+                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+
+                {filteredBookings.length === 0 ? (
+                  <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                    <p className="text-zinc-400">No bookings in this category</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredBookings.map((b) => (
+                      <motion.div key={b._id} layout
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700
+                          bg-white dark:bg-zinc-900 p-5">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <p className="font-semibold text-zinc-900 dark:text-white">
+                                {b.venue?.name || "Venue"}
+                              </p>
+                              <Badge status={b.status} />
+                            </div>
+                            <p className="text-sm text-zinc-400 mt-1">
+                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 flex-wrap justify-end">
+                            {["pending", "bid_raised"].includes(b.status) && (
+                              raiseBidId === b._id ? (
+                                <div className="flex items-center gap-2">
+                                  <input type="number" value={raiseBidAmount}
+                                    onChange={(e) => setRaiseBidAmount(e.target.value)}
+                                    placeholder="New amount (₹)"
+                                    className="w-32 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700
+                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                                  <button onClick={() => handleRaiseBid(b._id)}
+                                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
+                                    <Icon d={ICONS.check} size={14} />
+                                  </button>
+                                  <button onClick={() => { setRaiseBidId(null); setRaiseBidAmount(""); }}
+                                    className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 transition-colors">
+                                    <Icon d={ICONS.x} size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button onClick={() => setRaiseBidId(b._id)}
+                                  className="px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30
+                                    text-blue-700 dark:text-blue-400 text-xs font-semibold
+                                    hover:bg-blue-200 transition-colors">
+                                  Raise Bid
                                 </button>
-                                <button onClick={() => setRaiseBidId(null)}
-                                  style={{ padding: '8px 10px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.muted, cursor: 'pointer' }}>
-                                  <Ic d={IC.x} size={14} />
-                                </button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setRaiseBidId(b._id)}
-                                style={{ padding: '8px 14px', borderRadius: 10, background: T.primaryBg, border: `1px solid ${T.primary}`, color: T.primary, fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily }}>
-                                💰 Raise Bid
+                              )
+                            )}
+                            {b.status === "approved" && (
+                              <button onClick={() => navigate(`/venue/${b.venue?._id}`)}
+                                className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700
+                                  text-white text-xs font-semibold transition-colors">
+                                Pay Now
                               </button>
                             )}
                           </div>
-                        )}
-                        {b.status === 'approved' && (
-                          <button onClick={() => navigate(`/venue/${b.venue?._id}`)}
-                            style={{ padding: '8px 14px', borderRadius: 10, background: '#dcfce7', border: 'none', color: '#166534', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily }}>
-                            💳 Pay Now
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── PAYMENTS ────────────────────────────────────────────── */}
-          {tab === 'payments' && (
-            <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
-              {payments.length === 0 ? (
-                <div style={{ padding: 60, textAlign: 'center', color: T.muted }}>No payment history</div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: T.surfaceAlt }}>
-                        {['Venue', 'Date', 'Amount', 'Status', 'Transaction ID'].map(h => (
-                          <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.6px', whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map((p, i) => (
-                        <tr key={p._id || i} style={{ borderTop: `1px solid ${T.border}` }}>
-                          <td style={{ padding: '14px 16px', fontWeight: 600, color: T.text, fontSize: 14 }}>{p.booking?.venue?.name || p.venue?.name || '—'}</td>
-                          <td style={{ padding: '14px 16px', color: T.muted, fontSize: 13 }}>{formatDateIN(p.createdAt)}</td>
-                          <td style={{ padding: '14px 16px', fontWeight: 700, color: T.primary, fontSize: 14 }}>{formatINR(p.amount)}</td>
-                          <td style={{ padding: '14px 16px' }}><Badge status={p.status || 'paid'} /></td>
-                          <td style={{ padding: '14px 16px', color: T.muted, fontSize: 12, fontFamily: 'monospace' }}>{p.razorpayPaymentId || p.transactionId || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── CHAT ─────────────────────────────────────────────────── */}
-          {tab === 'chat' && (
-            <div style={{ display: 'grid', gridTemplateColumns: activeChat ? '280px 1fr' : '1fr', gap: 16, height: 'calc(100vh - 160px)' }}>
-              {/* Chat list */}
-              <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '16px 18px', borderBottom: `1px solid ${T.border}`, fontWeight: 700, fontSize: 15, color: T.text }}>Messages</div>
-                <div style={{ overflowY: 'auto', flex: 1 }}>
-                  {chats.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: T.muted, fontSize: 14 }}>No conversations yet</div>
-                  ) : chats.map(c => {
-                    const other = c.participants?.find(p => p._id !== user?._id);
-                    return (
-                      <div key={c._id} onClick={() => handleOpenChat(c)}
-                        style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, cursor: 'pointer', background: activeChat?._id === c._id ? T.primaryBg : 'transparent', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <img src={other?.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${other?.name}`} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, color: T.text, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{other?.name || 'User'}</div>
-                          <div style={{ fontSize: 12, color: T.muted }}>{other?.email}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Messages panel */}
-              {activeChat && (
-                <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  {/* Header */}
-                  <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button onClick={() => setActiveChat(null)} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: 4 }}><Ic d={IC.x} size={18} /></button>
-                    <span style={{ fontWeight: 700, color: T.text }}>
-                      {activeChat.participants?.find(p => p._id !== user?._id)?.name || 'Chat'}
-                    </span>
-                  </div>
-                  {/* Messages */}
-                  <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {messages.map(m => {
-                      const isMine = m.sender?._id === user?._id || m.sender === user?._id;
-                      return (
-                        <div key={m._id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                          <div style={{ maxWidth: '70%', padding: '10px 14px', borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMine ? T.primary : T.surfaceAlt, color: isMine ? 'white' : T.text, fontSize: 14 }}>
-                            {m.text}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={msgEndRef} />
-                  </div>
-                  {/* Input */}
-                  <div style={{ padding: '12px 16px', borderTop: `1px solid ${T.border}`, display: 'flex', gap: 10 }}>
-                    <input value={msgText} onChange={e => setMsgText(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMsg()}
-                      placeholder="Type a message..."
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 50, border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.text, fontSize: 14, fontFamily, outline: 'none' }} />
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleSendMsg} disabled={sendingMsg || !msgText.trim()}
-                      style={{ width: 44, height: 44, borderRadius: '50%', background: T.primary, border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Ic d={IC.send} size={16} />
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── PROFILE ─────────────────────────────────────────────── */}
-          {tab === 'profile' && (
-            <div style={{ maxWidth: 520 }}>
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                style={{ background: T.surface, borderRadius: 20, border: `1px solid ${T.border}`, padding: 28, marginBottom: 16 }}>
-
-                {/* Avatar + name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                  <img src={user?.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${user?.name}`} alt=""
-                    style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${T.primary}` }} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: T.text }}>{user?.name}</div>
-                    <div style={{ fontSize: 13, color: T.muted }}>{user?.email}</div>
-                    <div style={{ fontSize: 12, color: T.primary, fontWeight: 600, marginTop: 2 }}>👤 Booker</div>
-                  </div>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setEditingProfile(!editingProfile)}
-                    style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 10, background: T.primaryBg, border: `1px solid ${T.primary}`, color: T.primary, fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Ic d={IC.edit} size={14} /> Edit
-                  </motion.button>
-                </div>
-
-                {/* Edit form */}
-                <AnimatePresence>
-                  {editingProfile && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      style={{ overflow: 'hidden', borderTop: `1px solid ${T.border}`, paddingTop: 20, marginBottom: 20 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {[['name', 'Full Name'], ['username', 'Username'], ['phone', 'Phone']].map(([k, lbl]) => (
-                          <div key={k}>
-                            <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>{lbl}</label>
-                            <input value={profileForm[k] || ''} onChange={e => setProfileForm(p => ({ ...p, [k]: e.target.value }))}
-                              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1px solid ${T.border}`, background: T.surfaceAlt, color: T.text, fontSize: 14, fontFamily, outline: 'none', boxSizing: 'border-box' }} />
-                          </div>
-                        ))}
-                        <div style={{ display: 'flex', gap: 10 }}>
-                          <button onClick={() => setEditingProfile(false)} style={{ flex: 1, padding: '11px', borderRadius: 12, border: `1px solid ${T.border}`, background: 'transparent', color: T.muted, fontWeight: 600, cursor: 'pointer', fontFamily }}>Cancel</button>
-                          <button onClick={handleSaveProfile} disabled={savingProfile} style={{ flex: 2, padding: '11px', borderRadius: 12, background: T.primary, border: 'none', color: 'white', fontWeight: 700, cursor: 'pointer', fontFamily }}>
-                            {savingProfile ? 'Saving...' : 'Save Changes'}
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
+            {/* ── Payments ── */}
+            {tab === "payments" && (
+              <div className="space-y-5">
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Payments</h1>
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 overflow-hidden">
+                  {payments.length === 0 ? (
+                    <p className="text-center text-zinc-400 py-16 text-sm">No payments yet</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                            {["Venue", "Date", "Amount", "Status", "Transaction ID"].map((h) => (
+                              <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold
+                                text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                          {payments.map((p) => (
+                            <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                              <td className="px-5 py-4 font-medium text-zinc-900 dark:text-white whitespace-nowrap">
+                                {truncate(p.venue?.name || "—", 22)}
+                              </td>
+                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                {formatDateIN(p.createdAt)}
+                              </td>
+                              <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                                {formatINR(p.amount)}
+                              </td>
+                              <td className="px-5 py-4"><Badge status={p.status} /></td>
+                              <td className="px-5 py-4">
+                                <span className="font-mono text-xs text-zinc-400">
+                                  {p.razorpayPaymentId || "—"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                </AnimatePresence>
+                </div>
+              </div>
+            )}
 
-                {/* Role switch */}
-                <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 20, marginBottom: 20 }}>
-                  <p style={{ fontSize: 13, color: T.muted, marginBottom: 12 }}>Switch to venue owner to start listing venues.</p>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={handleSwitchRole} disabled={switchingRole}
-                    style={{ width: '100%', padding: '13px', borderRadius: 12, background: T.primaryBg, border: `1.5px solid ${T.primary}`, color: T.primary, fontWeight: 700, fontSize: 14, cursor: switchingRole ? 'not-allowed' : 'pointer', fontFamily, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <Ic d={IC.switch} size={16} />
-                    {switchingRole ? 'Switching...' : 'Switch to Venue Owner'}
-                  </motion.button>
+            {/* ── Chat ── */}
+            {tab === "chat" && (
+              <div className="space-y-4">
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Messages</h1>
+                <div style={{ height: "calc(100vh - 160px)" }}>
+                  <ChatPanel user={user} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Profile ── */}
+            {tab === "profile" && (
+              <div className="max-w-xl space-y-5">
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Profile</h1>
+
+                {/* User card */}
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 p-6">
+                  <div className="flex items-center gap-4 mb-5">
+                    <img src={avatar(user?.name)} alt="" className="w-16 h-16 rounded-2xl" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xl font-bold text-zinc-900 dark:text-white truncate">{user?.name}</p>
+                      <p className="text-sm text-zinc-400 truncate">{user?.email}</p>
+                      <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold
+                        bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
+                        Booker
+                      </span>
+                    </div>
+                    {!editMode && (
+                      <button onClick={() => setEditMode(true)}
+                        className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
+                        <Icon d={ICONS.edit} size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <AnimatePresence>
+                    {editMode && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }} className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
+                        {[
+                          ["name", "Full Name", "text"],
+                          ["username", "Username", "text"],
+                          ["phone", "Phone Number", "tel"],
+                        ].map(([k, label, type]) => (
+                          <div key={k}>
+                            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
+                            <input type={type} value={profileForm[k]}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
+                              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+                                bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
+                                focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                          </div>
+                        ))}
+                        <div className="flex gap-3 pt-1">
+                          <button onClick={() => setEditMode(false)}
+                            className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+                              text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            Cancel
+                          </button>
+                          <button onClick={handleSaveProfile} disabled={profileLoading}
+                            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700
+                              text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+                            {profileLoading ? "Saving…" : "Save Changes"}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Language */}
-                <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 20 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: 10 }}>
-                    <Ic d={IC.globe} size={14} /> &nbsp;Language
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
-                    {Object.entries(LANGS).map(([code, info]) => (
-                      <button key={code} onClick={() => setLang(code)}
-                        style={{ padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${lang === code ? T.primary : T.border}`, background: lang === code ? T.primaryBg : 'transparent', color: lang === code ? T.primary : T.muted, fontWeight: lang === code ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: info.font, textAlign: 'center' }}>
-                        {info.flag} {info.label}
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Language</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LANGS.map((l) => (
+                      <button key={l.code} onClick={() => setLang(l.code)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all
+                          ${lang === l.code
+                            ? "bg-violet-600 border-violet-600 text-white"
+                            : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400"}`}>
+                        {l.native}
                       </button>
                     ))}
                   </div>
                 </div>
-              </motion.div>
 
-              {/* Sign out */}
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                onClick={() => { logout(); navigate('/login'); }}
-                style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Ic d={IC.logout} size={16} /> Sign Out
-              </motion.button>
-            </div>
-          )}
-        </div>
+                {/* Actions */}
+                <div className="flex flex-col gap-3">
+                  <button onClick={handleSwitchRole}
+                    className="w-full py-3 rounded-xl border border-zinc-200 dark:border-zinc-700
+                      text-zinc-700 dark:text-zinc-300 font-medium text-sm
+                      hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                    Switch to Venue Owner
+                  </button>
+                  <button onClick={logout}
+                    className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700
+                      text-white font-semibold text-sm transition-colors">
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </motion.div>
+        </AnimatePresence>
       </main>
-
-      {/* ── Missing credentials popup ─────────────────────────────── */}
-      <AnimatePresence>
-        {showMissingCreds && (
-          <MissingCredsPopup user={user} T={T}
-            onClose={() => { setShowMissingCreds(false); sessionStorage.setItem('creds-dismissed', '1'); }}
-            onGoProfile={() => { setShowMissingCreds(false); setTab('profile'); setEditingProfile(true); sessionStorage.setItem('creds-dismissed', '1'); }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
-};
-
-export default BookerDashboard;
+}
