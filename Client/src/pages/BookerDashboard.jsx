@@ -33,6 +33,16 @@ const ICONS = {
   arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
+// Gradient constants — Gemini palette
+const G = {
+  hero:    "linear-gradient(135deg,#4f46e5 0%,#7c3aed 45%,#a855f7 75%,#0891b2 100%)",
+  violet:  "linear-gradient(135deg,#4f46e5,#7c3aed)",
+  amber:   "linear-gradient(135deg,#d97706,#f59e0b)",
+  sky:     "linear-gradient(135deg,#0284c7,#06b6d4)",
+  emerald: "linear-gradient(135deg,#059669,#14b8a6)",
+  red:     "linear-gradient(135deg,#dc2626,#e11d48)",
+};
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
   return (
@@ -40,10 +50,9 @@ function Toast({ toasts }) {
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div key={t.id}
-            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 60 }}
-            className={`px-4 py-3 rounded-xl text-sm font-medium shadow-2xl pointer-events-auto
-              ${t.type === "success" ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
+            className="px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto text-white"
+            style={{ background: t.type === "success" ? G.emerald : G.red }}>
             {t.msg}
           </motion.div>
         ))}
@@ -80,20 +89,33 @@ function Badge({ status }) {
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, accent }) {
-  const accents = {
-    violet:  "from-violet-500/10 to-violet-500/5 border-violet-500/20",
-    emerald: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20",
-    amber:   "from-amber-500/10 to-amber-500/5 border-amber-500/20",
-    sky:     "from-sky-500/10 to-sky-500/5 border-sky-500/20",
-  };
+// ─── Stat Card — full Gemini gradient ─────────────────────────────────────────
+function StatCard({ label, value, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border bg-gradient-to-br p-5 ${accents[accent] || accents.violet}`}>
-      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold text-zinc-900 dark:text-white">{value}</p>
+      whileHover={{ y: -3 }} transition={{ duration: 0.15 }}
+      className="rounded-2xl p-5 relative overflow-hidden text-white shadow-lg cursor-default"
+      style={{ background: grad }}>
+      <div className="absolute -right-3 -top-3 w-16 h-16 rounded-full bg-white/10" />
+      <div className="absolute -right-1 bottom-1 w-10 h-10 rounded-full bg-white/5" />
+      <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">{label}</p>
+      <p className="text-3xl font-black">{value}</p>
     </motion.div>
+  );
+}
+
+// ─── Hero Banner ──────────────────────────────────────────────────────────────
+function HeroBanner({ name }) {
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-7" style={{ background: G.hero }}>
+      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-white/5" />
+      <div className="absolute right-8 -bottom-20 w-40 h-40 rounded-full bg-white/5" />
+      <div className="relative z-10">
+        <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Booker Dashboard</p>
+        <h1 className="text-3xl font-black text-white mb-1">Hey, {name?.split(" ")[0] || "there"} 👋</h1>
+        <p className="text-white/65 text-sm">Here's your booking summary</p>
+      </div>
+    </div>
   );
 }
 
@@ -104,7 +126,6 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
   if (!user?.username) missing.push("username");
   if (!user?.name) missing.push("full name");
   if (missing.length === 0) return null;
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
@@ -115,21 +136,21 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
             <Icon d={ICONS.alert} size={18} className="text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="font-semibold text-zinc-900 dark:text-white">Complete your profile</p>
+            <p className="font-bold text-zinc-900 dark:text-white">Complete your profile</p>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Missing: <span className="font-medium text-zinc-700 dark:text-zinc-300">{missing.join(", ")}</span>
+              Missing: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{missing.join(", ")}</span>
             </p>
           </div>
         </div>
         <div className="flex gap-3">
           <button onClick={onLater}
             className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-              text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+              text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
             Later
           </button>
           <button onClick={onUpdateNow}
-            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700
-              text-white text-sm font-semibold transition-colors">
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90"
+            style={{ background: G.violet }}>
             Update Now
           </button>
         </div>
@@ -140,44 +161,27 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
 
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
 function ChatPanel({ user }) {
-  const [chats, setChats]     = useState([]);
-  const [active, setActive]   = useState(null);
+  const [chats,    setChats]    = useState([]);
+  const [active,   setActive]   = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText]       = useState("");
-  const [sending, setSending] = useState(false);
-  const bottomRef             = useRef(null);
+  const [text,     setText]     = useState("");
+  const [sending,  setSending]  = useState(false);
+  const bottomRef               = useRef(null);
 
-  // ✅ Correct endpoint — no /api/ prefix (axiosInstance baseURL already has /api)
-  useEffect(() => {
-    api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {});
-  }, []);
-
+  useEffect(() => { api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {}); }, []);
   useEffect(() => {
     if (!active) return;
-    // ✅ Correct endpoint
-    api.get(`/chats/${active._id}/messages`)
-      .then((r) => { setMessages(r.data || []); scrollBottom(); })
-      .catch(() => {});
+    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data || []); scrollBottom(); }).catch(() => {});
     api.patch(`/chats/${active._id}/read`).catch(() => {});
   }, [active]);
-
   useEffect(() => { scrollBottom(); }, [messages]);
   const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
   const send = async () => {
     if (!text.trim() || !active || sending) return;
-    const msg = text.trim();
-    setText("");
-    setSending(true);
-    try {
-      // ✅ Correct endpoint — POST /chats/:chatId/messages with { text }
-      const r = await api.post(`/chats/${active._id}/messages`, { text: msg });
-      setMessages((p) => [...p, r.data]);
-    } catch {
-      setText(msg); // restore on fail
-    } finally {
-      setSending(false);
-    }
+    const msg = text.trim(); setText(""); setSending(true);
+    try { const r = await api.post(`/chats/${active._id}/messages`, { text: msg }); setMessages((p) => [...p, r.data]); }
+    catch { setText(msg); } finally { setSending(false); }
   };
 
   const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
@@ -185,33 +189,26 @@ function ChatPanel({ user }) {
 
   return (
     <div className="flex h-full gap-4">
-      {/* Thread list */}
-      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200
-        dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
+      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
-          <p className="font-semibold text-zinc-900 dark:text-white text-sm">Messages</p>
+          <p className="font-bold text-zinc-900 dark:text-white text-sm">Messages</p>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {chats.length === 0 && (
-            <p className="text-center text-zinc-400 text-sm mt-8">No conversations yet</p>
-          )}
+          {chats.length === 0 && <p className="text-center text-zinc-400 text-sm mt-8">No conversations yet</p>}
           {chats.map((c) => {
             const op = opponent(c);
             return (
               <button key={c._id} onClick={() => setActive(c)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                  ${active?._id === c._id
-                    ? "bg-violet-50 dark:bg-violet-900/20"
-                    : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                  ${active?._id === c._id ? "bg-violet-50 dark:bg-violet-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate">{op?.email}</p>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
+                  <p className="text-xs text-zinc-400 truncate">{c.lastMessage?.content?.slice(0, 28) || op?.email || "—"}</p>
                 </div>
                 {c.unreadCount > 0 && (
-                  <span className="ml-auto w-5 h-5 bg-violet-600 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0">
-                    {c.unreadCount}
-                  </span>
+                  <span className="ml-auto w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
+                    style={{ background: G.violet }}>{c.unreadCount}</span>
                 )}
               </button>
             );
@@ -219,9 +216,7 @@ function ChatPanel({ user }) {
         </div>
       </div>
 
-      {/* Message window */}
-      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700
-        bg-white dark:bg-zinc-800/50 overflow-hidden">
+      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         {!active ? (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-zinc-400 text-sm">Select a conversation to start chatting</p>
@@ -231,24 +226,21 @@ function ChatPanel({ user }) {
             <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img src={avatar(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
-                <p className="font-semibold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
+                <p className="font-bold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
               </div>
-              <button onClick={() => setActive(null)}
-                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
+              <button onClick={() => setActive(null)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
                 <Icon d={ICONS.x} size={16} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
               {messages.map((m, i) => {
                 const mine = m.sender?._id === user?._id || m.sender === user?._id;
-                // ✅ handle both m.text and m.content from backend
                 const body = m.text || m.content || "";
                 return (
                   <div key={m._id || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
-                      ${mine
-                        ? "bg-violet-600 text-white rounded-br-sm"
-                        : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}>
+                      ${mine ? "text-white rounded-br-sm" : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}
+                      style={mine ? { background: G.violet } : {}}>
                       {body}
                     </div>
                   </div>
@@ -260,11 +252,11 @@ function ChatPanel({ user }) {
               <input value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700
-                  text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500
-                  placeholder:text-zinc-400" />
+                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm
+                  focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400" />
               <button onClick={send} disabled={sending || !text.trim()}
-                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors disabled:opacity-50">
+                className="p-2.5 rounded-xl text-white disabled:opacity-50"
+                style={{ background: G.violet }}>
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -284,38 +276,33 @@ export default function BookerDashboard() {
   const [tab,  setTab]  = useState("overview");
   const [dark, setDark] = useState(() => localStorage.getItem("bookerTheme") === "dark");
 
-  // Data
   const [bookings,  setBookings]  = useState([]);
   const [venues,    setVenues]    = useState([]);
   const [payments,  setPayments]  = useState([]);
   const [stats,     setStats]     = useState({ total: 0, pending: 0, confirmed: 0, paid: 0 });
   const [loading,   setLoading]   = useState(true);
 
-  // UI state
-  const [venueSearch,    setVenueSearch]    = useState("");
-  const [bookingFilter,  setBookingFilter]  = useState("all");
-  const [raiseBidId,     setRaiseBidId]     = useState(null);
-  const [raiseBidAmount, setRaiseBidAmount] = useState("");
-  const [unreadChats,    setUnreadChats]    = useState(false);
+  const [venueSearch,      setVenueSearch]      = useState("");
+  const [bookingFilter,    setBookingFilter]    = useState("all");
+  const [raiseBidId,       setRaiseBidId]       = useState(null);
+  const [raiseBidAmount,   setRaiseBidAmount]   = useState("");
+  const [unreadChats,      setUnreadChats]      = useState(false);
   const [showMissingPopup, setShowMissingPopup] = useState(false);
 
-  // Profile edit
   const [editMode,       setEditMode]       = useState(false);
   const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Language
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
-    { code: "en", label: "English",  native: "English",  font: "DM Sans" },
-    { code: "hi", label: "Hindi",    native: "हिन्दी",    font: "Noto Sans Devanagari" },
-    { code: "te", label: "Telugu",   native: "తెలుగు",   font: "Noto Sans Telugu" },
-    { code: "ta", label: "Tamil",    native: "தமிழ்",    font: "Noto Sans Tamil" },
-    { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
+    { code: "en", native: "English",  font: "DM Sans" },
+    { code: "hi", native: "हिन्दी",    font: "Noto Sans Devanagari" },
+    { code: "te", native: "తెలుగు",   font: "Noto Sans Telugu" },
+    { code: "ta", native: "தமிழ்",    font: "Noto Sans Tamil" },
+    { code: "kn", native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
 
-  // ─── Effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("bookerTheme", dark ? "dark" : "light");
@@ -326,8 +313,7 @@ export default function BookerDashboard() {
       const id = "lang-font";
       if (!document.getElementById(id)) {
         const link = document.createElement("link");
-        link.id   = id;
-        link.rel  = "stylesheet";
+        link.id = id; link.rel = "stylesheet";
         link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
         document.head.appendChild(link);
       }
@@ -341,12 +327,10 @@ export default function BookerDashboard() {
     if (!dismissed && (!user.phone || !user.username)) setShowMissingPopup(true);
   }, [user]);
 
-  // ─── Data fetch ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [bRes, vRes, pRes] = await Promise.all([
-        // ✅ Correct endpoints — no /api/ prefix
         api.get("/bookings/my-bookings"),
         api.get("/venues"),
         api.get("/payments/my-payments"),
@@ -354,26 +338,20 @@ export default function BookerDashboard() {
       const b = Array.isArray(bRes.data) ? bRes.data : bRes.data?.bookings || [];
       const v = Array.isArray(vRes.data) ? vRes.data : vRes.data?.venues   || [];
       const p = Array.isArray(pRes.data) ? pRes.data : pRes.data?.payments || [];
-      setBookings(b);
-      setVenues(v);
-      setPayments(p);
+      setBookings(b); setVenues(v); setPayments(p);
       setStats({
         total:     b.length,
         pending:   b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length,
-        confirmed: b.filter((x) => x.status === "approved" || x.status === "confirmed").length,
+        confirmed: b.filter((x) => ["approved", "confirmed"].includes(x.status)).length,
         paid:      b.filter((x) => x.status === "paid").length,
       });
-    } catch {
-      push("Failed to load data", "error");
-    } finally {
-      setLoading(false);
-    }
+    } catch { push("Failed to load data", "error"); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    // ✅ Correct endpoint
     api.get("/chats").then((r) => {
       const list = Array.isArray(r.data) ? r.data : [];
       setUnreadChats(list.some((c) => c.unreadCount > 0));
@@ -384,50 +362,33 @@ export default function BookerDashboard() {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
   }, [user]);
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleRaiseBid = async (bookingId) => {
     if (!raiseBidAmount || isNaN(raiseBidAmount)) return push("Enter a valid amount", "error");
     try {
-      // ✅ Correct endpoint
       await api.patch(`/bookings/${bookingId}/raise-bid`, { newBidAmount: Number(raiseBidAmount) });
-      push("Bid raised successfully!");
-      setRaiseBidId(null); setRaiseBidAmount("");
-      fetchData();
-    } catch (err) {
-      push(err.response?.data?.message || "Failed to raise bid", "error");
-    }
+      push("Bid raised!"); setRaiseBidId(null); setRaiseBidAmount(""); fetchData();
+    } catch (err) { push(err.response?.data?.message || "Failed to raise bid", "error"); }
   };
 
   const handleSaveProfile = async () => {
     setProfileLoading(true);
     try {
-      // ✅ Correct endpoint
       const r = await api.patch("/auth/update-profile", profileForm);
-      // ✅ login() takes (user, token) — not just token
       if (r.data.token) login(r.data.user, r.data.token);
-      push("Profile updated!");
-      setEditMode(false);
-    } catch (err) {
-      push(err.response?.data?.message || "Failed to update profile", "error");
-    } finally {
-      setProfileLoading(false);
-    }
+      push("Profile updated!"); setEditMode(false);
+    } catch (err) { push(err.response?.data?.message || "Failed to update profile", "error"); }
+    finally { setProfileLoading(false); }
   };
 
   const handleSwitchRole = async () => {
     try {
-      // ✅ Correct endpoint
       const r = await api.patch("/auth/switch-role", { role: "venueOwner" });
-      // ✅ Update AuthContext with new user + token
       login(r.data.user, r.data.token);
       push("Switched to Venue Owner!");
       setTimeout(() => navigate("/owner/dashboard"), 800);
-    } catch {
-      push("Switch failed", "error");
-    }
+    } catch { push("Switch failed", "error"); }
   };
 
-  // ─── Derived data ─────────────────────────────────────────────────────────
   const filteredVenues = venues.filter((v) =>
     v.isActive !== false && (
       !venueSearch ||
@@ -463,33 +424,22 @@ export default function BookerDashboard() {
 
   return (
     <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
-      className={`min-h-screen flex ${dark ? "dark" : ""} bg-zinc-50 dark:bg-zinc-950`}>
+      className={`min-h-screen flex ${dark ? "dark" : ""} bg-stone-50 dark:bg-zinc-950`}>
 
       <Toast toasts={toasts} />
 
-      {/* Missing credentials popup */}
       {showMissingPopup && (
-        <MissingCredentials
-          user={user}
-          onLater={() => {
-            sessionStorage.setItem("missingCredsDismissed", "1");
-            setShowMissingPopup(false);
-          }}
-          onUpdateNow={() => {
-            setShowMissingPopup(false);
-            setTab("profile");
-            setEditMode(true);
-          }}
-        />
+        <MissingCredentials user={user}
+          onLater={() => { sessionStorage.setItem("missingCredsDismissed", "1"); setShowMissingPopup(false); }}
+          onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }} />
       )}
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
         bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
-
-        {/* Logo */}
         <button onClick={() => navigate("/")}
-          className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center mb-4 flex-shrink-0">
+          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
+          style={{ background: G.violet }}>
           <span className="text-white font-black text-sm">B</span>
         </button>
 
@@ -497,8 +447,9 @@ export default function BookerDashboard() {
           <button key={key} onClick={() => setTab(key)} title={key}
             className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
               ${tab === key
-                ? "bg-violet-600 text-white shadow-lg shadow-violet-500/25"
-                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>
+                ? "text-white"
+                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+            style={tab === key ? { background: G.violet, boxShadow: "0 4px 15px rgba(109,40,217,0.4)" } : {}}>
             <Icon d={icon} size={18} />
             {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
           </button>
@@ -506,23 +457,18 @@ export default function BookerDashboard() {
 
         <div className="flex-1" />
 
-        {/* Theme toggle */}
         <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800
-            flex items-center justify-center transition-colors">
+          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
           <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
         </button>
 
-        {/* Avatar */}
         <button onClick={() => setTab("profile")} className="mt-1">
           <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover" />
+            className="w-9 h-9 rounded-full object-cover ring-2 ring-violet-400/40" />
         </button>
 
-        {/* Logout */}
         <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
-            flex items-center justify-center transition-colors mt-1 mb-1">
+          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors mt-1 mb-1">
           <Icon d={ICONS.logout} size={18} />
         </button>
       </aside>
@@ -537,26 +483,19 @@ export default function BookerDashboard() {
             {/* ── Overview ──────────────────────────────────────── */}
             {tab === "overview" && (
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-                    Hey, {user?.name?.split(" ")[0]} 👋
-                  </h1>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Here's your booking summary</p>
-                </div>
-
+                <HeroBanner name={user?.name} />
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Bookings" value={stats.total}     accent="violet" />
-                  <StatCard label="Pending"         value={stats.pending}   accent="amber" />
-                  <StatCard label="Confirmed"       value={stats.confirmed} accent="sky" />
-                  <StatCard label="Paid"            value={stats.paid}      accent="emerald" />
+                  <StatCard label="Total Bookings" value={stats.total}     grad={G.violet}  />
+                  <StatCard label="Pending"         value={stats.pending}   grad={G.amber}   />
+                  <StatCard label="Confirmed"       value={stats.confirmed} grad={G.sky}     />
+                  <StatCard label="Paid"            value={stats.paid}      grad={G.emerald} />
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                  bg-white dark:bg-zinc-900 overflow-hidden">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                   <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <h2 className="font-semibold text-zinc-900 dark:text-white">Recent Bookings</h2>
+                    <h2 className="font-bold text-zinc-900 dark:text-white">Recent Bookings</h2>
                     <button onClick={() => setTab("bookings")}
-                      className="flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline">
+                      className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
                       View all <Icon d={ICONS.arrowRight} size={13} />
                     </button>
                   </div>
@@ -567,11 +506,9 @@ export default function BookerDashboard() {
                   ) : (
                     <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
                       {recentBookings.map((b) => (
-                        <div key={b._id} className="px-6 py-4 flex items-center gap-4">
+                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-zinc-900 dark:text-white text-sm truncate">
-                              {b.venue?.name || "Venue"}
-                            </p>
+                            <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{b.venue?.name || "Venue"}</p>
                             <p className="text-xs text-zinc-400 mt-0.5">
                               {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
                             </p>
@@ -589,10 +526,9 @@ export default function BookerDashboard() {
             {tab === "venues" && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Browse Venues</h1>
+                  <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Browse Venues</h1>
                   <div className="relative max-w-sm w-full">
-                    <Icon d={ICONS.search} size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                    <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                     <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
                       placeholder="Search by name or city…"
                       className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
@@ -604,11 +540,10 @@ export default function BookerDashboard() {
                 {loading ? (
                   <p className="text-center text-zinc-400 py-16 text-sm">Loading venues…</p>
                 ) : filteredVenues.length === 0 ? (
-                  <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
                     <p className="text-zinc-400">No venues found</p>
                     {venueSearch && (
-                      <button onClick={() => setVenueSearch("")}
-                        className="mt-2 text-sm text-violet-600 dark:text-violet-400 hover:underline">
+                      <button onClick={() => setVenueSearch("")} className="mt-2 text-sm text-violet-600 dark:text-violet-400 hover:underline">
                         Clear search
                       </button>
                     )}
@@ -616,33 +551,31 @@ export default function BookerDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {filteredVenues.map((v) => (
-                      <motion.div key={v._id} layout
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                          bg-white dark:bg-zinc-900 overflow-hidden group">
+                      <motion.div key={v._id} layout whileHover={{ y: -4 }}
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden group
+                          shadow-sm hover:shadow-xl hover:shadow-violet-500/10 transition-shadow">
                         <div className="relative h-44 bg-zinc-100 dark:bg-zinc-800">
                           {v.images?.[0] ? (
-                            <img src={v.images[0]} alt={v.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
                             </div>
                           )}
                           {(v.venueType || v.type) && (
-                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold
-                              bg-black/50 text-white backdrop-blur-sm">
+                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold bg-black/50 text-white backdrop-blur-sm">
                               {v.venueType || v.type}
                             </span>
                           )}
                         </div>
                         <div className="p-4">
-                          <p className="font-semibold text-zinc-900 dark:text-white truncate">{v.name}</p>
+                          <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
                           <p className="text-sm text-zinc-400 mt-0.5">
                             📍 {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
                           </p>
                           <button onClick={() => navigate(`/venue/${v._id}`)}
-                            className="mt-3 w-full py-2 rounded-xl bg-violet-600 hover:bg-violet-700
-                              text-white text-sm font-semibold transition-colors">
+                            className="mt-3 w-full py-2 rounded-xl text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                            style={{ background: G.violet }}>
                             Book Now
                           </button>
                         </div>
@@ -656,15 +589,15 @@ export default function BookerDashboard() {
             {/* ── My Bookings ───────────────────────────────────── */}
             {tab === "bookings" && (
               <div className="space-y-5">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">My Bookings</h1>
-
+                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">My Bookings</h1>
                 <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl w-fit flex-wrap">
                   {BOOKING_FILTERS.map((f) => (
                     <button key={f} onClick={() => setBookingFilter(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all
                         ${bookingFilter === f
-                          ? "bg-white dark:bg-zinc-700 text-violet-600 dark:text-violet-400 shadow-sm"
-                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>
+                          ? "text-white shadow-sm"
+                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+                      style={bookingFilter === f ? { background: G.violet } : {}}>
                       {f}
                     </button>
                   ))}
@@ -673,28 +606,24 @@ export default function BookerDashboard() {
                 {loading ? (
                   <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
                 ) : filteredBookings.length === 0 ? (
-                  <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
                     <p className="text-zinc-400">No bookings in this category</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {filteredBookings.map((b) => (
                       <motion.div key={b._id} layout
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                          bg-white dark:bg-zinc-900 p-5">
+                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5 hover:shadow-md transition-shadow">
                         <div className="flex items-start gap-4 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 flex-wrap">
-                              <p className="font-semibold text-zinc-900 dark:text-white">
-                                {b.venue?.name || "Venue"}
-                              </p>
+                              <p className="font-bold text-zinc-900 dark:text-white">{b.venue?.name || "Venue"}</p>
                               <Badge status={b.status} />
                             </div>
                             <p className="text-sm text-zinc-400 mt-1">
                               {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
                             </p>
                           </div>
-
                           <div className="flex gap-2 flex-wrap justify-end">
                             {["pending", "bid_raised"].includes(b.status) && (
                               raiseBidId === b._id ? (
@@ -703,30 +632,25 @@ export default function BookerDashboard() {
                                     onChange={(e) => setRaiseBidAmount(e.target.value)}
                                     placeholder="New amount (₹)"
                                     className="w-32 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700
-                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                                  <button onClick={() => handleRaiseBid(b._id)}
-                                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors">
+                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                                  <button onClick={() => handleRaiseBid(b._id)} className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
                                     <Icon d={ICONS.check} size={14} />
                                   </button>
-                                  <button onClick={() => { setRaiseBidId(null); setRaiseBidAmount(""); }}
-                                    className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 transition-colors">
+                                  <button onClick={() => { setRaiseBidId(null); setRaiseBidAmount(""); }} className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
                                     <Icon d={ICONS.x} size={14} />
                                   </button>
                                 </div>
                               ) : (
                                 <button onClick={() => setRaiseBidId(b._id)}
-                                  className="px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30
-                                    text-blue-700 dark:text-blue-400 text-xs font-semibold
-                                    hover:bg-blue-200 transition-colors">
+                                  className="px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold hover:bg-blue-200 transition-colors">
                                   Raise Bid
                                 </button>
                               )
                             )}
                             {b.status === "approved" && (
                               <button onClick={() => navigate(`/venue/${b.venue?._id}`)}
-                                className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700
-                                  text-white text-xs font-semibold transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                                style={{ background: G.violet }}>
                                 Pay Now
                               </button>
                             )}
@@ -742,9 +666,8 @@ export default function BookerDashboard() {
             {/* ── Payments ──────────────────────────────────────── */}
             {tab === "payments" && (
               <div className="space-y-5">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Payments</h1>
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                  bg-white dark:bg-zinc-900 overflow-hidden">
+                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Payments</h1>
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                   {payments.length === 0 ? (
                     <p className="text-center text-zinc-400 py-16 text-sm">No payments yet</p>
                   ) : (
@@ -753,29 +676,20 @@ export default function BookerDashboard() {
                         <thead>
                           <tr className="border-b border-zinc-100 dark:border-zinc-800">
                             {["Venue", "Date", "Amount", "Status", "Transaction ID"].map((h) => (
-                              <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold
-                                text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                              <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
                           {payments.map((p) => (
                             <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                              <td className="px-5 py-4 font-medium text-zinc-900 dark:text-white whitespace-nowrap">
+                              <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
                                 {truncate(p.booking?.venue?.name || p.venue?.name || "—", 22)}
                               </td>
-                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                                {formatDateIN(p.createdAt)}
-                              </td>
-                              <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
-                                {formatINR(p.amount)}
-                              </td>
+                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{formatDateIN(p.createdAt)}</td>
+                              <td className="px-5 py-4 font-bold text-violet-600 dark:text-violet-400 whitespace-nowrap">{formatINR(p.amount)}</td>
                               <td className="px-5 py-4"><Badge status={p.status || "paid"} /></td>
-                              <td className="px-5 py-4">
-                                <span className="font-mono text-xs text-zinc-400">
-                                  {p.razorpayPaymentId || "—"}
-                                </span>
-                              </td>
+                              <td className="px-5 py-4 font-mono text-xs text-zinc-400">{p.razorpayPaymentId || "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -789,7 +703,7 @@ export default function BookerDashboard() {
             {/* ── Chat ──────────────────────────────────────────── */}
             {tab === "chat" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Messages</h1>
+                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
                   <ChatPanel user={user} />
                 </div>
@@ -799,42 +713,37 @@ export default function BookerDashboard() {
             {/* ── Profile ───────────────────────────────────────── */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Profile</h1>
+                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Profile</h1>
 
-                {/* User card + edit */}
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                  bg-white dark:bg-zinc-900 p-6">
-                  <div className="flex items-center gap-4 mb-5">
-                    <img src={user?.avatar || avatar(user?.name)} alt=""
-                      className="w-16 h-16 rounded-2xl object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xl font-bold text-zinc-900 dark:text-white truncate">{user?.name}</p>
-                      <p className="text-sm text-zinc-400 truncate">{user?.email}</p>
-                      <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold
-                        bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
-                        Booker
-                      </span>
+                {/* Gradient header card */}
+                <div className="rounded-2xl overflow-hidden shadow-lg">
+                  <div className="p-6 relative" style={{ background: G.hero }}>
+                    <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
+                    <div className="relative flex items-center gap-4">
+                      <img src={user?.avatar || avatar(user?.name)} alt=""
+                        className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white/30" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xl font-black text-white truncate">{user?.name}</p>
+                        <p className="text-sm text-white/70 truncate">{user?.email}</p>
+                        <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">Booker</span>
+                      </div>
+                      {!editMode && (
+                        <button onClick={() => setEditMode(true)} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
+                          <Icon d={ICONS.edit} size={16} />
+                        </button>
+                      )}
                     </div>
-                    {!editMode && (
-                      <button onClick={() => setEditMode(true)}
-                        className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
-                        <Icon d={ICONS.edit} size={16} />
-                      </button>
-                    )}
                   </div>
 
                   <AnimatePresence>
                     {editMode && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3 overflow-hidden">
-                        {[
-                          ["name",     "Full Name",     "text"],
-                          ["username", "Username",      "text"],
-                          ["phone",    "Phone Number",  "tel"],
-                        ].map(([k, label, type]) => (
+                        className="bg-white dark:bg-zinc-900 border-x border-b border-zinc-200 dark:border-zinc-700
+                          rounded-b-2xl p-5 space-y-3 overflow-hidden">
+                        {[["name", "Full Name", "text"], ["username", "Username", "text"], ["phone", "Phone Number", "tel"]].map(([k, label, type]) => (
                           <div key={k}>
-                            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
+                            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
                             <input type={type} value={profileForm[k]}
                               onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
                               className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
@@ -845,12 +754,12 @@ export default function BookerDashboard() {
                         <div className="flex gap-3 pt-1">
                           <button onClick={() => setEditMode(false)}
                             className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                              text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                              text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
                             Cancel
                           </button>
                           <button onClick={handleSaveProfile} disabled={profileLoading}
-                            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700
-                              text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+                            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
+                            style={{ background: G.violet }}>
                             {profileLoading ? "Saving…" : "Save Changes"}
                           </button>
                         </div>
@@ -861,31 +770,28 @@ export default function BookerDashboard() {
 
                 {/* Language */}
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Language</p>
+                  <p className="text-sm font-bold text-zinc-900 dark:text-white mb-3">Language</p>
                   <div className="flex flex-wrap gap-2">
                     {LANGS.map((l) => (
                       <button key={l.code} onClick={() => setLang(l.code)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all
-                          ${lang === l.code
-                            ? "bg-violet-600 border-violet-600 text-white"
-                            : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400"}`}>
+                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all
+                          ${lang === l.code ? "text-white border-transparent" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400"}`}
+                        style={lang === l.code ? { background: G.violet } : {}}>
                         {l.native}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex flex-col gap-3">
                   <button onClick={handleSwitchRole}
                     className="w-full py-3 rounded-xl border border-zinc-200 dark:border-zinc-700
-                      text-zinc-700 dark:text-zinc-300 font-medium text-sm
-                      hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                      text-zinc-700 dark:text-zinc-300 font-semibold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                     Switch to Venue Owner
                   </button>
                   <button onClick={() => { logout(); navigate("/login"); }}
-                    className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700
-                      text-white font-semibold text-sm transition-colors">
+                    className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity"
+                    style={{ background: G.red }}>
                     Sign Out
                   </button>
                 </div>
