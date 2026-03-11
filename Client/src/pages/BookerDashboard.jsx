@@ -274,7 +274,13 @@ export default function BookerDashboard() {
   const { toasts, push }        = useToast();
 
   const [tab,  setTab]  = useState("overview");
-  const [dark, setDark] = useState(() => localStorage.getItem("bookerTheme") === "dark");
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem("bookerTheme");
+    // Apply immediately on init so dark: classes work before first render
+    if (saved === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+    return saved === "dark";
+  });
 
   const [bookings,  setBookings]  = useState([]);
   const [venues,    setVenues]    = useState([]);
@@ -424,7 +430,7 @@ export default function BookerDashboard() {
 
   return (
     <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
-      className={`min-h-screen flex ${dark ? "dark" : ""} bg-stone-50 dark:bg-zinc-950`}>
+      className="min-h-screen flex bg-stone-50 dark:bg-zinc-950">
 
       <Toast toasts={toasts} />
 
