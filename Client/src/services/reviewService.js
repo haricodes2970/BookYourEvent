@@ -1,25 +1,18 @@
-import axios from 'axios';
+import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-const getToken = () => localStorage.getItem('token');
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export const getVenueReviews = async (venueId) => {
-    const response = await axios.get(`${API}/reviews/${venueId}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.get(`${API}/reviews/${venueId}`);
     return response.data;
 };
 
 export const addReview = async (reviewData) => {
-    const response = await axios.post(`${API}/reviews`, reviewData, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.post(`${API}/reviews`, reviewData);
     return response.data;
 };
 
 export const deleteReview = async (id) => {
-    const response = await axios.delete(`${API}/reviews/${id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.delete(`${API}/reviews/${id}`);
     return response.data;
 };

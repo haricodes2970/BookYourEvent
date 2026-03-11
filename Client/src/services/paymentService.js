@@ -1,23 +1,19 @@
-import axios from 'axios';
+import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
-});
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Create Razorpay order + booking
 export const createPaymentOrder = (bookingData) =>
-    axios.post(`${API}/payments/create-order`, bookingData, { headers: getHeaders() });
+    api.post(`${API}/payments/create-order`, bookingData);
 
 // Verify payment after Razorpay success
 export const verifyPayment = (paymentData) =>
-    axios.post(`${API}/payments/verify`, paymentData, { headers: getHeaders() });
+    api.post(`${API}/payments/verify`, paymentData);
 
 // Get own payment history
 export const getMyPayments = () =>
-    axios.get(`${API}/payments/my-payments`, { headers: getHeaders() });
+    api.get(`${API}/payments/my-payments`);
 
 // Admin revenue stats
 export const getAdminRevenue = () =>
-    axios.get(`${API}/payments/admin-stats`, { headers: getHeaders() });
+    api.get(`${API}/payments/admin-stats`);

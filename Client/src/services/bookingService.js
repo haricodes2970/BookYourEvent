@@ -1,27 +1,23 @@
-import axios from 'axios';
+import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export const createBooking = (data) =>
-    axios.post(`${API}/bookings/create`, data, authHeaders()).then(r => r.data);
+    api.post(`${API}/bookings/create`, data).then(r => r.data);
 
 export const getVenueBookings = (id) =>
-    axios.get(`${API}/bookings/venue/${id}`, authHeaders()).then(r => r.data);
+    api.get(`${API}/bookings/venue/${id}`).then(r => r.data);
 
 export const getOwnerBookings = (venueId) =>
-    axios
-        .get(`${API}/bookings/owner${venueId ? `?venueId=${venueId}` : ''}`, authHeaders())
+    api
+        .get(`${API}/bookings/owner${venueId ? `?venueId=${venueId}` : ""}`)
         .then(r => r.data);
 
 export const getMyBookings = () =>
-    axios.get(`${API}/bookings/my-bookings`, authHeaders()).then(r => r.data);
+    api.get(`${API}/bookings/my-bookings`).then(r => r.data);
 
 export const updateBookingStatus = (id, status) =>
-    axios.patch(`${API}/bookings/${id}/status`, { status }, authHeaders()).then(r => r.data);
+    api.patch(`${API}/bookings/${id}/status`, { status }).then(r => r.data);
 
 export const raiseBid = (id, data) =>
-    axios.patch(`${API}/bookings/${id}/raise-bid`, data, authHeaders()).then(r => r.data);
+    api.patch(`${API}/bookings/${id}/raise-bid`, data).then(r => r.data);

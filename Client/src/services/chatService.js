@@ -1,42 +1,38 @@
-import axios from 'axios';
+import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-});
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export const openChat = async ({ otherUserId, bookingId }) => {
-    const response = await axios.post(`${API}/chats/open`, { otherUserId, bookingId }, authHeaders());
+    const response = await api.post(`${API}/chats/open`, { otherUserId, bookingId });
     return response.data;
 };
 
 export const openChatByUsername = async (username) => {
-    const response = await axios.post(`${API}/chats/open`, { username }, authHeaders());
+    const response = await api.post(`${API}/chats/open`, { username });
     return response.data;
 };
 
 export const getMyChats = async () => {
-    const response = await axios.get(`${API}/chats`, authHeaders());
+    const response = await api.get(`${API}/chats`);
     return response.data;
 };
 
 export const getChatMessages = async (chatId) => {
-    const response = await axios.get(`${API}/chats/${chatId}/messages`, authHeaders());
+    const response = await api.get(`${API}/chats/${chatId}/messages`);
     return response.data;
 };
 
 export const sendChatMessage = async (chatId, text) => {
-    const response = await axios.post(`${API}/chats/${chatId}/messages`, { text }, authHeaders());
+    const response = await api.post(`${API}/chats/${chatId}/messages`, { text });
     return response.data;
 };
 
 export const markChatRead = async (chatId) => {
-    const response = await axios.patch(`${API}/chats/${chatId}/read`, {}, authHeaders());
+    const response = await api.patch(`${API}/chats/${chatId}/read`, {});
     return response.data;
 };
 
 export const searchUsersForChat = async (query) => {
-    const response = await axios.get(`${API}/chats/users/search?q=${encodeURIComponent(query)}`, authHeaders());
+    const response = await api.get(`${API}/chats/users/search?q=${encodeURIComponent(query)}`);
     return response.data;
 };

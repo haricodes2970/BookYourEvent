@@ -1,75 +1,51 @@
-import axios from 'axios';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const getToken = () => localStorage.getItem('token');
+import api from '../utils/axiosInstance';
 
 export const getAllVenues = async () => {
-    const response = await axios.get(`${API}/venues`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.get('/venues');
     return response.data;
 };
 
 export const getOwnerVenues = async () => {
-    const response = await axios.get(`${API}/venues/owner/mine`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.get('/venues/owner/mine');
     return response.data;
 };
 
 export const getVenueById = async (id) => {
-    const response = await axios.get(`${API}/venues/${id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.get(`/venues/${id}`);
     return response.data;
 };
 
 export const createVenueWithImages = async (formData) => {
-    const response = await axios.post(`${API}/venues`, formData, {
-        headers: {
-            Authorization: `Bearer ${getToken()}`,
-            'Content-Type': 'multipart/form-data'
-        }
+    const response = await api.post('/venues', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
 };
 
 export const deleteVenue = async (id) => {
-    const response = await axios.delete(`${API}/venues/${id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.delete(`/venues/${id}`);
     return response.data;
 };
 
 export const updateVenue = async (id, payload) => {
-    const response = await axios.patch(`${API}/venues/${id}`, payload, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.patch(`/venues/${id}`, payload);
     return response.data;
 };
 
 export const toggleVenueActive = async (id, isActive) => {
-    const response = await axios.patch(
-        `${API}/venues/${id}/toggle-active`,
-        typeof isActive === 'boolean' ? { isActive } : {},
-        {
-            headers: { Authorization: `Bearer ${getToken()}` }
-        }
+    const response = await api.patch(
+        `/venues/${id}/toggle-active`,
+        typeof isActive === 'boolean' ? { isActive } : {}
     );
     return response.data;
 };
 
 export const blockDates = async (venueId, dates) => {
-    const response = await axios.patch(`${API}/venues/${venueId}/block-dates`, { dates }, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.patch(`/venues/${venueId}/block-dates`, { dates });
     return response.data;
 };
 
 export const unblockDate = async (venueId, date) => {
-    const response = await axios.patch(`${API}/venues/${venueId}/unblock-date`, { date }, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await api.patch(`/venues/${venueId}/unblock-date`, { date });
     return response.data;
 };
