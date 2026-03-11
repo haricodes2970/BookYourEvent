@@ -262,7 +262,7 @@ const MyBookings = () => {
                     {FILTERS.map(f => (
                         <button key={f} onClick={() => setFilter(f)}
                             style={{
-                                padding: '8px 18px', borderRadius: 50, border: 'none',
+                                padding: '8px 18px', borderRadius: 50,
                                 background: filter === f ? '#1a1a1a' : '#fff',
                                 color: filter === f ? '#fff' : '#555',
                                 fontWeight: filter === f ? 700 : 500,

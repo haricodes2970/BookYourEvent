@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
-import { getOwnerBookings, updateBookingStatus } from '../../services/bookingService';
+import { useAuth } from "../context/AuthContext";
+import { getOwnerBookings, updateBookingStatus } from "../services/bookingService";
 import {
   getOwnerVenues, toggleVenueActive, updateVenue,
   createVenueWithImages, blockDates, unblockDate,
-} from '../../services/venueService';
-import { formatINR, formatDateIN, statusColor, timeAgo } from '../../utils/helpers';
+} from '../services/venueService';
+import { formatINR, formatDateIN, statusColor, timeAgo } from '../utils/helpers';
 
 // ── Icons (inline SVG — no extra dependency) ──────────────────────────────
 const Icon = ({ d, size = 20, strokeWidth = 1.8 }) => (
@@ -412,7 +412,7 @@ const OwnerDashboardScreen = () => {
   };
 
   const handleCreateVenue = async (formData) => {
-    const { createVenueWithImages: create } = await import('../../services/venueService');
+    const { createVenueWithImages: create } = await import('../services/venueService');
     const result = await create(formData);
     setVenues(vs => [...vs, result.venue || result]);
     showNotice('Venue created successfully');
@@ -433,7 +433,7 @@ const OwnerDashboardScreen = () => {
     const newRole = user.role === 'booker' ? 'venueOwner' : 'booker';
     setSwitchingRole(true);
     try {
-      const api = (await import('../../utils/axiosInstance')).default;
+      const api = (await import('../utils/axiosInstance')).default;
       const { data } = await api.patch('/auth/switch-role', { role: newRole });
       login(data.user, data.token);
       showNotice(`Switched to ${newRole === 'booker' ? 'Booker' : 'Venue Owner'}`);
