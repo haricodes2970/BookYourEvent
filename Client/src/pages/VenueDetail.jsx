@@ -1,831 +1,952 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getVenueById } from '../services/venueService';
-import { createBooking } from '../services/bookingService';
-import { useAuth } from '../context/AuthContext';
-import { getVenueReviews, addReview } from '../services/reviewService';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
-import AvailabilityCalendar from '../components/AvailabilityCalendar';
-import ChatModal from '../components/ChatModal';
-import { useLanguage } from '../context/LanguageContext';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import api from "../utils/axiosInstance";
+import { formatINR, formatDateIN, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
 
-/* ══════════════════════════════════════ DARK MODE ══════════════════════════════════════ */
-const useDark = () => { const [dark, setDark] = useState(false); return { dark, toggle: () => setDark(d => !d) }; };
+// ─── Google Fonts ─────────────────────────────────────────────────────────────
+const FONT_LINK = `https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap`;
 
-const ThemeToggle = ({ dark, toggle }) => (
-    <motion.button onClick={toggle} whileTap={{ scale: 0.95 }}
-        style={{ width:60, height:30, borderRadius:999, padding:3, display:'flex', alignItems:'center',
-            cursor:'pointer', border:'none', flexShrink:0,
-            background: dark ? '#2a2a2a' : '#f1ede5', transition:'background 0.35s ease' }}>
-        <motion.div layout animate={{ x: dark ? 30 : 0 }} transition={{ type:'spring', stiffness:500, damping:30 }}
-            style={{ width:24, height:24, borderRadius:'50%', background: dark?'#D4AF37':'#C8A45B',
-                display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}>
-            {dark ? '🌙' : '☀️'}
-        </motion.div>
-    </motion.button>
-);
+// ─── Constants ────────────────────────────────────────────────────────────────
+const AMENITY_ICONS = {
+  "AC": "❄️", "Parking": "🅿️", "WiFi": "📶", "Stage": "🎭",
+  "Catering": "🍽️", "DJ Setup": "🎧", "Generator": "⚡", "CCTV": "📹",
+  "Security": "💂", "Elevator": "🛗", "Wheelchair Access": "♿",
+  "Swimming Pool": "🏊", "Decoration": "🎊", "Bridal Room": "💐",
+  "Green Room": "🪴", "Projector": "📽️", "Bar": "🍸", "Valet": "🚗",
+};
 
-const GoldInput = ({ dark, label, children, required }) => (
-    <div>
-        <label style={{ fontSize:11, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase',
-            color: dark?'#D4AF37':'#C8A45B', display:'block', marginBottom:8 }}>
-            {label}{required && <span style={{ color:'#ef4444', marginLeft:2 }}>*</span>}
-        </label>
-        {children}
-    </div>
-);
+const ALL_AMENITIES = Object.keys(AMENITY_ICONS);
 
-const StarInput = ({ value, onChange, dark }) => (
-    <div style={{ display:'flex', gap:4 }}>
-        {[1,2,3,4,5].map(star => (
-            <motion.button key={star} type="button" whileHover={{ scale:1.2 }} whileTap={{ scale:0.9 }}
-                onClick={() => onChange(star)}
-                style={{ fontSize:26, background:'none', border:'none', cursor:'pointer', padding:0, lineHeight:1,
-                    color: star <= value ? '#D4AF37' : dark?'#333':'#e2d9c8', transition:'color 0.15s ease' }}>★</motion.button>
+const EVENT_TYPES = ["Wedding", "Birthday", "Corporate Event", "Engagement",
+  "Baby Shower", "Photoshoot", "Conference", "Product Launch", "Anniversary", "Other"];
+
+const TIME_SLOTS = generateTimeSlots(6, 24, 60);
+const PLATFORM_FEE_PCT = 0.02;
+
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+const avg = (arr) => arr.length ? (arr.reduce((s, x) => s + x, 0) / arr.length).toFixed(1) : "0.0";
+const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
+
+function Stars({ rating, size = 16 }) {
+  return (
+    <span className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <svg key={s} width={size} height={size} viewBox="0 0 24 24"
+          fill={s <= Math.round(rating) ? "#f59e0b" : "none"}
+          stroke="#f59e0b" strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const push = useCallback((msg, type = "success") => {
+    const id = Date.now();
+    setToasts((p) => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 3500);
+  }, []);
+  return { toasts, push };
+}
+
+function ToastList({ toasts }) {
+  return (
+    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div key={t.id} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
+            className={`px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto
+              ${t.type === "success" ? "bg-teal-600 text-white" : "bg-red-500 text-white"}`}>
+            {t.msg}
+          </motion.div>
         ))}
+      </AnimatePresence>
     </div>
-);
+  );
+}
 
-const ReviewCard = ({ review, dark, index, inView }) => {
-    const T = { card: dark?'#1E1E1E':'#FFFFFF', border: dark?'#2a2a2a':'#EDE8DE',
-        name: dark?'#F3F3F3':'#1F1F1F', comment: dark?'#9a9a9a':'#6b7280', date: dark?'#666':'#9ca3af' };
-    return (
-        <motion.div initial={{ opacity:0, y:30 }} animate={inView?{opacity:1,y:0}:{}}
-            transition={{ duration:0.5, delay:index*0.08 }}
-            style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:16, padding:'18px 20px',
-                boxShadow: dark?'0 4px 16px rgba(0,0,0,0.3)':'0 4px 16px rgba(0,0,0,0.05)' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        color:'white', fontSize:13, fontWeight:800, flexShrink:0 }}>
-                        {review.reviewer?.name?.charAt(0)?.toUpperCase()||'U'}
-                    </div>
-                    <div>
-                        <p style={{ fontSize:13, fontWeight:700, color:T.name }}>{review.reviewer?.name}</p>
-                        <div style={{ display:'flex', gap:1, marginTop:2 }}>
-                            {[1,2,3,4,5].map(s=>(
-                                <span key={s} style={{ fontSize:11, color:s<=review.rating?'#D4AF37':dark?'#333':'#e2d9c8' }}>★</span>
-                            ))}
-                        </div>
-                    </div>
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function Lightbox({ images, index, onClose }) {
+  const [cur, setCur] = useState(index);
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setCur((p) => (p + 1) % images.length);
+      if (e.key === "ArrowLeft") setCur((p) => (p - 1 + images.length) % images.length);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [images.length, onClose]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9998] bg-black/95 flex items-center justify-center"
+      onClick={onClose}>
+      <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white p-2">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); setCur((p) => (p - 1 + images.length) % images.length); }}
+        className="absolute left-4 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <motion.img key={cur} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        src={images[cur]} alt="" className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl"
+        onClick={(e) => e.stopPropagation()} />
+      <button onClick={(e) => { e.stopPropagation(); setCur((p) => (p + 1) % images.length); }}
+        className="absolute right-4 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <div className="absolute bottom-4 flex gap-2">
+        {images.map((_, i) => (
+          <button key={i} onClick={(e) => { e.stopPropagation(); setCur(i); }}
+            className={`w-2 h-2 rounded-full transition-all ${i === cur ? "bg-white scale-125" : "bg-white/40"}`} />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Availability Calendar ────────────────────────────────────────────────────
+function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate }) {
+  const [month, setMonth] = useState(new Date());
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const blocked = new Set(blockedDates.map((d) => new Date(d).toDateString()));
+
+  const year = month.getFullYear();
+  const mon = month.getMonth();
+  const firstDay = new Date(year, mon, 1).getDay();
+  const daysInMonth = new Date(year, mon + 1, 0).getDate();
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, mon, d));
+
+  const monthLabel = month.toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => setMonth(new Date(year, mon - 1))}
+          className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <p className="font-semibold text-zinc-800 text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>{monthLabel}</p>
+        <button onClick={() => setMonth(new Date(year, mon + 1))}
+          className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 mb-2">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+          <div key={d} className="text-center text-xs font-semibold text-zinc-400 py-1">{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-y-1">
+        {cells.map((date, i) => {
+          if (!date) return <div key={i} />;
+          const isPast = date < today;
+          const isBlocked = blocked.has(date.toDateString());
+          const isSelected = selectedDate && date.toDateString() === new Date(selectedDate).toDateString();
+          const isToday = date.toDateString() === today.toDateString();
+
+          return (
+            <button key={i} disabled={isPast || isBlocked}
+              onClick={() => !isPast && !isBlocked && onSelectDate(date.toISOString().split("T")[0])}
+              className={`aspect-square flex items-center justify-center text-xs rounded-lg transition-all font-medium
+                ${isSelected ? "bg-teal-600 text-white shadow-md" : ""}
+                ${isToday && !isSelected ? "border-2 border-teal-400 text-teal-700" : ""}
+                ${isBlocked ? "bg-red-100 text-red-400 cursor-not-allowed" : ""}
+                ${isPast ? "text-zinc-300 cursor-not-allowed" : ""}
+                ${!isPast && !isBlocked && !isSelected ? "hover:bg-teal-50 text-zinc-700 hover:text-teal-700" : ""}`}>
+              {date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-zinc-100">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-teal-500" />
+          <span className="text-xs text-zinc-500">Available</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-200" />
+          <span className="text-xs text-zinc-500">Blocked</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-zinc-200" />
+          <span className="text-xs text-zinc-500">Past</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Booking Form ─────────────────────────────────────────────────────────────
+function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const params = useParams();
+
+  const [form, setForm] = useState({
+    date: selectedDate || "",
+    startTime: "", endTime: "", guests: "",
+    eventType: "", specialRequests: "", bidAmount: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [createdBooking, setCreatedBooking] = useState(null);
+
+  useEffect(() => { setForm((p) => ({ ...p, date: selectedDate || "" })); }, [selectedDate]);
+
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const calcHours = () => {
+    if (!form.startTime || !form.endTime) return 0;
+    const [sh, sm] = form.startTime.split(":").map(Number);
+    const [eh, em] = form.endTime.split(":").map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    return diff > 0 ? diff / 60 : 0;
+  };
+
+  const hours = calcHours();
+  const basePrice = (venue?.pricePerHour || 0) * hours;
+  const platformFee = Math.round(basePrice * PLATFORM_FEE_PCT);
+  const total = basePrice + platformFee;
+
+  const isInstant = venue?.bookingType === "instant";
+
+  const handleSubmit = async () => {
+    if (!user) return navigate(`/login?next=/venue/${params.id}`);
+    if (!form.date) return push("Select an event date", "error");
+    if (!form.startTime || !form.endTime) return push("Select start and end time", "error");
+    if (hours <= 0) return push("End time must be after start time", "error");
+    if (!form.guests) return push("Enter number of guests", "error");
+    if (!isInstant && !form.bidAmount) return push("Enter your bid amount", "error");
+
+    setLoading(true);
+    try {
+      const payload = {
+        venueId: venue._id,
+        eventDate: form.date,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        guestCount: Number(form.guests),
+        eventType: form.eventType,
+        specialRequests: form.specialRequests,
+        bidAmount: isInstant ? total : Number(form.bidAmount),
+      };
+      const res = await api.post("/api/bookings/create", payload);
+      setCreatedBooking(res.data);
+
+      if (isInstant) {
+        setShowPayment(true);
+      } else {
+        push("Bid submitted! Owner will review shortly.");
+        onSuccess?.();
+      }
+    } catch (err) {
+      push(err.response?.data?.message || "Booking failed", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Razorpay trigger
+  const triggerRazorpay = useCallback(() => {
+    if (!createdBooking) return;
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: total * 100,
+      currency: "INR",
+      name: "BookYourEvent",
+      description: `Booking: ${venue?.name}`,
+      order_id: createdBooking.razorpayOrderId,
+      handler: async (response) => {
+        try {
+          await api.post("/api/payments/verify", {
+            bookingId: createdBooking._id,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+          push("Payment successful! 🎉");
+          setShowPayment(false);
+          onSuccess?.();
+        } catch { push("Payment verification failed", "error"); }
+      },
+      prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
+      theme: { color: "#0d9488" },
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  }, [createdBooking, total, venue, user, push, onSuccess]);
+
+  useEffect(() => {
+    if (showPayment && createdBooking) triggerRazorpay();
+  }, [showPayment]);
+
+  const endSlots = TIME_SLOTS.filter((t) => !form.startTime || t > form.startTime);
+
+  return (
+    <div className="space-y-4">
+      {/* Date */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Event Date</label>
+        <input type="date" value={form.date}
+          min={new Date().toISOString().split("T")[0]}
+          onChange={(e) => { set("date", e.target.value); onDateChange?.(e.target.value); }}
+          className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+      </div>
+
+      {/* Time */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Start Time</label>
+          <select value={form.startTime} onChange={(e) => { set("startTime", e.target.value); set("endTime", ""); }}
+            className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+            <option value="">Select</option>
+            {TIME_SLOTS.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">End Time</label>
+          <select value={form.endTime} onChange={(e) => set("endTime", e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+            <option value="">Select</option>
+            {endSlots.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Guests */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Number of Guests</label>
+        <input type="number" value={form.guests} min={1} max={venue?.capacity || 9999}
+          onChange={(e) => set("guests", e.target.value)}
+          placeholder={`Max ${venue?.capacity || "—"}`}
+          className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+      </div>
+
+      {/* Event type */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Event Type <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
+        <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)}
+          className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+          <option value="">Select event type…</option>
+          {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      {/* Bid amount — only for bid venues */}
+      {!isInstant && (
+        <div>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Your Bid Amount (₹)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-semibold">₹</span>
+            <input type="number" value={form.bidAmount} onChange={(e) => set("bidAmount", e.target.value)}
+              placeholder="Enter your offer"
+              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">Base price: {formatINR(venue?.pricePerHour)}/hr</p>
+        </div>
+      )}
+
+      {/* Special requests */}
+      <div>
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Special Requests <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
+        <textarea rows={2} value={form.specialRequests} onChange={(e) => set("specialRequests", e.target.value)}
+          placeholder="Any specific requirements…"
+          className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 resize-none" />
+      </div>
+
+      {/* Price breakdown — only for instant with hours calculated */}
+      {isInstant && hours > 0 && (
+        <div className="rounded-xl bg-zinc-50 border border-zinc-200 p-4 space-y-2">
+          <div className="flex justify-between text-sm text-zinc-600">
+            <span>{formatINR(venue?.pricePerHour)}/hr × {hours} hr{hours !== 1 ? "s" : ""}</span>
+            <span className="font-medium">{formatINR(basePrice)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-zinc-500">
+            <span>Platform fee (2%)</span>
+            <span>{formatINR(platformFee)}</span>
+          </div>
+          <div className="border-t border-zinc-200 pt-2 flex justify-between font-bold text-zinc-900">
+            <span>Total</span>
+            <span className="text-teal-700">{formatINR(total)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* CTA */}
+      {!user ? (
+        <Link to={`/login?next=/venue/${venue?._id}`}
+          className="block w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
+            font-semibold text-sm text-center transition-colors shadow-md shadow-teal-900/20">
+          Login to Book
+        </Link>
+      ) : (
+        <button onClick={handleSubmit} disabled={loading}
+          className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
+            font-semibold text-sm transition-colors disabled:opacity-60 shadow-md shadow-teal-900/20">
+          {loading ? "Processing…" : isInstant ? "Book Now →" : "Submit Bid →"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Reviews Section ──────────────────────────────────────────────────────────
+function ReviewsSection({ venueId, push }) {
+  const { user } = useAuth();
+  const [reviews, setReviews] = useState([]);
+  const [canReview, setCanReview] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ rating: 5, text: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 5;
+
+  const fetchReviews = useCallback(async () => {
+    try {
+      const res = await api.get(`/api/reviews/venue/${venueId}`);
+      setReviews(res.data);
+    } catch {}
+  }, [venueId]);
+
+  useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  useEffect(() => {
+    if (!user) return;
+    api.get(`/api/bookings/my`).then((res) => {
+      const hasPaid = res.data.some((b) => b.venue?._id === venueId && b.status === "paid");
+      setCanReview(hasPaid);
+    }).catch(() => {});
+  }, [user, venueId]);
+
+  const ratingCount = (star) => reviews.filter((r) => r.rating === star).length;
+  const avgRating = avg(reviews.map((r) => r.rating));
+  const shown = reviews.slice(0, page * PER_PAGE);
+
+  const submitReview = async () => {
+    if (!form.text.trim()) return push("Write a review first", "error");
+    setSubmitting(true);
+    try {
+      await api.post("/api/reviews", { venueId, rating: form.rating, text: form.text });
+      push("Review submitted!");
+      setShowForm(false);
+      setForm({ rating: 5, text: "" });
+      fetchReviews();
+    } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="flex items-start gap-8 flex-wrap">
+        <div className="text-center">
+          <p className="text-5xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>{avgRating}</p>
+          <Stars rating={Number(avgRating)} size={18} />
+          <p className="text-xs text-zinc-400 mt-1">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
+        </div>
+        <div className="flex-1 min-w-48 space-y-1.5">
+          {[5, 4, 3, 2, 1].map((star) => {
+            const count = ratingCount(star);
+            const pct = reviews.length ? Math.round((count / reviews.length) * 100) : 0;
+            return (
+              <div key={star} className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 w-4">{star}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
-                <span style={{ fontSize:11, color:T.date }}>
-                    {new Date(review.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
-                </span>
+                <span className="text-xs text-zinc-400 w-6">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Write review */}
+      {canReview && !showForm && (
+        <button onClick={() => setShowForm(true)}
+          className="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-700
+            text-sm font-semibold hover:bg-teal-50 transition-colors">
+          + Write a Review
+        </button>
+      )}
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 space-y-4">
+            <p className="font-semibold text-zinc-800">Your Review</p>
+
+            {/* Star selector */}
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button key={s} onClick={() => setForm((p) => ({ ...p, rating: s }))}>
+                  <svg width="28" height="28" viewBox="0 0 24 24"
+                    fill={s <= form.rating ? "#f59e0b" : "none"}
+                    stroke="#f59e0b" strokeWidth="2" className="transition-all hover:scale-110">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </button>
+              ))}
             </div>
-            <p style={{ fontSize:13, color:T.comment, lineHeight:1.65 }}>{review.comment}</p>
-        </motion.div>
-    );
-};
 
-/* ══════════════════════════════════════
-   VENUE DETAIL PAGE
-══════════════════════════════════════ */
-const VenueDetail = () => {
-    const { id } = useParams();
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const { dark, toggle } = useDark();
-    const { t } = useLanguage();
+            <textarea rows={3} value={form.text} onChange={(e) => setForm((p) => ({ ...p, text: e.target.value }))}
+              placeholder="Share your experience…"
+              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white resize-none" />
 
-    const [venue, setVenue]             = useState(null);
-    const [loading, setLoading]         = useState(true);
-    const [error, setError]             = useState('');
-    const [success, setSuccess]         = useState('');
-    const [bidLoading, setBidLoading]   = useState(false);
-    const [lightboxIndex, setLightboxIndex] = useState(null);
-    const [reviews, setReviews]         = useState([]);
-    const [avgRating, setAvgRating]     = useState(0);
-    const [reviewForm, setReviewForm]   = useState({ rating:5, comment:'' });
-    const [reviewLoading, setReviewLoading] = useState(false);
-    const [reviewError, setReviewError] = useState('');
-    const [reviewSuccess, setReviewSuccess] = useState('');
-    const [activeThumb, setActiveThumb] = useState(0);
-    const [chatOpen, setChatOpen] = useState(false);
+            <div className="flex gap-3">
+              <button onClick={() => setShowForm(false)}
+                className="flex-1 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-100">
+                Cancel
+              </button>
+              <button onClick={submitReview} disabled={submitting}
+                className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold disabled:opacity-60">
+                {submitting ? "Submitting…" : "Submit"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-    const [bookingData, setBookingData] = useState({
-        eventDate:'', startTime:'', endTime:'', guestCount:'', bidAmount:'', message:''
-    });
-
-    const reviewsRef  = useRef(null);
-    const reviewsInView = useInView(reviewsRef, { once:true, amount:0.1 });
-
-    useEffect(() => {
-        const fetchVenue = async () => {
-            try {
-                const data = await getVenueById(id);
-                setVenue(data.venue);
-                const reviewData = await getVenueReviews(id);
-                setReviews(reviewData.reviews);
-                setAvgRating(reviewData.avgRating);
-            } catch { setError('Failed to load venue'); }
-            finally { setLoading(false); }
-        };
-        fetchVenue();
-    }, [id]);
-
-    useEffect(() => {
-        const handleKey = e => {
-            if (e.key === 'Escape') setLightboxIndex(null);
-            if (e.key === 'ArrowRight' && lightboxIndex !== null)
-                setLightboxIndex(i => Math.min(i+1, venue.images.length-1));
-            if (e.key === 'ArrowLeft' && lightboxIndex !== null)
-                setLightboxIndex(i => Math.max(i-1, 0));
-        };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [lightboxIndex, venue]);
-
-    const handleChange = e => setBookingData({ ...bookingData, [e.target.name]: e.target.value });
-
-    const calculatePrice = () => {
-        if (!bookingData.startTime || !bookingData.endTime) return 0;
-        const start = parseInt(bookingData.startTime.split(':')[0]);
-        const end   = parseInt(bookingData.endTime.split(':')[0]);
-        const hours = end - start;
-        return hours > 0 ? hours * venue.pricePerHour : 0;
-    };
-
-    /* ── PLACE BID — no payment here anymore ── */
-    const handleBid = async e => {
-        e.preventDefault();
-        setError(''); setSuccess('');
-
-        const basePrice = calculatePrice();
-        if (basePrice <= 0) { setError(t('venue.error.invalidTime')); return; }
-
-        const bidAmount = bookingData.bidAmount ? Number(bookingData.bidAmount) : basePrice;
-        if (bidAmount < basePrice) {
-            setError(t('venue.error.minBid', { amount: basePrice.toLocaleString('en-IN') }));
-            return;
-        }
-
-        setBidLoading(true);
-        try {
-            await createBooking({
-                venueId:    id,
-                eventDate:  bookingData.eventDate,
-                startTime:  bookingData.startTime,
-                endTime:    bookingData.endTime,
-                guestCount: parseInt(bookingData.guestCount),
-                bidAmount,
-                message:    bookingData.message,
-            });
-            setSuccess(t('venue.success.bidPlaced'));
-            setBookingData({ eventDate:'', startTime:'', endTime:'', guestCount:'', bidAmount:'', message:'' });
-        } catch (err) {
-            setError(err.response?.data?.message || t('venue.error.placeBidFailed'));
-        } finally {
-            setBidLoading(false);
-        }
-    };
-
-    const handleReviewSubmit = async e => {
-        e.preventDefault();
-        setReviewLoading(true); setReviewError(''); setReviewSuccess('');
-        try {
-            const data = await addReview({ venueId: id, ...reviewForm });
-            setReviews([data.review, ...reviews]);
-            setReviewSuccess('✓ Review posted!');
-            setReviewForm({ rating:5, comment:'' });
-            const newAvg = ((avgRating * reviews.length) + reviewForm.rating) / (reviews.length + 1);
-            setAvgRating(parseFloat(newAvg.toFixed(1)));
-        } catch (err) {
-            setReviewError(err.response?.data?.message || 'Failed to post review');
-        } finally { setReviewLoading(false); }
-    };
-
-    const getGoogleMapsUrl = v => {
-        const q = encodeURIComponent(`${v.location?.address}, ${v.location?.city}`);
-        return `https://www.google.com/maps/search/?api=1&query=${q}`;
-    };
-
-    const canShowOwnerChat = Boolean(venue?.owner?._id && user?.id !== venue.owner._id);
-
-    const handleOpenOwnerChat = () => {
-        if (!venue?.owner?._id) return;
-
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-
-        if (user.id === venue.owner._id) {
-            setError(t('chat.cannotChatSelf'));
-            return;
-        }
-
-        setChatOpen(true);
-    };
-
-    const bidAmountDisplay = bookingData.bidAmount
-        ? Number(bookingData.bidAmount).toLocaleString('en-IN')
-        : calculatePrice() > 0
-            ? calculatePrice().toLocaleString('en-IN')
-            : '';
-
-    /* ── THEME ── */
-    const T = {
-        bg: dark?'#121212':'#F8F6F2', navBg: dark?'rgba(18,18,18,0.92)':'rgba(248,246,242,0.92)',
-        navBorder: dark?'#2a2a2a':'#E6E2D9', card: dark?'#1E1E1E':'#FFFFFF',
-        card2: dark?'#191919':'#FDFBF7', border: dark?'#2a2a2a':'#E6E2D9',
-        title: dark?'#F3F3F3':'#1F1F1F', sub: dark?'#9a9a9a':'#6b7280',
-        gold: dark?'#D4AF37':'#C8A45B', goldLight: dark?'rgba(212,175,55,0.1)':'rgba(200,164,91,0.08)',
-        goldBorder: dark?'rgba(212,175,55,0.3)':'rgba(200,164,91,0.3)',
-        inputBorder: dark?'rgba(212,175,55,0.3)':'rgba(200,164,91,0.35)',
-        shadow: dark?'0 8px 32px rgba(0,0,0,0.5)':'0 8px 32px rgba(0,0,0,0.08)',
-        statBg: dark?'#252525':'#F5F0E8', divider: dark?'#2a2a2a':'#EDE8DE',
-        tagBg: dark?'rgba(212,175,55,0.1)':'rgba(200,164,91,0.1)', tagText: dark?'#D4AF37':'#C8A45B',
-        errorBg: dark?'rgba(239,68,68,0.1)':'#fef2f2', successBg: dark?'rgba(34,197,94,0.1)':'#f0fdf4',
-    };
-
-    const inputStyle = {
-        width:'100%', background:'transparent', borderBottom:`2px solid ${T.inputBorder}`,
-        color:T.title, padding:'9px 4px', fontSize:14, outline:'none',
-        fontFamily:'inherit', transition:'border-color 0.2s', caretColor:T.gold,
-        border:'none',
-    };
-
-    if (loading) return (
-        <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center',
-            background:'#F8F6F2', fontFamily:"'DM Sans', sans-serif" }}>
-            <motion.div animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.5, repeat:Infinity }}>
-                <div style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:40, marginBottom:12 }}>🏛️</div>
-                    <p style={{ color:'#C8A45B', fontWeight:600, fontSize:14, letterSpacing:'1px' }}>LOADING VENUE...</p>
+      {/* Review cards */}
+      {reviews.length === 0 ? (
+        <p className="text-center text-zinc-400 py-8 text-sm">No reviews yet. Be the first!</p>
+      ) : (
+        <div className="space-y-4">
+          {shown.map((r) => (
+            <motion.div key={r._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="flex gap-4 p-5 rounded-2xl border border-zinc-100 bg-white">
+              <img src={avatar(r.reviewer?.name)} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-zinc-800 text-sm">{r.reviewer?.name}</p>
+                  {r.isVerifiedBooking && (
+                    <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
+                      ✓ Verified Booking
+                    </span>
+                  )}
+                  <span className="text-xs text-zinc-400 ml-auto">{timeAgo(r.createdAt)}</span>
                 </div>
+                <Stars rating={r.rating} size={13} />
+                <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{r.text}</p>
+              </div>
             </motion.div>
-        </div>
-    );
+          ))}
 
+          {shown.length < reviews.length && (
+            <button onClick={() => setPage((p) => p + 1)}
+              className="w-full py-2.5 rounded-xl border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-50">
+              Load more reviews
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function VenueDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toasts, push } = useToast();
+
+  const [venue, setVenue] = useState(null);
+  const [similar, setSimilar] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(0);
+  const [lightbox, setLightbox] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [showMobileForm, setShowMobileForm] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const bookingRef = useRef(null);
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet"; link.href = FONT_LINK;
+    document.head.appendChild(link);
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/api/venues/${id}`)
+      .then((res) => {
+        setVenue(res.data);
+        if (res.data.venueType || res.data.city) {
+          const params = new URLSearchParams();
+          if (res.data.venueType) params.set("type", res.data.venueType);
+          if (res.data.city) params.set("city", res.data.city);
+          params.set("limit", "4");
+          params.set("exclude", id);
+          api.get(`/api/venues?${params}`).then((r) => {
+            setSimilar(r.data.filter((v) => v._id !== id).slice(0, 4));
+          }).catch(() => {});
+        }
+      })
+      .catch(() => push("Failed to load venue", "error"))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    push("Link copied!");
+  };
+
+  const handleChatOwner = async () => {
+    if (!user) return navigate(`/login?next=/venue/${id}`);
+    setChatLoading(true);
+    try {
+      await api.post("/api/chats/open", { otherUserId: venue.owner?._id });
+      navigate("/booker/dashboard?tab=chat");
+    } catch { push("Could not open chat", "error"); }
+    finally { setChatLoading(false); }
+  };
+
+  if (loading) {
     return (
-        <div style={{ minHeight:'100vh', background:T.bg, fontFamily:"'DM Sans', sans-serif", position:'relative' }}>
-            <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap');
-                ::-webkit-scrollbar{width:5px;height:5px}
-                ::-webkit-scrollbar-track{background:${dark?'#1a1a1a':'#f1ede5'}}
-                ::-webkit-scrollbar-thumb{background:#C8A45B;border-radius:10px}
-                input[type=date]::-webkit-calendar-picker-indicator{filter:${dark?'invert(0.7)':'none'};cursor:pointer}
-                input[type=time]::-webkit-calendar-picker-indicator{filter:${dark?'invert(0.7)':'none'};cursor:pointer}
-                textarea::placeholder,input::placeholder{color:${T.sub}}
-                textarea{resize:none} select{appearance:none}
-            `}</style>
-
-            {/* LIGHTBOX */}
-            <AnimatePresence>
-                {lightboxIndex !== null && venue?.images?.length > 0 && (
-                    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                        style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.95)',
-                            display:'flex', alignItems:'center', justifyContent:'center' }}
-                        onClick={()=>setLightboxIndex(null)}>
-                        <motion.button whileHover={{scale:1.1}} onClick={()=>setLightboxIndex(null)}
-                            style={{ position:'absolute', top:20, right:24, background:'rgba(212,175,55,0.15)',
-                                border:'1px solid rgba(212,175,55,0.4)', color:'#D4AF37', width:40, height:40,
-                                borderRadius:'50%', fontSize:18, cursor:'pointer', display:'flex',
-                                alignItems:'center', justifyContent:'center' }}>✕</motion.button>
-                        {lightboxIndex > 0 && (
-                            <motion.button whileHover={{scale:1.1,x:-3}}
-                                onClick={e=>{e.stopPropagation();setLightboxIndex(i=>i-1);}}
-                                style={{ position:'absolute', left:20, background:'rgba(212,175,55,0.15)',
-                                    border:'1px solid rgba(212,175,55,0.4)', color:'#D4AF37', width:48, height:48,
-                                    borderRadius:'50%', fontSize:22, cursor:'pointer', display:'flex',
-                                    alignItems:'center', justifyContent:'center' }}>‹</motion.button>
-                        )}
-                        <motion.img key={lightboxIndex} initial={{opacity:0,scale:0.92}} animate={{opacity:1,scale:1}}
-                            src={venue.images[lightboxIndex]} alt={`venue-${lightboxIndex}`}
-                            style={{ maxHeight:'85vh', maxWidth:'80vw', objectFit:'contain', borderRadius:16,
-                                boxShadow:'0 0 80px rgba(212,175,55,0.15)' }}
-                            onClick={e=>e.stopPropagation()}/>
-                        {lightboxIndex < venue.images.length-1 && (
-                            <motion.button whileHover={{scale:1.1,x:3}}
-                                onClick={e=>{e.stopPropagation();setLightboxIndex(i=>i+1);}}
-                                style={{ position:'absolute', right:20, background:'rgba(212,175,55,0.15)',
-                                    border:'1px solid rgba(212,175,55,0.4)', color:'#D4AF37', width:48, height:48,
-                                    borderRadius:'50%', fontSize:22, cursor:'pointer', display:'flex',
-                                    alignItems:'center', justifyContent:'center' }}>›</motion.button>
-                        )}
-                        <p style={{ position:'absolute', bottom:20, color:'rgba(212,175,55,0.7)', fontSize:13, letterSpacing:'1px' }}>
-                            {lightboxIndex+1} / {venue.images.length}
-                        </p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* NAVBAR */}
-            <motion.nav initial={{y:-20,opacity:0}} animate={{y:0,opacity:1}} transition={{duration:0.5}}
-                style={{ position:'sticky', top:0, zIndex:100, background:T.navBg, backdropFilter:'blur(20px)',
-                    borderBottom:`1px solid ${T.navBorder}`, padding:'0 28px',
-                    boxShadow:dark?'0 4px 24px rgba(0,0,0,0.4)':'0 4px 24px rgba(0,0,0,0.06)' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:64 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <motion.div whileHover={{scale:1.05}} style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}
-                            onClick={()=>navigate('/')}>
-                            <img src="/logo.png" alt="BYE" className="h-10 w-10 rounded-full object-cover"
-                                style={{ boxShadow:`0 0 0 2px ${T.gold}` }}
-                                onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex';}}/>
-                            <div style={{ display:'none', width:38, height:38, borderRadius:'50%',
-                                background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                alignItems:'center', justifyContent:'center', color:'white', fontSize:10, fontWeight:800 }}>BYE</div>
-                        </motion.div>
-                        <div style={{ width:1, height:24, background:T.border, margin:'0 8px' }}/>
-                        <motion.button whileHover={{color:T.gold}} onClick={()=>navigate('/booker/dashboard')}
-                            style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none',
-                                cursor:'pointer', color:T.sub, fontSize:13, fontWeight:500, fontFamily:'inherit', transition:'color 0.2s' }}>
-                            {t('venue.navBrowse')}
-                        </motion.button>
-                        <motion.button whileHover={{color:T.gold}} onClick={()=>navigate('/booker/my-bookings')}
-                            style={{ background:'none', border:'none', cursor:'pointer', color:T.sub,
-                                fontSize:13, fontWeight:500, fontFamily:'inherit', padding:'6px 12px', transition:'color 0.2s' }}>
-                            {t('venue.navMyBookings')}
-                        </motion.button>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                        <ThemeToggle dark={dark} toggle={toggle}/>
-                        <motion.button whileHover={{scale:1.03}} onClick={()=>navigate('/booker/dashboard')}
-                            style={{ padding:'7px 18px', borderRadius:50, background:T.goldLight,
-                                border:`1.5px solid ${T.goldBorder}`, color:T.gold, fontSize:13,
-                                fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>{t('venue.navDashboard')}</motion.button>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 14px 5px 8px',
-                            borderRadius:50, background:T.goldLight, border:`1.5px solid ${T.goldBorder}` }}>
-                            <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:11, fontWeight:800 }}>
-                                {user?.name?.charAt(0)?.toUpperCase()||'U'}
-                            </div>
-                            <span style={{ fontSize:13, fontWeight:600, color:T.title }}>{user?.name?.split(' ')[0]||'User'}</span>
-                        </div>
-                    </div>
-                </div>
-            </motion.nav>
-
-            {/* HEADER */}
-            <div style={{ padding:'28px 28px 16px', maxWidth:1400, margin:'0 auto' }}>
-                <motion.div initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{duration:0.5}}>
-                    <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:T.goldLight,
-                        borderRadius:50, padding:'4px 14px', border:`1px solid ${T.goldBorder}`, marginBottom:8 }}>
-                        <span style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                            textTransform:'uppercase', color:T.gold }}>🏛️ {t('venue.badge')}</span>
-                    </div>
-                    <h1 style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(1.6rem,3vw,2.2rem)',
-                        fontWeight:900, color:T.title, marginBottom:4 }}>{t('venue.title')}</h1>
-                    <p style={{ fontSize:13, color:T.sub }}>{t('venue.subtitle')}</p>
-                </motion.div>
-            </div>
-
-            {/* ALERTS */}
-            <div style={{ padding:'0 28px', maxWidth:1400, margin:'0 auto' }}>
-                <AnimatePresence>
-                    {error && (
-                        <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0}}
-                            style={{ background:T.errorBg, border:'1px solid rgba(239,68,68,0.3)', color:'#ef4444',
-                                padding:'12px 18px', borderRadius:12, marginBottom:14, fontSize:13 }}>
-                            {error}
-                        </motion.div>
-                    )}
-                    {success && (
-                        <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0}}
-                            style={{ background:T.successBg, border:'1px solid rgba(34,197,94,0.3)', color:'#16a34a',
-                                padding:'14px 18px', borderRadius:12, marginBottom:14, fontSize:13, fontWeight:600 }}>
-                            {success}
-                            <button onClick={()=>navigate('/booker/my-bookings')}
-                                style={{ marginLeft:12, padding:'4px 14px', borderRadius:50, border:'none',
-                                    background:'rgba(34,197,94,0.2)', color:'#16a34a', fontSize:12,
-                                    fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                                {t('venue.viewMyBookings')}
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* MAIN CONTENT */}
-            {venue && (
-                <div style={{ padding:'0 28px 80px', maxWidth:1400, margin:'0 auto' }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 420px', gap:24 }}>
-
-                        {/* LEFT COLUMN */}
-                        <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-
-                            {/* HERO IMAGE */}
-                            <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{duration:0.6}}
-                                style={{ background:T.card, borderRadius:20, border:`1px solid ${T.border}`,
-                                    overflow:'hidden', boxShadow:T.shadow }}>
-                                <div style={{ position:'relative', height:340, overflow:'hidden', cursor:'pointer',
-                                    background:dark?'#1a1a1a':'#ede8de' }}
-                                    onClick={()=>venue.images?.length>0&&setLightboxIndex(activeThumb)}>
-                                    {venue.images?.length > 0 ? (
-                                        <motion.img key={activeThumb} initial={{opacity:0}} animate={{opacity:1}}
-                                            transition={{duration:0.3}} src={venue.images[activeThumb]} alt={venue.name}
-                                            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-                                    ) : (
-                                        <div style={{ width:'100%', height:'100%', display:'flex',
-                                            alignItems:'center', justifyContent:'center', fontSize:80 }}>🏛️</div>
-                                    )}
-                                    <div style={{ position:'absolute', inset:0,
-                                        background:'linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 55%)' }}/>
-                                    <div style={{ position:'absolute', top:14, right:14,
-                                        background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)',
-                                        borderRadius:50, padding:'5px 12px', color:'white', fontSize:11, fontWeight:600 }}>
-                                        ⤢ View Gallery
-                                    </div>
-                                    <div style={{ position:'absolute', bottom:14, left:14, display:'flex', gap:8 }}>
-                                        <div style={{ background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)',
-                                            borderRadius:50, padding:'4px 12px', color:'#D4AF37', fontSize:12,
-                                            fontWeight:700, border:'1px solid rgba(212,175,55,0.4)' }}>{venue.type}</div>
-                                        <div style={{ background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)',
-                                            borderRadius:50, padding:'4px 12px', color:'rgba(255,255,255,0.85)', fontSize:12, fontWeight:600 }}>
-                                            {venue.bookingType==='instant'?'⚡ Instant Booking':'📋 Manual Approval'}
-                                        </div>
-                                    </div>
-                                </div>
-                                {venue.images?.length > 1 && (
-                                    <div style={{ display:'flex', gap:8, padding:'12px 16px', overflowX:'auto' }}>
-                                        {venue.images.map((img,i)=>(
-                                            <motion.div key={i} whileHover={{scale:1.05}} onClick={()=>setActiveThumb(i)}
-                                                style={{ width:72, height:54, borderRadius:10, overflow:'hidden', flexShrink:0,
-                                                    cursor:'pointer', border:`2px solid ${i===activeThumb?T.gold:T.border}`,
-                                                    opacity:i===activeThumb?1:0.6, transition:'all 0.2s',
-                                                    boxShadow:i===activeThumb?`0 0 0 2px ${T.gold}40`:'none' }}>
-                                                <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                )}
-                            </motion.div>
-
-                            {/* VENUE INFO */}
-                            <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{duration:0.6,delay:0.1}}
-                                style={{ background:T.card, borderRadius:20, border:`1px solid ${T.border}`,
-                                    padding:'28px', boxShadow:T.shadow }}>
-                                <h2 style={{ fontFamily:"'Playfair Display', serif",
-                                    fontSize:'clamp(1.6rem,3vw,2rem)', fontWeight:900, color:T.title, marginBottom:10 }}>
-                                    {venue.name}
-                                </h2>
-                                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-                                    <div style={{ display:'flex', gap:2 }}>
-                                        {[1,2,3,4,5].map(s=>(
-                                            <span key={s} style={{ fontSize:16, color:s<=Math.round(avgRating)?'#D4AF37':dark?'#333':'#e2d9c8' }}>★</span>
-                                        ))}
-                                    </div>
-                                    <span style={{ fontSize:14, fontWeight:700, color:T.title }}>{avgRating||0}</span>
-                                    <span style={{ fontSize:13, color:T.sub }}>({reviews.length} reviews)</span>
-                                </div>
-                                <motion.a whileHover={{color:T.gold}} href={getGoogleMapsUrl(venue)}
-                                    target="_blank" rel="noopener noreferrer"
-                                    style={{ display:'inline-flex', alignItems:'center', gap:6,
-                                        color:dark?'#6aafff':'#1a73e8', fontSize:14, marginBottom:20,
-                                        textDecoration:'none', transition:'color 0.2s' }}>
-                                    📍 <span style={{ textDecoration:'underline', textUnderlineOffset:3 }}>
-                                        {venue.location?.address}, {venue.location?.city}
-                                    </span> <span style={{ fontSize:11 }}>↗</span>
-                                </motion.a>
-                                <p style={{ fontSize:14, color:T.sub, lineHeight:1.8, marginBottom:24 }}>{venue.description}</p>
-                                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:24 }}>
-                                    {[
-                                        { label:'Capacity', value:venue.capacity, unit:'max guests', icon:'👥' },
-                                        { label:'Base Price', value:`₹${venue.pricePerHour?.toLocaleString('en-IN')}`, unit:'per hour', icon:'💰' },
-                                    ].map((stat,i)=>(
-                                        <div key={i} style={{ background:T.statBg, borderRadius:14, padding:'16px 18px',
-                                            border:`1px solid ${T.goldBorder}` }}>
-                                            <div style={{ fontSize:20, marginBottom:6 }}>{stat.icon}</div>
-                                            <p style={{ fontSize:11, color:T.sub, textTransform:'uppercase',
-                                                letterSpacing:'0.8px', fontWeight:600 }}>{stat.label}</p>
-                                            <p style={{ fontFamily:"'Playfair Display', serif", fontSize:22,
-                                                fontWeight:900, color:T.gold, lineHeight:1.2 }}>{stat.value}</p>
-                                            <p style={{ fontSize:11, color:T.sub, marginTop:2 }}>{stat.unit}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                                {venue.amenities?.length > 0 && (
-                                    <div style={{ marginBottom:24 }}>
-                                        <p style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                            textTransform:'uppercase', color:T.gold, marginBottom:12 }}>Amenities</p>
-                                        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                                            {venue.amenities.map((a,i)=>(
-                                                <motion.span key={i} whileHover={{scale:1.05}}
-                                                    style={{ fontSize:12, padding:'5px 14px', borderRadius:50,
-                                                        background:T.tagBg, color:T.tagText,
-                                                        border:`1px solid ${T.goldBorder}`, fontWeight:600 }}>{a}</motion.span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                <div style={{ paddingTop:20, borderTop:`1px solid ${T.divider}`,
-                                    display:'flex', alignItems:'center', gap:14 }}>
-                                    <div style={{ width:44, height:44, borderRadius:'50%',
-                                        background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                        display:'flex', alignItems:'center', justifyContent:'center',
-                                        color:'white', fontSize:16, fontWeight:800,
-                                        boxShadow:'0 4px 12px rgba(200,164,91,0.3)' }}>
-                                        {venue.owner?.name?.charAt(0)?.toUpperCase()||'O'}
-                                    </div>
-                                    <div>
-                                        <p style={{ fontSize:11, color:T.sub, textTransform:'uppercase',
-                                            letterSpacing:'0.8px', fontWeight:600, marginBottom:2 }}>{t('venue.ownerLabel')}</p>
-                                        <p style={{ fontSize:14, fontWeight:700, color:T.title }}>{venue.owner?.name}</p>
-                                        {venue.owner?.phone && <p style={{ fontSize:12, color:T.sub }}>📞 {venue.owner.phone}</p>}
-                                    </div>
-                                    {canShowOwnerChat && (
-                                        <motion.button
-                                            whileHover={{scale:1.03, boxShadow:'0 8px 20px rgba(30,77,92,0.16)'}}
-                                            whileTap={{scale:0.98}}
-                                            onClick={handleOpenOwnerChat}
-                                            style={{
-                                                marginLeft: 'auto',
-                                                border: '1.5px solid rgba(30,77,92,0.25)',
-                                                background: 'rgba(30,77,92,0.06)',
-                                                color: '#1e4d5c',
-                                                borderRadius: 50,
-                                                padding: '9px 14px',
-                                                fontSize: 12,
-                                                fontWeight: 700,
-                                                cursor: 'pointer',
-                                                fontFamily: 'inherit',
-                                            }}
-                                        >
-                                            {t('chat.withOwner')}
-                                        </motion.button>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
-
-                        {/* RIGHT COLUMN — BID FORM */}
-                        <motion.div initial={{opacity:0,x:30}} animate={{opacity:1,x:0}} transition={{duration:0.6,delay:0.15}}
-                            style={{ background:T.card, borderRadius:20, border:`1px solid ${T.border}`,
-                                boxShadow:T.shadow, position:'sticky', top:80, height:'fit-content',
-                                maxHeight:'calc(100vh - 100px)', overflowY:'auto' }}>
-                            <div style={{ padding:'28px' }}>
-
-                                {/* Header */}
-                                <div style={{ marginBottom:20 }}>
-                                    <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:T.goldLight,
-                                        borderRadius:50, padding:'4px 12px', border:`1px solid ${T.goldBorder}`, marginBottom:10 }}>
-                                        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'1px',
-                                            textTransform:'uppercase', color:T.gold }}>🏷️ {t('venue.bidBadge')}</span>
-                                    </div>
-                                    <h3 style={{ fontFamily:"'Playfair Display', serif", fontSize:22,
-                                        fontWeight:900, color:T.title, marginBottom:4 }}>{t('venue.bidTitle')}</h3>
-                                    <p style={{ fontSize:12, color:T.sub, lineHeight:1.6 }}>
-                                        {t('venue.bidSubtitle1')}<br/>
-                                        {t('venue.bidSubtitle2')}
-                                    </p>
-                                </div>
-
-                                {/* How it works */}
-                                <div style={{ background:T.goldLight, border:`1px solid ${T.goldBorder}`,
-                                    borderRadius:14, padding:'14px 16px', marginBottom:20 }}>
-                                    {[
-                                        { step:'1', text:t('venue.step1') },
-                                        { step:'2', text:t('venue.step2') },
-                                        { step:'3', text:t('venue.step3') },
-                                        { step:'4', text:t('venue.step4') },
-                                    ].map((s,i)=>(
-                                        <div key={i} style={{ display:'flex', alignItems:'center', gap:10,
-                                            marginBottom:i<3?8:0 }}>
-                                            <div style={{ width:20, height:20, borderRadius:'50%',
-                                                background:'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                                display:'flex', alignItems:'center', justifyContent:'center',
-                                                color:'white', fontSize:10, fontWeight:800, flexShrink:0 }}>{s.step}</div>
-                                            <p style={{ fontSize:12, color:T.sub }}>{s.text}</p>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Base price */}
-                                <div style={{ background:T.goldLight, border:`1px solid ${T.goldBorder}`,
-                                    borderRadius:14, padding:'14px 16px', marginBottom:22,
-                                    display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                                    <div>
-                                        <p style={{ fontSize:11, color:T.sub, textTransform:'uppercase',
-                                            letterSpacing:'0.8px', fontWeight:600 }}>Base Price</p>
-                                        <p style={{ fontFamily:"'Playfair Display', serif", fontSize:22,
-                                            fontWeight:900, color:T.gold }}>
-                                            ₹{venue.pricePerHour?.toLocaleString('en-IN')}
-                                            <span style={{ fontSize:12, fontWeight:500, color:T.sub }}>/hr</span>
-                                        </p>
-                                    </div>
-                                    <div style={{ textAlign:'right' }}>
-                                        <p style={{ fontSize:11, color:T.sub }}>Capacity</p>
-                                        <p style={{ fontSize:14, fontWeight:700, color:T.title }}>{venue.capacity} guests</p>
-                                    </div>
-                                </div>
-
-                                {/* BID FORM */}
-                                <form onSubmit={handleBid} style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                                    <GoldInput dark={dark} label="Event Date" required>
-                                        <input type="date" name="eventDate" value={bookingData.eventDate}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            onChange={e=>{
-                                                const d=e.target.value;
-                                                const blocked=venue.blockedDates?.map(bd=>new Date(bd).toISOString().split('T')[0])||[];
-                                                if(blocked.includes(d)){setError(t('venue.error.dateUnavailable'));return;}
-                                                setError(''); setBookingData({...bookingData,eventDate:d});
-                                            }}
-                                            required style={inputStyle}/>
-                                    </GoldInput>
-
-                                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                                        <GoldInput dark={dark} label="Start Time" required>
-                                            <input type="time" name="startTime" value={bookingData.startTime}
-                                                onChange={handleChange} required style={inputStyle}/>
-                                        </GoldInput>
-                                        <GoldInput dark={dark} label="End Time" required>
-                                            <input type="time" name="endTime" value={bookingData.endTime}
-                                                onChange={handleChange} required style={inputStyle}/>
-                                        </GoldInput>
-                                    </div>
-
-                                    <GoldInput dark={dark} label="Number of Guests" required>
-                                        <input type="number" name="guestCount" value={bookingData.guestCount}
-                                            onChange={handleChange} placeholder={`Max ${venue.capacity}`}
-                                            max={venue.capacity} required style={inputStyle}/>
-                                    </GoldInput>
-
-                                    {/* Estimated price */}
-                                    <AnimatePresence>
-                                        {calculatePrice() > 0 && (
-                                            <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}}
-                                                exit={{opacity:0,height:0}}
-                                                style={{ background:T.goldLight, border:`1px solid ${T.goldBorder}`,
-                                                    borderRadius:14, padding:'12px 16px' }}>
-                                                <p style={{ fontSize:11, color:T.sub, marginBottom:2,
-                                                    textTransform:'uppercase', letterSpacing:'0.8px', fontWeight:600 }}>
-                                                    Base Total
-                                                </p>
-                                                <p style={{ fontFamily:"'Playfair Display', serif",
-                                                    fontSize:22, fontWeight:900, color:T.gold }}>
-                                                    ₹{calculatePrice().toLocaleString('en-IN')}
-                                                </p>
-                                                <p style={{ fontSize:11, color:T.sub, marginTop:2 }}>
-                                                    Minimum bid amount
-                                                </p>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Bid amount — optional, can offer more */}
-                                    <GoldInput dark={dark} label={`Your Bid Amount (₹) — Optional, offer more to stand out`}>
-                                        <input type="number" name="bidAmount" value={bookingData.bidAmount}
-                                            onChange={handleChange}
-                                            placeholder={calculatePrice()>0
-                                                ? `Min ₹${calculatePrice().toLocaleString('en-IN')} — offer more to win`
-                                                : 'Select times first'}
-                                            min={calculatePrice()||0}
-                                            style={inputStyle}/>
-                                    </GoldInput>
-
-                                    {/* Message to owner */}
-                                    <GoldInput dark={dark} label={t('venue.messageLabel')}>
-                                        <input type="text" name="message" value={bookingData.message}
-                                            onChange={handleChange}
-                                            placeholder={t('venue.messagePlaceholder')}
-                                            style={inputStyle}/>
-                                    </GoldInput>
-
-                                    {/* Availability calendar */}
-                                    <div>
-                                        <p style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                            textTransform:'uppercase', color:T.gold, marginBottom:10 }}>{t('venue.availability')}</p>
-                                        <div style={{ borderRadius:14, overflow:'hidden', border:`1px solid ${T.border}` }}>
-                                            <AvailabilityCalendar blockedDates={venue.blockedDates||[]} mode="view"/>
-                                        </div>
-                                    </div>
-
-                                    {/* SUBMIT BID BUTTON */}
-                                    <motion.button type="submit" disabled={bidLoading}
-                                        whileHover={!bidLoading?{scale:1.03,boxShadow:'0 16px 40px rgba(200,164,91,0.4)'}:{}}
-                                        whileTap={!bidLoading?{scale:0.98}:{}}
-                                        style={{ width:'100%', padding:'14px', borderRadius:14, border:'none',
-                                            fontWeight:700, fontSize:15,
-                                            cursor:bidLoading?'not-allowed':'pointer', fontFamily:'inherit',
-                                            background:bidLoading?(dark?'#2a2a2a':'#e2d9c8'):'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                            color:bidLoading?T.sub:'white',
-                                            boxShadow:bidLoading?'none':'0 8px 24px rgba(200,164,91,0.3)',
-                                            transition:'all 0.3s ease' }}>
-                                        {bidLoading ? (
-                                            <span style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                                                <motion.span animate={{rotate:360}} transition={{duration:0.8,repeat:Infinity,ease:'linear'}}
-                                                    style={{ display:'inline-block', width:14, height:14,
-                                                        border:'2px solid rgba(255,255,255,0.3)',
-                                                        borderTopColor:'white', borderRadius:'50%' }}/>
-                                                {t('venue.placingBid')}
-                                            </span>
-                                        ) : `${t('venue.placeBidBtn')}${bidAmountDisplay ? ` - Rs ${bidAmountDisplay}` : ''}`}
-                                    </motion.button>
-
-                                    <p style={{ fontSize:11, color:T.sub, textAlign:'center', lineHeight:1.6 }}>
-                                        {t('venue.paymentNote')}
-                                    </p>
-                                </form>
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    {/* REVIEWS */}
-                    <motion.div initial={{opacity:0,y:40}} whileInView={{opacity:1,y:0}}
-                        viewport={{once:true,amount:0.1}} transition={{duration:0.65}}
-                        style={{ marginTop:24, background:T.card, borderRadius:20,
-                            border:`1px solid ${T.border}`, padding:'32px', boxShadow:T.shadow }}>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-                            marginBottom:28, flexWrap:'wrap', gap:12 }}>
-                            <div>
-                                <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:T.goldLight,
-                                    borderRadius:50, padding:'4px 14px', border:`1px solid ${T.goldBorder}`, marginBottom:10 }}>
-                                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                        textTransform:'uppercase', color:T.gold }}>⭐ Reviews</span>
-                                </div>
-                                <h3 style={{ fontFamily:"'Playfair Display', serif", fontSize:22,
-                                    fontWeight:900, color:T.title, marginBottom:6 }}>Guest Reviews</h3>
-                                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                                    <div style={{ display:'flex', gap:2 }}>
-                                        {[1,2,3,4,5].map(s=>(
-                                            <span key={s} style={{ fontSize:18, color:s<=Math.round(avgRating)?'#D4AF37':dark?'#333':'#e2d9c8' }}>★</span>
-                                        ))}
-                                    </div>
-                                    <span style={{ fontFamily:"'Playfair Display', serif", fontSize:22, fontWeight:900, color:T.gold }}>
-                                        {avgRating||'0.0'}
-                                    </span>
-                                    <span style={{ fontSize:13, color:T.sub }}>
-                                        ({reviews.length} {reviews.length===1?'review':'reviews'})
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Write Review */}
-                        <div style={{ background:T.card2, border:`1px solid ${T.goldBorder}`,
-                            borderRadius:16, padding:'22px', marginBottom:28 }}>
-                            <h4 style={{ fontSize:14, fontWeight:700, color:T.title, marginBottom:16 }}>✍️ Write a Review</h4>
-                            <AnimatePresence>
-                                {reviewError && <motion.p initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                                    style={{ color:'#ef4444', fontSize:12, marginBottom:10 }}>{reviewError}</motion.p>}
-                                {reviewSuccess && <motion.p initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                                    style={{ color:'#16a34a', fontSize:12, marginBottom:10, fontWeight:600 }}>{reviewSuccess}</motion.p>}
-                            </AnimatePresence>
-                            <form onSubmit={handleReviewSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                                <div>
-                                    <p style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                        textTransform:'uppercase', color:T.gold, marginBottom:10 }}>Rating</p>
-                                    <StarInput value={reviewForm.rating} onChange={v=>setReviewForm({...reviewForm,rating:v})} dark={dark}/>
-                                </div>
-                                <div>
-                                    <p style={{ fontSize:11, fontWeight:700, letterSpacing:'1px',
-                                        textTransform:'uppercase', color:T.gold, marginBottom:8 }}>Comment</p>
-                                    <textarea value={reviewForm.comment}
-                                        onChange={e=>setReviewForm({...reviewForm,comment:e.target.value})}
-                                        placeholder="Share your experience with this venue..."
-                                        rows={3} required
-                                        style={{ width:'100%', background:'transparent', border:'none',
-                                            borderBottom:`2px solid ${T.inputBorder}`, color:T.title,
-                                            padding:'8px 4px', fontSize:14, outline:'none',
-                                            fontFamily:'inherit', caretColor:T.gold }}/>
-                                </div>
-                                <motion.button type="submit" disabled={reviewLoading}
-                                    whileHover={!reviewLoading?{scale:1.03}:{}} whileTap={!reviewLoading?{scale:0.97}:{}}
-                                    style={{ alignSelf:'flex-start', padding:'10px 24px', borderRadius:50, border:'none',
-                                        background:reviewLoading?(dark?'#2a2a2a':'#e2d9c8'):'linear-gradient(135deg,#C8A45B,#E3C67A)',
-                                        color:reviewLoading?T.sub:'white', fontWeight:700, fontSize:13,
-                                        cursor:reviewLoading?'not-allowed':'pointer', fontFamily:'inherit',
-                                        boxShadow:reviewLoading?'none':'0 6px 16px rgba(200,164,91,0.25)' }}>
-                                    {reviewLoading?'Posting...':'Post Review ★'}
-                                </motion.button>
-                            </form>
-                        </div>
-
-                        <div ref={reviewsRef}>
-                            {reviews.length===0 ? (
-                                <div style={{ textAlign:'center', padding:'40px 0' }}>
-                                    <div style={{ fontSize:40, marginBottom:12 }}>⭐</div>
-                                    <p style={{ color:T.sub, fontSize:14 }}>No reviews yet. Be the first to review!</p>
-                                </div>
-                            ) : (
-                                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:16 }}>
-                                    {reviews.map((review,i)=>(
-                                        <ReviewCard key={review._id} review={review} dark={dark} index={i} inView={reviewsInView}/>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-            {chatOpen && venue?.owner?._id && (
-                <ChatModal
-                    isOpen={chatOpen}
-                    otherUser={{
-                        id: venue.owner._id,
-                        name: venue.owner.name || 'Venue Owner',
-                        role: 'venueOwner',
-                    }}
-                    onClose={() => setChatOpen(false)}
-                />
-            )}
-
-            <p style={{ textAlign:'center', padding:'20px 0 32px',
-                color:T.sub, fontSize:11, fontStyle:'italic', letterSpacing:'2px' }}>EASY. BOOK. ENJOY.</p>
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-zinc-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>Loading venue…</p>
         </div>
+      </div>
     );
-};
+  }
 
-export default VenueDetail;
+  if (!venue) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-zinc-700" style={{ fontFamily: "'Playfair Display', serif" }}>Venue not found</p>
+          <Link to="/" className="mt-4 inline-block text-teal-600 hover:underline text-sm">← Back to Home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const images = venue.images?.length ? venue.images : ["/placeholder-venue.jpg"];
+  const blockedDates = venue.blockedDates || [];
+  const isInstant = venue.bookingType === "instant";
+  const avgRating = venue.avgRating || 0;
+  const reviewCount = venue.reviewCount || 0;
+
+  const DESC_LIMIT = 220;
+  const descShort = venue.description?.length > DESC_LIMIT;
+
+  const INFO_STRIP = [
+    { icon: "👥", label: "Capacity", value: `Up to ${venue.capacity || "—"} guests` },
+    { icon: "💰", label: "Price", value: `${formatINR(venue.pricePerHour)}/hr` },
+    { icon: "📅", label: "Booking", value: isInstant ? "⚡ Instant" : "🏷️ Bid" },
+    { icon: "🏛️", label: "Type", value: venue.venueType || "Event Venue" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-zinc-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <ToastList toasts={toasts} />
+      {lightbox !== null && (
+        <Lightbox images={images} index={lightbox} onClose={() => setLightbox(null)} />
+      )}
+
+      {/* ── Back nav ── */}
+      <div className="bg-white border-b border-zinc-100 px-4 md:px-8 py-3 flex items-center gap-3">
+        <button onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-teal-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Back
+        </button>
+        <span className="text-zinc-300">/</span>
+        <span className="text-sm text-zinc-400 truncate">{venue.name}</span>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 lg:py-10">
+        <div className="flex gap-10 items-start">
+
+          {/* ── LEFT COLUMN ── */}
+          <div className="flex-1 min-w-0 space-y-8">
+
+            {/* Hero Gallery */}
+            <div className="space-y-3">
+              <div className="relative rounded-2xl overflow-hidden bg-zinc-200 aspect-[16/9] cursor-pointer group"
+                onClick={() => setLightbox(activeImage)}>
+                <img src={images[activeImage]} alt={venue.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-5 right-5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-zinc-700">
+                      {venue.venueType || "Event Venue"}
+                    </span>
+                    {isInstant && (
+                      <span className="px-3 py-1 rounded-full bg-teal-500/90 backdrop-blur-sm text-xs font-semibold text-white">
+                        ⚡ Instant Book
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button className="absolute top-4 right-4 p-2 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+                  onClick={(e) => { e.stopPropagation(); handleCopyLink(); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Thumbnails */}
+              {images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {images.map((img, i) => (
+                    <button key={i} onClick={() => setActiveImage(i)}
+                      className={`flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all
+                        ${activeImage === i ? "border-teal-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Venue title + rating */}
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-zinc-900 leading-tight"
+                style={{ fontFamily: "'Playfair Display', serif" }}>
+                {venue.name}
+              </h1>
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Stars rating={avgRating} size={16} />
+                  <span className="text-sm font-semibold text-zinc-700">{Number(avgRating).toFixed(1)}</span>
+                  <span className="text-sm text-zinc-400">· {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
+                </div>
+                <span className="text-zinc-300">|</span>
+                <span className="text-sm text-zinc-500">
+                  📍 {[venue.address, venue.city, venue.pincode].filter(Boolean).join(", ")}
+                </span>
+              </div>
+            </div>
+
+            {/* Info strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {INFO_STRIP.map(({ icon, label, value }) => (
+                <div key={label} className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
+                  <div className="text-2xl mb-1">{icon}</div>
+                  <p className="text-xs text-zinc-400 font-medium uppercase tracking-wide">{label}</p>
+                  <p className="text-sm font-semibold text-zinc-800 mt-0.5">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Description */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
+                About this venue
+              </h2>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                {descShort && !descExpanded
+                  ? venue.description?.slice(0, DESC_LIMIT) + "…"
+                  : venue.description}
+              </p>
+              {descShort && (
+                <button onClick={() => setDescExpanded((p) => !p)}
+                  className="mt-2 text-sm font-semibold text-teal-700 hover:underline">
+                  {descExpanded ? "Read less ↑" : "Read more ↓"}
+                </button>
+              )}
+            </div>
+
+            {/* Amenities */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Amenities
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {ALL_AMENITIES.map((a) => {
+                  const has = venue.amenities?.includes(a);
+                  return (
+                    <div key={a} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all
+                      ${has
+                        ? "border-teal-200 bg-teal-50 text-teal-800"
+                        : "border-zinc-100 bg-zinc-50 text-zinc-400"}`}>
+                      <span className={`text-lg ${!has ? "grayscale opacity-40" : ""}`}>{AMENITY_ICONS[a]}</span>
+                      <span className="text-xs font-medium">{a}</span>
+                      {!has && <span className="ml-auto text-zinc-300 text-xs">✕</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Calendar */}
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Availability
+              </h2>
+              <AvailabilityCalendar
+                blockedDates={blockedDates}
+                selectedDate={selectedDate}
+                onSelectDate={(d) => {
+                  setSelectedDate(d);
+                  bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
+            </div>
+
+            {/* Reviews */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Reviews
+              </h2>
+              <ReviewsSection venueId={id} push={push} />
+            </div>
+
+            {/* Owner card */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 flex items-center gap-5">
+              <img src={avatar(venue.owner?.name)} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-zinc-800">{venue.owner?.name || "Venue Owner"}</p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Member since {venue.owner?.createdAt ? new Date(venue.owner.createdAt).getFullYear() : "—"}
+                </p>
+                <p className="text-xs text-zinc-500 mt-1">{venue.owner?.totalVenues || 1} venue{(venue.owner?.totalVenues || 1) !== 1 ? "s" : ""} listed</p>
+              </div>
+              <button onClick={handleChatOwner} disabled={chatLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700
+                  text-white text-sm font-semibold transition-colors disabled:opacity-60 flex-shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                {chatLoading ? "Opening…" : "Chat with Owner"}
+              </button>
+            </div>
+
+            {/* Similar venues */}
+            {similar.length > 0 && (
+              <div>
+                <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Similar Venues
+                </h2>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {similar.map((v) => (
+                    <Link key={v._id} to={`/venue/${v._id}`}
+                      className="flex-shrink-0 w-60 rounded-2xl border border-zinc-200 bg-white overflow-hidden hover:shadow-md transition-shadow group">
+                      <div className="h-36 bg-zinc-100 overflow-hidden">
+                        {v.images?.[0]
+                          ? <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">🏛️</div>
+                        }
+                      </div>
+                      <div className="p-3">
+                        <p className="font-semibold text-zinc-800 text-sm truncate">{v.name}</p>
+                        <p className="text-xs text-zinc-400">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT COLUMN — Sticky Booking Form ── */}
+          <div ref={bookingRef} className="hidden lg:block w-[360px] flex-shrink-0">
+            <div className="sticky top-6">
+              <div className="rounded-2xl border border-zinc-200 bg-white shadow-xl shadow-zinc-200/50 p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <p className="text-2xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      {formatINR(venue.pricePerHour)}
+                      <span className="text-sm font-normal text-zinc-400">/hr</span>
+                    </p>
+                  </div>
+                  {isInstant
+                    ? <span className="px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-bold">⚡ Instant</span>
+                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">🏷️ Bid</span>
+                  }
+                </div>
+                <BookingForm
+                  venue={venue}
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  onSuccess={() => push("Booking submitted! Check My Bookings.")}
+                  push={push}
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Mobile sticky bottom bar ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-200 px-4 py-3
+        flex items-center justify-between shadow-2xl">
+        <div>
+          <p className="text-lg font-bold text-zinc-900">{formatINR(venue.pricePerHour)}<span className="text-xs font-normal text-zinc-400">/hr</span></p>
+          {isInstant
+            ? <span className="text-xs text-teal-600 font-semibold">⚡ Instant Book</span>
+            : <span className="text-xs text-amber-600 font-semibold">🏷️ Bid Required</span>
+          }
+        </div>
+        <button onClick={() => setShowMobileForm(true)}
+          className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition-colors">
+          {isInstant ? "Book Now" : "Place Bid"}
+        </button>
+      </div>
+
+      {/* Mobile bottom sheet */}
+      <AnimatePresence>
+        {showMobileForm && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 z-50 bg-black/50 flex items-end"
+            onClick={(e) => e.target === e.currentTarget && setShowMobileForm(false)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="w-full bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[92vh] overflow-y-auto">
+              <div className="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-5" />
+              <div className="flex items-center justify-between mb-5">
+                <p className="font-bold text-zinc-900 text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  {isInstant ? "Book Venue" : "Place a Bid"}
+                </p>
+                <button onClick={() => setShowMobileForm(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <BookingForm
+                venue={venue}
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+                onSuccess={() => { push("Booking submitted!"); setShowMobileForm(false); }}
+                push={push}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
