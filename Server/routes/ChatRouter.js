@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    getOrCreateChat,
+    openChat,
     getMyChats,
     getChatMessages,
     sendMessage,
@@ -10,7 +10,7 @@ const {
 } = require('../controllers/ChatController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.post('/open', protect, getOrCreateChat);
+router.post('/open', protect, openChat);
 router.get('/', protect, getMyChats);
 router.get('/users/search', protect, searchUsers);
 router.get('/:chatId/messages', protect, getChatMessages);
