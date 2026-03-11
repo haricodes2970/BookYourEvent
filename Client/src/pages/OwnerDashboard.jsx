@@ -3,13 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
-import {
-  formatINR,
-  formatDateIN,
-  timeAgo,
-  statusColor,
-  truncate,
-} from "../utils/helpers";
+import { formatINR, formatDateIN, timeAgo, truncate } from "../utils/helpers";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 20, className = "" }) => (
@@ -21,22 +15,20 @@ const Icon = ({ d, size = 20, className = "" }) => (
 );
 
 const ICONS = {
-  overview: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
-  venues: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
-  bookings: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
-  chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
-  profile: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
-  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
-  sun: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
-  moon: "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
-  plus: "M12 5v14M5 12h14",
-  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
-  check: "M20 6L9 17l-5-5",
-  x: "M18 6L6 18M6 6l12 12",
-  eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z",
-  upload: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
-  home: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
-  send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  overview:  "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
+  venues:    "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
+  bookings:  "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  chat:      "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  profile:   "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
+  logout:    "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  sun:       "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
+  moon:      "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  plus:      "M12 5v14M5 12h14",
+  edit:      "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  check:     "M20 6L9 17l-5-5",
+  x:         "M18 6L6 18M6 6l12 12",
+  upload:    "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
+  send:      "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -68,23 +60,27 @@ function useToast() {
   return { toasts, push };
 }
 
-// ─── Amenity Options ──────────────────────────────────────────────────────────
-const AMENITIES = ["AC", "Parking", "WiFi", "Stage", "Catering", "DJ Setup",
-  "Generator", "CCTV", "Security", "Elevator", "Wheelchair Access", "Swimming Pool"];
+// ─── Constants ────────────────────────────────────────────────────────────────
+const AMENITIES = [
+  "AC", "Parking", "WiFi", "Stage", "Catering", "DJ Setup",
+  "Generator", "CCTV", "Security", "Elevator", "Wheelchair Access", "Swimming Pool",
+];
 
-const VENUE_TYPES = ["Wedding Hall", "Banquet Hall", "Conference Room", "Rooftop",
-  "Farmhouse", "Resort", "Auditorium", "Lawn", "Club House", "Convention Centre",
-  "Terrace", "Studio", "Sports Ground", "Other"];
+const VENUE_TYPES = [
+  "Wedding Hall", "Banquet Hall", "Conference Room", "Rooftop",
+  "Farmhouse", "Resort", "Auditorium", "Lawn", "Club House",
+  "Convention Centre", "Terrace", "Studio", "Sports Ground", "Other",
+];
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function Badge({ status }) {
   const map = {
-    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    paid: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    approved:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    rejected:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    paid:       "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
     bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    expired: "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
+    expired:    "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] || map.expired}`}>
@@ -96,15 +92,14 @@ function Badge({ status }) {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, accent }) {
   const accents = {
-    violet: "from-violet-500/10 to-violet-500/5 border-violet-500/20",
+    violet:  "from-violet-500/10 to-violet-500/5 border-violet-500/20",
     emerald: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20",
-    amber: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
-    sky: "from-sky-500/10 to-sky-500/5 border-sky-500/20",
+    amber:   "from-amber-500/10 to-amber-500/5 border-amber-500/20",
+    sky:     "from-sky-500/10 to-sky-500/5 border-sky-500/20",
   };
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border bg-gradient-to-br p-5 ${accents[accent] || accents.violet}
-        dark:bg-zinc-800/60`}>
+      className={`rounded-2xl border bg-gradient-to-br p-5 ${accents[accent] || accents.violet}`}>
       <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-2xl font-bold text-zinc-900 dark:text-white">{value}</p>
       {sub && <p className="text-xs text-zinc-400 mt-1">{sub}</p>}
@@ -112,21 +107,21 @@ function StatCard({ label, value, sub, accent }) {
   );
 }
 
-// ─── Add / Edit Venue Modal ───────────────────────────────────────────────────
+// ─── Venue Modal (Add / Edit) ─────────────────────────────────────────────────
 function VenueModal({ mode, venue, onClose, onSave, push }) {
   const [form, setForm] = useState({
-    name: venue?.name || "",
-    description: venue?.description || "",
+    name:         venue?.name         || "",
+    description:  venue?.description  || "",
     pricePerHour: venue?.pricePerHour || "",
-    capacity: venue?.capacity || "",
-    city: venue?.city || "",
-    pincode: venue?.pincode || "",
-    address: venue?.address || "",
-    venueType: venue?.venueType || "",
-    amenities: venue?.amenities || [],
-    images: [],
+    capacity:     venue?.capacity     || "",
+    city:         venue?.city         || venue?.location?.city   || "",
+    pincode:      venue?.pincode      || venue?.location?.pincode || "",
+    address:      venue?.address      || venue?.location?.address || "",
+    venueType:    venue?.venueType    || venue?.type || "",
+    amenities:    venue?.amenities    || [],
+    images:       [],
   });
-  const [loading, setLoading] = useState(false);
+  const [loading,  setLoading]  = useState(false);
   const [previews, setPreviews] = useState([]);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -143,20 +138,22 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
   };
 
   const submit = async () => {
-    if (!form.name || !form.pricePerHour) return push("Name and price required", "error");
+    if (!form.name || !form.pricePerHour) return push("Name and price are required", "error");
     setLoading(true);
     try {
       if (mode === "add") {
         const fd = new FormData();
         Object.entries(form).forEach(([k, v]) => {
-          if (k === "images") v.forEach((f) => fd.append("images", f));
+          if (k === "images")    v.forEach((f) => fd.append("images", f));
           else if (k === "amenities") v.forEach((a) => fd.append("amenities", a));
           else fd.append(k, v);
         });
-        await api.post("/api/venues", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        // ✅ Correct endpoint
+        await api.post("/venues", fd, { headers: { "Content-Type": "multipart/form-data" } });
         push("Venue added successfully!");
       } else {
-        await api.patch(`/api/venues/${venue._id}`, {
+        // ✅ Correct endpoint
+        await api.patch(`/venues/${venue._id}`, {
           name: form.name, description: form.description,
           pricePerHour: form.pricePerHour, capacity: form.capacity,
           amenities: form.amenities,
@@ -165,7 +162,7 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
       }
       onSave();
     } catch (err) {
-      push(err.response?.data?.message || "Failed", "error");
+      push(err.response?.data?.message || "Failed to save venue", "error");
     } finally {
       setLoading(false);
     }
@@ -178,7 +175,9 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
         onClick={(e) => e.target === e.currentTarget && onClose()}>
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
           className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-          <div className="sticky top-0 bg-white dark:bg-zinc-900 px-6 pt-6 pb-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+
+          <div className="sticky top-0 bg-white dark:bg-zinc-900 px-6 pt-6 pb-4
+            border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
               {mode === "add" ? "Add New Venue" : "Edit Venue"}
             </h2>
@@ -188,11 +187,14 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
           </div>
 
           <div className="p-6 grid grid-cols-2 gap-4">
-            {[["name", "Venue Name", "col-span-2"], ["description", "Description", "col-span-2"],
-              ["pricePerHour", "Price per Hour (₹)", "col-span-1"],
-              ["capacity", "Capacity (people)", "col-span-1"],
-              ["city", "City", "col-span-1"], ["pincode", "Pincode", "col-span-1"],
-              ["address", "Address", "col-span-2"]
+            {[
+              ["name",         "Venue Name",          "col-span-2"],
+              ["description",  "Description",         "col-span-2"],
+              ["pricePerHour", "Price per Hour (₹)",  "col-span-1"],
+              ["capacity",     "Capacity (people)",   "col-span-1"],
+              ["city",         "City",                "col-span-1"],
+              ["pincode",      "Pincode",             "col-span-1"],
+              ["address",      "Address",             "col-span-2"],
             ].map(([k, label, span]) => (
               <div key={k} className={span}>
                 <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
@@ -279,45 +281,57 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
 }
 
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
-function ChatPanel({ dark }) {
-  const [chats, setChats] = useState([]);
-  const [active, setActive] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const { user } = useAuth();
-  const bottomRef = useRef(null);
+function ChatPanel() {
+  const { user }                  = useAuth();
+  const [chats,    setChats]      = useState([]);
+  const [active,   setActive]     = useState(null);
+  const [messages, setMessages]   = useState([]);
+  const [text,     setText]       = useState("");
+  const [sending,  setSending]    = useState(false);
+  const bottomRef                 = useRef(null);
 
-  useEffect(() => { api.get("/api/chats").then((r) => setChats(r.data)).catch(() => {}); }, []);
+  // ✅ Correct endpoint
+  useEffect(() => {
+    api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!active) return;
-    api.get(`/api/chats/${active._id}/messages`)
-      .then((r) => { setMessages(r.data); scrollBottom(); })
+    // ✅ Correct endpoint
+    api.get(`/chats/${active._id}/messages`)
+      .then((r) => { setMessages(r.data || []); scrollBottom(); })
       .catch(() => {});
-    api.patch(`/api/chats/${active._id}/read`).catch(() => {});
+    api.patch(`/chats/${active._id}/read`).catch(() => {});
   }, [active]);
 
   useEffect(() => { scrollBottom(); }, [messages]);
-
   const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
   const send = async () => {
-    if (!text.trim() || !active) return;
-    const msg = text.trim(); setText("");
+    if (!text.trim() || !active || sending) return;
+    const msg = text.trim();
+    setText("");
+    setSending(true);
     try {
-      const r = await api.post("/api/chats/message", { chatId: active._id, content: msg });
+      // ✅ Correct endpoint — POST /chats/:chatId/messages with { text }
+      const r = await api.post(`/chats/${active._id}/messages`, { text: msg });
       setMessages((p) => [...p, r.data]);
-    } catch {}
+    } catch {
+      setText(msg);
+    } finally {
+      setSending(false);
+    }
   };
 
   const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
-  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+  const avatar   = (name) =>
+    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
 
   return (
     <div className="flex h-full gap-4">
       {/* Thread list */}
-      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700
-        bg-white dark:bg-zinc-800/50 overflow-hidden">
+      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200
+        dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
           <p className="font-semibold text-zinc-900 dark:text-white text-sm">Messages</p>
         </div>
@@ -344,29 +358,34 @@ function ChatPanel({ dark }) {
         </div>
       </div>
 
-      {/* Message thread */}
+      {/* Message window */}
       <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700
         bg-white dark:bg-zinc-800/50 overflow-hidden">
         {!active ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-zinc-400 text-sm">Select a conversation</p>
+            <p className="text-zinc-400 text-sm">Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
             <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-700 flex items-center gap-3">
               <img src={avatar(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
               <p className="font-semibold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
+              <button onClick={() => setActive(null)}
+                className="ml-auto p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
+                <Icon d={ICONS.x} size={16} />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
-              {messages.map((m) => {
+              {messages.map((m, i) => {
                 const mine = m.sender?._id === user?._id || m.sender === user?._id;
+                const body = m.text || m.content || "";
                 return (
-                  <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div key={m._id || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
                       ${mine
                         ? "bg-violet-600 text-white rounded-br-sm"
                         : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}>
-                      {m.content}
+                      {body}
                     </div>
                   </div>
                 );
@@ -375,13 +394,13 @@ function ChatPanel({ dark }) {
             </div>
             <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-700 flex gap-2">
               <input value={text} onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message…"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700
                   text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500
                   placeholder:text-zinc-400" />
-              <button onClick={send}
-                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+              <button onClick={send} disabled={sending || !text.trim()}
+                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors disabled:opacity-50">
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -394,30 +413,36 @@ function ChatPanel({ dark }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function OwnerDashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const { toasts, push } = useToast();
+  const { user, logout, login } = useAuth();
+  const navigate                = useNavigate();
+  const { toasts, push }        = useToast();
 
-  const [tab, setTab] = useState("overview");
-  const [dark, setDark] = useState(() => localStorage.getItem("ownerTheme") === "dark");
+  const [tab,    setTab]    = useState("overview");
+  const [dark,   setDark]   = useState(() => localStorage.getItem("ownerTheme") === "dark");
   const [venues, setVenues] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [stats, setStats] = useState({ venues: 0, pending: 0, revenue: 0, total: 0 });
+  const [stats,  setStats]  = useState({ venues: 0, pending: 0, revenue: 0, total: 0 });
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // null | { type: 'add' | 'edit', venue? }
+  const [modal,  setModal]  = useState(null);
   const [unreadChats, setUnreadChats] = useState(false);
+
+  // Profile edit
+  const [editMode,       setEditMode]       = useState(false);
+  const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Language
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
-    { code: "en", label: "English", native: "English", font: "DM Sans" },
-    { code: "hi", label: "Hindi", native: "हिन्दी", font: "Noto Sans Devanagari" },
-    { code: "te", label: "Telugu", native: "తెలుగు", font: "Noto Sans Telugu" },
-    { code: "ta", label: "Tamil", native: "தமிழ்", font: "Noto Sans Tamil" },
-    { code: "kn", label: "Kannada", native: "ಕನ್ನಡ", font: "Noto Sans Kannada" },
+    { code: "en", label: "English",  native: "English",  font: "DM Sans" },
+    { code: "hi", label: "Hindi",    native: "हिन्दी",    font: "Noto Sans Devanagari" },
+    { code: "te", label: "Telugu",   native: "తెలుగు",   font: "Noto Sans Telugu" },
+    { code: "ta", label: "Tamil",    native: "தமிழ்",    font: "Noto Sans Tamil" },
+    { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
 
+  // ─── Effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("ownerTheme", dark ? "dark" : "light");
@@ -425,44 +450,60 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     if (lang !== "en") {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
-      document.head.appendChild(link);
+      const id = "lang-font";
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id   = id;
+        link.rel  = "stylesheet";
+        link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
+        document.head.appendChild(link);
+      }
     }
     localStorage.setItem("appLang", lang);
-  }, [lang]);
+  }, [lang, currentFont]);
 
+  useEffect(() => {
+    if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
+  }, [user]);
+
+  // ─── Data fetch ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [vRes, bRes] = await Promise.all([
-        api.get("/api/venues/my"),
-        api.get("/api/bookings/owner"),
+        // ✅ Correct endpoint
+        api.get("/venues/owner/mine"),
+        api.get("/bookings/owner"),
       ]);
-      const v = vRes.data;
-      const b = bRes.data;
+      const v = Array.isArray(vRes.data) ? vRes.data : vRes.data?.venues   || [];
+      const b = Array.isArray(bRes.data) ? bRes.data : bRes.data?.bookings || [];
       setVenues(v);
       setBookings(b);
       const revenue = b.filter((x) => x.status === "paid").reduce((s, x) => s + (x.bidAmount || 0), 0);
       const pending = b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length;
       setStats({ venues: v.length, pending, revenue, total: b.length });
-    } catch { push("Failed to load data", "error"); }
-    finally { setLoading(false); }
+    } catch {
+      push("Failed to load data", "error");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Check unread chats
   useEffect(() => {
-    api.get("/api/chats").then((r) => {
-      setUnreadChats(r.data.some((c) => c.unreadCount > 0));
+    // ✅ Correct endpoint
+    api.get("/chats").then((r) => {
+      const list = Array.isArray(r.data) ? r.data : [];
+      setUnreadChats(list.some((c) => c.unreadCount > 0));
     }).catch(() => {});
   }, []);
 
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const updateBookingStatus = async (id, status) => {
     try {
-      await api.patch(`/api/bookings/${id}/status`, { status });
+      // ✅ Correct endpoint
+      await api.patch(`/bookings/${id}/status`, { status });
       push(status === "approved" ? "Booking approved!" : "Booking rejected");
       fetchData();
     } catch (err) {
@@ -472,31 +513,57 @@ export default function OwnerDashboard() {
 
   const toggleVenueActive = async (venue) => {
     try {
-      await api.patch(`/api/venues/${venue._id}/toggle-active`);
+      // ✅ Correct endpoint
+      await api.patch(`/venues/${venue._id}/toggle-active`);
       push(`Venue ${venue.isActive ? "deactivated" : "activated"}`);
       fetchData();
-    } catch { push("Failed", "error"); }
+    } catch {
+      push("Failed to update venue", "error");
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileLoading(true);
+    try {
+      // ✅ Correct endpoint
+      const r = await api.patch("/auth/update-profile", profileForm);
+      // ✅ login() takes (user, token)
+      if (r.data.token) login(r.data.user, r.data.token);
+      push("Profile updated!");
+      setEditMode(false);
+    } catch (err) {
+      push(err.response?.data?.message || "Failed to update profile", "error");
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const handleSwitchRole = async () => {
     try {
-      const r = await api.patch("/api/auth/switch-role", { role: "booker" });
+      // ✅ Correct endpoint
+      const r = await api.patch("/auth/switch-role", { role: "booker" });
+      // ✅ Update AuthContext with new user + token
+      login(r.data.user, r.data.token);
       push("Switched to Booker!");
       setTimeout(() => navigate("/booker/dashboard"), 800);
-    } catch { push("Switch failed", "error"); }
+    } catch {
+      push("Switch failed", "error");
+    }
   };
 
-  const TABS = [
-    { key: "overview", icon: ICONS.overview },
-    { key: "venues", icon: ICONS.venues },
-    { key: "bookings", icon: ICONS.bookings },
-    { key: "chat", icon: ICONS.chat, dot: unreadChats },
-    { key: "profile", icon: ICONS.profile },
-  ];
-
-  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
-
+  // ─── Derived ─────────────────────────────────────────────────────────────
   const pendingBookings = bookings.filter((b) => ["pending", "bid_raised"].includes(b.status));
+
+  const avatar = (name) =>
+    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+
+  const TABS = [
+    { key: "overview",  icon: ICONS.overview },
+    { key: "venues",    icon: ICONS.venues },
+    { key: "bookings",  icon: ICONS.bookings },
+    { key: "chat",      icon: ICONS.chat, dot: unreadChats },
+    { key: "profile",   icon: ICONS.profile },
+  ];
 
   return (
     <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
@@ -504,9 +571,10 @@ export default function OwnerDashboard() {
 
       <Toast toasts={toasts} />
 
-      {/* Sidebar */}
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
         bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
+
         {/* Logo */}
         <button onClick={() => navigate("/")}
           className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center mb-4 flex-shrink-0">
@@ -535,25 +603,26 @@ export default function OwnerDashboard() {
 
         {/* Avatar */}
         <button onClick={() => setTab("profile")} className="mt-1">
-          <img src={avatar(user?.name)} alt="" className="w-9 h-9 rounded-full" />
+          <img src={user?.avatar || avatar(user?.name)} alt=""
+            className="w-9 h-9 rounded-full object-cover" />
         </button>
 
         {/* Logout */}
-        <button onClick={logout} title="Logout"
+        <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
           className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
             flex items-center justify-center transition-colors mt-1 mb-1">
           <Icon d={ICONS.logout} size={18} />
         </button>
       </aside>
 
-      {/* Main */}
+      {/* ── Main ────────────────────────────────────────────────── */}
       <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
             className="max-w-6xl mx-auto">
 
-            {/* ── Overview ── */}
+            {/* ── Overview ──────────────────────────────────────── */}
             {tab === "overview" && (
               <div className="space-y-6">
                 <div>
@@ -564,10 +633,10 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Venues" value={stats.venues} accent="violet" />
-                  <StatCard label="Pending Bids" value={stats.pending} accent="amber" />
-                  <StatCard label="Total Revenue" value={formatINR(stats.revenue)} accent="emerald" />
-                  <StatCard label="Total Bookings" value={stats.total} accent="sky" />
+                  <StatCard label="Total Venues"   value={stats.venues}              accent="violet" />
+                  <StatCard label="Pending Bids"   value={stats.pending}             accent="amber" />
+                  <StatCard label="Total Revenue"  value={formatINR(stats.revenue)}  accent="emerald" />
+                  <StatCard label="Total Bookings" value={stats.total}               accent="sky" />
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
@@ -575,12 +644,14 @@ export default function OwnerDashboard() {
                   <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
                     <h2 className="font-semibold text-zinc-900 dark:text-white">Pending Bids</h2>
                   </div>
-                  {pendingBookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">No pending bids</p>
+                  {loading ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                  ) : pendingBookings.length === 0 ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">No pending bids 🎉</p>
                   ) : (
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {pendingBookings.map((b) => (
-                        <div key={b._id} className="px-6 py-4 flex items-center gap-4">
+                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-zinc-900 dark:text-white text-sm truncate">
                               {b.venue?.name || "Venue"}
@@ -610,7 +681,7 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── Venues ── */}
+            {/* ── Venues ────────────────────────────────────────── */}
             {tab === "venues" && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -623,10 +694,17 @@ export default function OwnerDashboard() {
                   </button>
                 </div>
 
-                {venues.length === 0 ? (
+                {loading ? (
+                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                ) : venues.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700
                     py-16 text-center">
-                    <p className="text-zinc-400">No venues yet. Add your first!</p>
+                    <p className="text-zinc-400">No venues yet</p>
+                    <button onClick={() => setModal({ type: "add" })}
+                      className="mt-3 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white
+                        rounded-xl text-sm font-semibold transition-colors">
+                      Add your first venue
+                    </button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -652,7 +730,9 @@ export default function OwnerDashboard() {
                         </div>
                         <div className="p-4">
                           <p className="font-semibold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                          <p className="text-sm text-zinc-400 mt-0.5">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
+                          <p className="text-sm text-zinc-400 mt-0.5">
+                            {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
+                          </p>
                           <div className="flex gap-2 mt-3 flex-wrap">
                             <button onClick={() => setModal({ type: "edit", venue: v })}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
@@ -682,14 +762,16 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── Bookings ── */}
+            {/* ── Bookings ──────────────────────────────────────── */}
             {tab === "bookings" && (
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">All Bookings</h1>
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
                   bg-white dark:bg-zinc-900 overflow-hidden">
-                  {bookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">No bookings found</p>
+                  {loading ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                  ) : bookings.length === 0 ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -746,45 +828,88 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ── */}
+            {/* ── Chat ──────────────────────────────────────────── */}
             {tab === "chat" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
-                  <ChatPanel dark={dark} />
+                  <ChatPanel />
                 </div>
               </div>
             )}
 
-            {/* ── Profile ── */}
+            {/* ── Profile ───────────────────────────────────────── */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Profile</h1>
 
-                {/* User card */}
+                {/* User card + edit */}
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                  bg-white dark:bg-zinc-900 p-6 flex items-center gap-5">
-                  <img src={avatar(user?.name)} alt="" className="w-16 h-16 rounded-2xl" />
-                  <div>
-                    <p className="text-xl font-bold text-zinc-900 dark:text-white">{user?.name}</p>
-                    <p className="text-sm text-zinc-400">{user?.email}</p>
-                    <span className="mt-2 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold
-                      bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
-                      Venue Owner
-                    </span>
+                  bg-white dark:bg-zinc-900 p-6">
+                  <div className="flex items-center gap-4 mb-5">
+                    <img src={user?.avatar || avatar(user?.name)} alt=""
+                      className="w-16 h-16 rounded-2xl object-cover" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xl font-bold text-zinc-900 dark:text-white truncate">{user?.name}</p>
+                      <p className="text-sm text-zinc-400 truncate">{user?.email}</p>
+                      <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold
+                        bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
+                        Venue Owner
+                      </span>
+                    </div>
+                    {!editMode && (
+                      <button onClick={() => setEditMode(true)}
+                        className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
+                        <Icon d={ICONS.edit} size={16} />
+                      </button>
+                    )}
                   </div>
+
+                  <AnimatePresence>
+                    {editMode && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3 overflow-hidden">
+                        {[
+                          ["name",     "Full Name",     "text"],
+                          ["username", "Username",      "text"],
+                          ["phone",    "Phone Number",  "tel"],
+                        ].map(([k, label, type]) => (
+                          <div key={k}>
+                            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
+                            <input type={type} value={profileForm[k]}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
+                              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+                                bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
+                                focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                          </div>
+                        ))}
+                        <div className="flex gap-3 pt-1">
+                          <button onClick={() => setEditMode(false)}
+                            className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
+                              text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            Cancel
+                          </button>
+                          <button onClick={handleSaveProfile} disabled={profileLoading}
+                            className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700
+                              text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+                            {profileLoading ? "Saving…" : "Save Changes"}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Mini stats */}
                 <div className="grid grid-cols-3 gap-3">
-                  <StatCard label="Venues" value={stats.venues} accent="violet" />
-                  <StatCard label="Bookings" value={stats.total} accent="sky" />
-                  <StatCard label="Revenue" value={formatINR(stats.revenue)} accent="emerald" />
+                  <StatCard label="Venues"   value={stats.venues}             accent="violet" />
+                  <StatCard label="Bookings" value={stats.total}              accent="sky" />
+                  <StatCard label="Revenue"  value={formatINR(stats.revenue)} accent="emerald" />
                 </div>
 
                 {/* Language */}
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
-                  bg-white dark:bg-zinc-900 p-5">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Language</p>
                   <div className="flex flex-wrap gap-2">
                     {LANGS.map((l) => (
@@ -807,7 +932,7 @@ export default function OwnerDashboard() {
                       hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                     Switch to Booker
                   </button>
-                  <button onClick={logout}
+                  <button onClick={() => { logout(); navigate("/login"); }}
                     className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700
                       text-white font-semibold text-sm transition-colors">
                     Sign Out
@@ -820,7 +945,7 @@ export default function OwnerDashboard() {
         </AnimatePresence>
       </main>
 
-      {/* Venue Modal */}
+      {/* ── Venue Modal ─────────────────────────────────────────── */}
       {modal && (
         <VenueModal
           mode={modal.type}

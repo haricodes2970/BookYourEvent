@@ -3,12 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
-import {
-  formatINR,
-  formatDateIN,
-  timeAgo,
-  truncate,
-} from "../utils/helpers";
+import { formatINR, formatDateIN, timeAgo, truncate } from "../utils/helpers";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 20, className = "" }) => (
@@ -20,21 +15,21 @@ const Icon = ({ d, size = 20, className = "" }) => (
 );
 
 const ICONS = {
-  overview: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
-  venues: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
-  bookings: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
-  payments: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
-  chat: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
-  profile: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
-  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
-  sun: "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
-  moon: "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
-  search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-  send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
-  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
-  x: "M18 6L6 18M6 6l12 12",
-  check: "M20 6L9 17l-5-5",
-  alert: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
+  overview:   "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
+  venues:     "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
+  bookings:   "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  payments:   "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+  chat:       "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  profile:    "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
+  logout:     "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  sun:        "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
+  moon:       "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  search:     "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+  send:       "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  edit:       "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
+  x:          "M18 6L6 18M6 6l12 12",
+  check:      "M20 6L9 17l-5-5",
+  alert:      "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
   arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
@@ -70,12 +65,13 @@ function useToast() {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function Badge({ status }) {
   const map = {
-    pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    paid: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    approved:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    rejected:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    paid:       "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
     bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    expired: "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
+    expired:    "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
+    confirmed:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] || map.expired}`}>
@@ -87,10 +83,10 @@ function Badge({ status }) {
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, accent }) {
   const accents = {
-    violet: "from-violet-500/10 to-violet-500/5 border-violet-500/20",
+    violet:  "from-violet-500/10 to-violet-500/5 border-violet-500/20",
     emerald: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20",
-    amber: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
-    sky: "from-sky-500/10 to-sky-500/5 border-sky-500/20",
+    amber:   "from-amber-500/10 to-amber-500/5 border-amber-500/20",
+    sky:     "from-sky-500/10 to-sky-500/5 border-sky-500/20",
   };
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -121,9 +117,7 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
           <div>
             <p className="font-semibold text-zinc-900 dark:text-white">Complete your profile</p>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Your profile is missing: <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                {missing.join(", ")}
-              </span>
+              Missing: <span className="font-medium text-zinc-700 dark:text-zinc-300">{missing.join(", ")}</span>
             </p>
           </div>
         </div>
@@ -146,39 +140,52 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
 
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
 function ChatPanel({ user }) {
-  const [chats, setChats] = useState([]);
-  const [active, setActive] = useState(null);
+  const [chats, setChats]     = useState([]);
+  const [active, setActive]   = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const bottomRef = useRef(null);
+  const [text, setText]       = useState("");
+  const [sending, setSending] = useState(false);
+  const bottomRef             = useRef(null);
 
-  useEffect(() => { api.get("/api/chats").then((r) => setChats(r.data)).catch(() => {}); }, []);
+  // ✅ Correct endpoint — no /api/ prefix (axiosInstance baseURL already has /api)
+  useEffect(() => {
+    api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!active) return;
-    api.get(`/api/chats/${active._id}/messages`)
-      .then((r) => { setMessages(r.data); scrollBottom(); })
+    // ✅ Correct endpoint
+    api.get(`/chats/${active._id}/messages`)
+      .then((r) => { setMessages(r.data || []); scrollBottom(); })
       .catch(() => {});
-    api.patch(`/api/chats/${active._id}/read`).catch(() => {});
+    api.patch(`/chats/${active._id}/read`).catch(() => {});
   }, [active]);
 
   useEffect(() => { scrollBottom(); }, [messages]);
   const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
   const send = async () => {
-    if (!text.trim() || !active) return;
-    const msg = text.trim(); setText("");
+    if (!text.trim() || !active || sending) return;
+    const msg = text.trim();
+    setText("");
+    setSending(true);
     try {
-      const r = await api.post("/api/chats/message", { chatId: active._id, content: msg });
+      // ✅ Correct endpoint — POST /chats/:chatId/messages with { text }
+      const r = await api.post(`/chats/${active._id}/messages`, { text: msg });
       setMessages((p) => [...p, r.data]);
-    } catch {}
+    } catch {
+      setText(msg); // restore on fail
+    } finally {
+      setSending(false);
+    }
   };
 
   const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
-  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+  const avatar   = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
 
   return (
     <div className="flex h-full gap-4">
+      {/* Thread list */}
       <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200
         dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
@@ -186,7 +193,7 @@ function ChatPanel({ user }) {
         </div>
         <div className="flex-1 overflow-y-auto">
           {chats.length === 0 && (
-            <p className="text-center text-zinc-400 text-sm mt-8">No conversations</p>
+            <p className="text-center text-zinc-400 text-sm mt-8">No conversations yet</p>
           )}
           {chats.map((c) => {
             const op = opponent(c);
@@ -198,7 +205,7 @@ function ChatPanel({ user }) {
                     : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{op?.name}</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
                   <p className="text-xs text-zinc-400 truncate">{op?.email}</p>
                 </div>
                 {c.unreadCount > 0 && (
@@ -212,11 +219,12 @@ function ChatPanel({ user }) {
         </div>
       </div>
 
+      {/* Message window */}
       <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700
         bg-white dark:bg-zinc-800/50 overflow-hidden">
         {!active ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-zinc-400 text-sm">Select a conversation</p>
+            <p className="text-zinc-400 text-sm">Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
@@ -231,15 +239,17 @@ function ChatPanel({ user }) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2">
-              {messages.map((m) => {
+              {messages.map((m, i) => {
                 const mine = m.sender?._id === user?._id || m.sender === user?._id;
+                // ✅ handle both m.text and m.content from backend
+                const body = m.text || m.content || "";
                 return (
-                  <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div key={m._id || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
                       ${mine
                         ? "bg-violet-600 text-white rounded-br-sm"
                         : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}>
-                      {m.content}
+                      {body}
                     </div>
                   </div>
                 );
@@ -248,13 +258,13 @@ function ChatPanel({ user }) {
             </div>
             <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-700 flex gap-2">
               <input value={text} onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message…"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700
                   text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500
                   placeholder:text-zinc-400" />
-              <button onClick={send}
-                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors">
+              <button onClick={send} disabled={sending || !text.trim()}
+                className="p-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors disabled:opacity-50">
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -268,45 +278,44 @@ function ChatPanel({ user }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function BookerDashboard() {
   const { user, logout, login } = useAuth();
-  const navigate = useNavigate();
-  const { toasts, push } = useToast();
+  const navigate                = useNavigate();
+  const { toasts, push }        = useToast();
 
-  const [tab, setTab] = useState("overview");
+  const [tab,  setTab]  = useState("overview");
   const [dark, setDark] = useState(() => localStorage.getItem("bookerTheme") === "dark");
 
   // Data
-  const [bookings, setBookings] = useState([]);
-  const [venues, setVenues] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, paid: 0 });
-  const [loading, setLoading] = useState(true);
+  const [bookings,  setBookings]  = useState([]);
+  const [venues,    setVenues]    = useState([]);
+  const [payments,  setPayments]  = useState([]);
+  const [stats,     setStats]     = useState({ total: 0, pending: 0, confirmed: 0, paid: 0 });
+  const [loading,   setLoading]   = useState(true);
 
   // UI state
-  const [venueSearch, setVenueSearch] = useState("");
-  const [bookingFilter, setBookingFilter] = useState("all");
-  const [raiseBidId, setRaiseBidId] = useState(null);
+  const [venueSearch,    setVenueSearch]    = useState("");
+  const [bookingFilter,  setBookingFilter]  = useState("all");
+  const [raiseBidId,     setRaiseBidId]     = useState(null);
   const [raiseBidAmount, setRaiseBidAmount] = useState("");
-  const [unreadChats, setUnreadChats] = useState(false);
-
-  // Missing credentials popup
+  const [unreadChats,    setUnreadChats]    = useState(false);
   const [showMissingPopup, setShowMissingPopup] = useState(false);
 
   // Profile edit
-  const [editMode, setEditMode] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: "", username: "", phone: "" });
+  const [editMode,       setEditMode]       = useState(false);
+  const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Language
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
-    { code: "en", label: "English", native: "English", font: "DM Sans" },
-    { code: "hi", label: "Hindi", native: "हिन्दी", font: "Noto Sans Devanagari" },
-    { code: "te", label: "Telugu", native: "తెలుగు", font: "Noto Sans Telugu" },
-    { code: "ta", label: "Tamil", native: "தமிழ்", font: "Noto Sans Tamil" },
-    { code: "kn", label: "Kannada", native: "ಕನ್ನಡ", font: "Noto Sans Kannada" },
+    { code: "en", label: "English",  native: "English",  font: "DM Sans" },
+    { code: "hi", label: "Hindi",    native: "हिन्दी",    font: "Noto Sans Devanagari" },
+    { code: "te", label: "Telugu",   native: "తెలుగు",   font: "Noto Sans Telugu" },
+    { code: "ta", label: "Tamil",    native: "தமிழ்",    font: "Noto Sans Tamil" },
+    { code: "kn", label: "Kannada",  native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
 
+  // ─── Effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("bookerTheme", dark ? "dark" : "light");
@@ -314,50 +323,60 @@ export default function BookerDashboard() {
 
   useEffect(() => {
     if (lang !== "en") {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
-      document.head.appendChild(link);
+      const id = "lang-font";
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id   = id;
+        link.rel  = "stylesheet";
+        link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
+        document.head.appendChild(link);
+      }
     }
     localStorage.setItem("appLang", lang);
-  }, [lang]);
+  }, [lang, currentFont]);
 
-  // Missing creds check (session-based)
   useEffect(() => {
     if (!user) return;
     const dismissed = sessionStorage.getItem("missingCredsDismissed");
-    if (!dismissed && (!user.phone || !user.username)) {
-      setShowMissingPopup(true);
-    }
+    if (!dismissed && (!user.phone || !user.username)) setShowMissingPopup(true);
   }, [user]);
 
+  // ─── Data fetch ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [bRes, vRes, pRes] = await Promise.all([
-        api.get("/api/bookings/my"),
-        api.get("/api/venues"),
-        api.get("/api/payments/my-payments"),
+        // ✅ Correct endpoints — no /api/ prefix
+        api.get("/bookings/my-bookings"),
+        api.get("/venues"),
+        api.get("/payments/my-payments"),
       ]);
-      const b = bRes.data;
+      const b = Array.isArray(bRes.data) ? bRes.data : bRes.data?.bookings || [];
+      const v = Array.isArray(vRes.data) ? vRes.data : vRes.data?.venues   || [];
+      const p = Array.isArray(pRes.data) ? pRes.data : pRes.data?.payments || [];
       setBookings(b);
-      setVenues(vRes.data);
-      setPayments(pRes.data);
+      setVenues(v);
+      setPayments(p);
       setStats({
-        total: b.length,
-        pending: b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length,
-        confirmed: b.filter((x) => x.status === "approved").length,
-        paid: b.filter((x) => x.status === "paid").length,
+        total:     b.length,
+        pending:   b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length,
+        confirmed: b.filter((x) => x.status === "approved" || x.status === "confirmed").length,
+        paid:      b.filter((x) => x.status === "paid").length,
       });
-    } catch { push("Failed to load data", "error"); }
-    finally { setLoading(false); }
+    } catch {
+      push("Failed to load data", "error");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    api.get("/api/chats").then((r) => {
-      setUnreadChats(r.data.some((c) => c.unreadCount > 0));
+    // ✅ Correct endpoint
+    api.get("/chats").then((r) => {
+      const list = Array.isArray(r.data) ? r.data : [];
+      setUnreadChats(list.some((c) => c.unreadCount > 0));
     }).catch(() => {});
   }, []);
 
@@ -365,39 +384,55 @@ export default function BookerDashboard() {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
   }, [user]);
 
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleRaiseBid = async (bookingId) => {
     if (!raiseBidAmount || isNaN(raiseBidAmount)) return push("Enter a valid amount", "error");
     try {
-      await api.patch(`/api/bookings/${bookingId}/raise-bid`, { newBidAmount: Number(raiseBidAmount) });
+      // ✅ Correct endpoint
+      await api.patch(`/bookings/${bookingId}/raise-bid`, { newBidAmount: Number(raiseBidAmount) });
       push("Bid raised successfully!");
       setRaiseBidId(null); setRaiseBidAmount("");
       fetchData();
-    } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
+    } catch (err) {
+      push(err.response?.data?.message || "Failed to raise bid", "error");
+    }
   };
 
   const handleSaveProfile = async () => {
     setProfileLoading(true);
     try {
-      const r = await api.patch("/api/auth/update-profile", profileForm);
-      login(r.data.token);
+      // ✅ Correct endpoint
+      const r = await api.patch("/auth/update-profile", profileForm);
+      // ✅ login() takes (user, token) — not just token
+      if (r.data.token) login(r.data.user, r.data.token);
       push("Profile updated!");
       setEditMode(false);
-    } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
-    finally { setProfileLoading(false); }
+    } catch (err) {
+      push(err.response?.data?.message || "Failed to update profile", "error");
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const handleSwitchRole = async () => {
     try {
-      const r = await api.patch("/api/auth/switch-role", { role: "venueOwner" });
-      login(r.data.token);
+      // ✅ Correct endpoint
+      const r = await api.patch("/auth/switch-role", { role: "venueOwner" });
+      // ✅ Update AuthContext with new user + token
+      login(r.data.user, r.data.token);
       push("Switched to Venue Owner!");
       setTimeout(() => navigate("/owner/dashboard"), 800);
-    } catch { push("Switch failed", "error"); }
+    } catch {
+      push("Switch failed", "error");
+    }
   };
 
+  // ─── Derived data ─────────────────────────────────────────────────────────
   const filteredVenues = venues.filter((v) =>
-    v.isActive && (
+    v.isActive !== false && (
+      !venueSearch ||
       v.name?.toLowerCase().includes(venueSearch.toLowerCase()) ||
+      v.location?.city?.toLowerCase().includes(venueSearch.toLowerCase()) ||
       v.city?.toLowerCase().includes(venueSearch.toLowerCase())
     )
   );
@@ -408,17 +443,20 @@ export default function BookerDashboard() {
     return b.status === bookingFilter;
   });
 
-  const recentBookings = [...bookings].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+  const recentBookings = [...bookings]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
 
-  const avatar = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+  const avatar = (name) =>
+    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
 
   const TABS = [
-    { key: "overview", icon: ICONS.overview },
-    { key: "venues", icon: ICONS.venues },
-    { key: "bookings", icon: ICONS.bookings },
-    { key: "payments", icon: ICONS.payments },
-    { key: "chat", icon: ICONS.chat, dot: unreadChats },
-    { key: "profile", icon: ICONS.profile },
+    { key: "overview",  icon: ICONS.overview },
+    { key: "venues",    icon: ICONS.venues },
+    { key: "bookings",  icon: ICONS.bookings },
+    { key: "payments",  icon: ICONS.payments },
+    { key: "chat",      icon: ICONS.chat,    dot: unreadChats },
+    { key: "profile",   icon: ICONS.profile },
   ];
 
   const BOOKING_FILTERS = ["all", "pending", "approved", "paid", "rejected", "expired"];
@@ -433,14 +471,23 @@ export default function BookerDashboard() {
       {showMissingPopup && (
         <MissingCredentials
           user={user}
-          onLater={() => { sessionStorage.setItem("missingCredsDismissed", "1"); setShowMissingPopup(false); }}
-          onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }}
+          onLater={() => {
+            sessionStorage.setItem("missingCredsDismissed", "1");
+            setShowMissingPopup(false);
+          }}
+          onUpdateNow={() => {
+            setShowMissingPopup(false);
+            setTab("profile");
+            setEditMode(true);
+          }}
         />
       )}
 
-      {/* Sidebar */}
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
         bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
+
+        {/* Logo */}
         <button onClick={() => navigate("/")}
           className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center mb-4 flex-shrink-0">
           <span className="text-white font-black text-sm">B</span>
@@ -459,31 +506,35 @@ export default function BookerDashboard() {
 
         <div className="flex-1" />
 
+        {/* Theme toggle */}
         <button onClick={() => setDark((p) => !p)}
           className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800
             flex items-center justify-center transition-colors">
           <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
         </button>
 
+        {/* Avatar */}
         <button onClick={() => setTab("profile")} className="mt-1">
-          <img src={avatar(user?.name)} alt="" className="w-9 h-9 rounded-full" />
+          <img src={user?.avatar || avatar(user?.name)} alt=""
+            className="w-9 h-9 rounded-full object-cover" />
         </button>
 
-        <button onClick={logout} title="Logout"
+        {/* Logout */}
+        <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
           className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
             flex items-center justify-center transition-colors mt-1 mb-1">
           <Icon d={ICONS.logout} size={18} />
         </button>
       </aside>
 
-      {/* Main */}
+      {/* ── Main ────────────────────────────────────────────────── */}
       <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
             className="max-w-6xl mx-auto">
 
-            {/* ── Overview ── */}
+            {/* ── Overview ──────────────────────────────────────── */}
             {tab === "overview" && (
               <div className="space-y-6">
                 <div>
@@ -494,10 +545,10 @@ export default function BookerDashboard() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Bookings" value={stats.total} accent="violet" />
-                  <StatCard label="Pending" value={stats.pending} accent="amber" />
-                  <StatCard label="Confirmed" value={stats.confirmed} accent="sky" />
-                  <StatCard label="Paid" value={stats.paid} accent="emerald" />
+                  <StatCard label="Total Bookings" value={stats.total}     accent="violet" />
+                  <StatCard label="Pending"         value={stats.pending}   accent="amber" />
+                  <StatCard label="Confirmed"       value={stats.confirmed} accent="sky" />
+                  <StatCard label="Paid"            value={stats.paid}      accent="emerald" />
                 </div>
 
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
@@ -509,7 +560,9 @@ export default function BookerDashboard() {
                       View all <Icon d={ICONS.arrowRight} size={13} />
                     </button>
                   </div>
-                  {recentBookings.length === 0 ? (
+                  {loading ? (
+                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                  ) : recentBookings.length === 0 ? (
                     <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
                   ) : (
                     <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
@@ -532,10 +585,10 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Venues ── */}
+            {/* ── Venues ────────────────────────────────────────── */}
             {tab === "venues" && (
               <div className="space-y-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                   <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Browse Venues</h1>
                   <div className="relative max-w-sm w-full">
                     <Icon d={ICONS.search} size={16}
@@ -548,7 +601,9 @@ export default function BookerDashboard() {
                   </div>
                 </div>
 
-                {filteredVenues.length === 0 ? (
+                {loading ? (
+                  <p className="text-center text-zinc-400 py-16 text-sm">Loading venues…</p>
+                ) : filteredVenues.length === 0 ? (
                   <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
                     <p className="text-zinc-400">No venues found</p>
                     {venueSearch && (
@@ -573,16 +628,18 @@ export default function BookerDashboard() {
                               <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
                             </div>
                           )}
-                          {v.venueType && (
+                          {(v.venueType || v.type) && (
                             <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold
                               bg-black/50 text-white backdrop-blur-sm">
-                              {v.venueType}
+                              {v.venueType || v.type}
                             </span>
                           )}
                         </div>
                         <div className="p-4">
                           <p className="font-semibold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                          <p className="text-sm text-zinc-400 mt-0.5">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
+                          <p className="text-sm text-zinc-400 mt-0.5">
+                            📍 {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
+                          </p>
                           <button onClick={() => navigate(`/venue/${v._id}`)}
                             className="mt-3 w-full py-2 rounded-xl bg-violet-600 hover:bg-violet-700
                               text-white text-sm font-semibold transition-colors">
@@ -596,12 +653,11 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── My Bookings ── */}
+            {/* ── My Bookings ───────────────────────────────────── */}
             {tab === "bookings" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">My Bookings</h1>
 
-                {/* Filter tabs */}
                 <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl w-fit flex-wrap">
                   {BOOKING_FILTERS.map((f) => (
                     <button key={f} onClick={() => setBookingFilter(f)}
@@ -614,7 +670,9 @@ export default function BookerDashboard() {
                   ))}
                 </div>
 
-                {filteredBookings.length === 0 ? (
+                {loading ? (
+                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                ) : filteredBookings.length === 0 ? (
                   <div className="py-16 text-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
                     <p className="text-zinc-400">No bookings in this category</p>
                   </div>
@@ -624,7 +682,7 @@ export default function BookerDashboard() {
                       <motion.div key={b._id} layout
                         className="rounded-2xl border border-zinc-200 dark:border-zinc-700
                           bg-white dark:bg-zinc-900 p-5">
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-start gap-4 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 flex-wrap">
                               <p className="font-semibold text-zinc-900 dark:text-white">
@@ -636,6 +694,7 @@ export default function BookerDashboard() {
                               {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
                             </p>
                           </div>
+
                           <div className="flex gap-2 flex-wrap justify-end">
                             {["pending", "bid_raised"].includes(b.status) && (
                               raiseBidId === b._id ? (
@@ -680,7 +739,7 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Payments ── */}
+            {/* ── Payments ──────────────────────────────────────── */}
             {tab === "payments" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Payments</h1>
@@ -703,7 +762,7 @@ export default function BookerDashboard() {
                           {payments.map((p) => (
                             <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                               <td className="px-5 py-4 font-medium text-zinc-900 dark:text-white whitespace-nowrap">
-                                {truncate(p.venue?.name || "—", 22)}
+                                {truncate(p.booking?.venue?.name || p.venue?.name || "—", 22)}
                               </td>
                               <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
                                 {formatDateIN(p.createdAt)}
@@ -711,7 +770,7 @@ export default function BookerDashboard() {
                               <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
                                 {formatINR(p.amount)}
                               </td>
-                              <td className="px-5 py-4"><Badge status={p.status} /></td>
+                              <td className="px-5 py-4"><Badge status={p.status || "paid"} /></td>
                               <td className="px-5 py-4">
                                 <span className="font-mono text-xs text-zinc-400">
                                   {p.razorpayPaymentId || "—"}
@@ -727,7 +786,7 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ── */}
+            {/* ── Chat ──────────────────────────────────────────── */}
             {tab === "chat" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Messages</h1>
@@ -737,16 +796,17 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Profile ── */}
+            {/* ── Profile ───────────────────────────────────────── */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Profile</h1>
 
-                {/* User card */}
+                {/* User card + edit */}
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700
                   bg-white dark:bg-zinc-900 p-6">
                   <div className="flex items-center gap-4 mb-5">
-                    <img src={avatar(user?.name)} alt="" className="w-16 h-16 rounded-2xl" />
+                    <img src={user?.avatar || avatar(user?.name)} alt=""
+                      className="w-16 h-16 rounded-2xl object-cover" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xl font-bold text-zinc-900 dark:text-white truncate">{user?.name}</p>
                       <p className="text-sm text-zinc-400 truncate">{user?.email}</p>
@@ -766,11 +826,12 @@ export default function BookerDashboard() {
                   <AnimatePresence>
                     {editMode && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }} className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
+                        exit={{ opacity: 0, height: 0 }}
+                        className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3 overflow-hidden">
                         {[
-                          ["name", "Full Name", "text"],
-                          ["username", "Username", "text"],
-                          ["phone", "Phone Number", "tel"],
+                          ["name",     "Full Name",     "text"],
+                          ["username", "Username",      "text"],
+                          ["phone",    "Phone Number",  "tel"],
                         ].map(([k, label, type]) => (
                           <div key={k}>
                             <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
@@ -822,7 +883,7 @@ export default function BookerDashboard() {
                       hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                     Switch to Venue Owner
                   </button>
-                  <button onClick={logout}
+                  <button onClick={() => { logout(); navigate("/login"); }}
                     className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700
                       text-white font-semibold text-sm transition-colors">
                     Sign Out
