@@ -1,0 +1,550 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1806 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+1 0 0 1 40 752 Tm
+(BookYourEvent - Project Structure and API Snapshot) Tj
+T*
+(Generated on: 2026-03-11) Tj
+T*
+() Tj
+T*
+(============================================================) Tj
+T*
+(1\) Current Folder Structure \(Project Root\)) Tj
+T*
+(============================================================) Tj
+T*
+(BookYourEvent/) Tj
+T*
+(|- Client/) Tj
+T*
+(|  |- public/) Tj
+T*
+(|  |  |- _redirects) Tj
+T*
+(|  |  |- logo.png) Tj
+T*
+(|  |  `- vite.svg) Tj
+T*
+(|  |- src/) Tj
+T*
+(|  |  |- assets/) Tj
+T*
+(|  |  |- components/) Tj
+T*
+(|  |  |- context/) Tj
+T*
+(|  |  |- features/) Tj
+T*
+(|  |  |- i18n/) Tj
+T*
+(|  |  |- pages/) Tj
+T*
+(|  |  |- services/) Tj
+T*
+(|  |  |- utils/) Tj
+T*
+(|  |  |- App.css) Tj
+T*
+(|  |  |- App.jsx) Tj
+T*
+(|  |  |- index.css) Tj
+T*
+(|  |  `- main.jsx) Tj
+T*
+(|  |- .env) Tj
+T*
+(|  |- .gitignore) Tj
+T*
+(|  |- _redirects) Tj
+T*
+(|  |- eslint.config.js) Tj
+T*
+(|  |- index.html) Tj
+T*
+(|  |- package-lock.json) Tj
+T*
+(|  |- package.json) Tj
+T*
+(|  |- README.md) Tj
+T*
+(|  `- vite.config.js) Tj
+T*
+(|- Server/) Tj
+T*
+(|  |- config/) Tj
+T*
+(|  |  |- cloudinary.js) Tj
+T*
+(|  |  |- db.js) Tj
+T*
+(|  |  `- passport.js) Tj
+T*
+(|  |- controllers/) Tj
+T*
+(|  |  |- AuthController.js) Tj
+T*
+(|  |  |- BookingController.js) Tj
+T*
+(|  |  |- ChatController.js) Tj
+T*
+(|  |  |- PaymentController.js) Tj
+T*
+(|  |  |- ReviewController.js) Tj
+T*
+(|  |  |- StatsController.js) Tj
+T*
+(|  |  `- VenueController.js) Tj
+T*
+(|  |- middleware/) Tj
+T*
+(|  |  |- authMiddleware.js) Tj
+T*
+(|  |  |- rateLimiters.js) Tj
+T*
+(|  |  `- roleMiddleware.js) Tj
+T*
+(|  |- models/) Tj
+T*
+(|  |  |- Booking.js) Tj
+T*
+(|  |  |- Chat.js) Tj
+T*
+(|  |  |- Message.js) Tj
+T*
+(|  |  |- Review.js) Tj
+T*
+(|  |  |- User.js) Tj
+T*
+(|  |  `- Venue.js) Tj
+T*
+(|  |- routes/) Tj
+T*
+(|  |  |- AuthRouter.js) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 2289 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+1 0 0 1 40 752 Tm
+(|  |  |- BookingRouter.js) Tj
+T*
+(|  |  |- ChatRouter.js) Tj
+T*
+(|  |  |- PaymentRouter.js) Tj
+T*
+(|  |  |- ReviewRouter.js) Tj
+T*
+(|  |  |- StatsRouter.js) Tj
+T*
+(|  |  `- VenueRouter.js) Tj
+T*
+(|  |- utils/) Tj
+T*
+(|  |  `- emailService.js) Tj
+T*
+(|  |- .env) Tj
+T*
+(|  |- .gitignore) Tj
+T*
+(|  |- package-lock.json) Tj
+T*
+(|  |- package.json) Tj
+T*
+(|  `- Server.js) Tj
+T*
+(|- .gitignore) Tj
+T*
+(|- package-lock.json) Tj
+T*
+(`- package.json) Tj
+T*
+() Tj
+T*
+(============================================================) Tj
+T*
+(2\) Backend API Routes Exposed) Tj
+T*
+(============================================================) Tj
+T*
+(Base API prefix: /api) Tj
+T*
+() Tj
+T*
+(A\) Auth \(login/register + related\)) Tj
+T*
+(- POST   /api/auth/register) Tj
+T*
+(- POST   /api/auth/verify-otp) Tj
+T*
+(- POST   /api/auth/login) Tj
+T*
+(- POST   /api/auth/forgot-password) Tj
+T*
+(- POST   /api/auth/reset-password) Tj
+T*
+(- GET    /api/auth/me) Tj
+T*
+(- PATCH  /api/auth/payment-details) Tj
+T*
+(- GET    /api/auth/users) Tj
+T*
+(- DELETE /api/auth/users/:id) Tj
+T*
+(- PATCH  /api/auth/users/:id/role) Tj
+T*
+(- PATCH  /api/auth/switch-role) Tj
+T*
+(- PATCH  /api/auth/update-profile) Tj
+T*
+(- GET    /api/auth/google) Tj
+T*
+(- GET    /api/auth/google/callback) Tj
+T*
+() Tj
+T*
+(B\) Venues \(CRUD + admin/owner actions\)) Tj
+T*
+(- POST   /api/venues/                     \(create venue\)) Tj
+T*
+(- GET    /api/venues/                     \(list venues\)) Tj
+T*
+(- GET    /api/venues/:id                  \(get one\)) Tj
+T*
+(- PATCH  /api/venues/:id                  \(update\)) Tj
+T*
+(- DELETE /api/venues/:id                  \(delete\)) Tj
+T*
+(- GET    /api/venues/owner/mine) Tj
+T*
+(- GET    /api/venues/admin/all) Tj
+T*
+(- PATCH  /api/venues/:id/toggle-active) Tj
+T*
+(- DELETE /api/venues/:id/admin) Tj
+T*
+(- PATCH  /api/venues/:id/approve) Tj
+T*
+(- PATCH  /api/venues/:id/block-dates) Tj
+T*
+(- PATCH  /api/venues/:id/unblock-date) Tj
+T*
+() Tj
+T*
+(C\) Bookings) Tj
+T*
+(- POST   /api/bookings/create) Tj
+T*
+(- PATCH  /api/bookings/:id/raise-bid) Tj
+T*
+(- GET    /api/bookings/owner) Tj
+T*
+(- GET    /api/bookings/venue/:venueId) Tj
+T*
+(- GET    /api/bookings/my-bookings) Tj
+T*
+(- PATCH  /api/bookings/:id/status) Tj
+T*
+(- GET    /api/bookings/admin/all) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 2490 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+1 0 0 1 40 752 Tm
+() Tj
+T*
+(D\) Payments) Tj
+T*
+(- POST   /api/payments/create-order) Tj
+T*
+(- POST   /api/payments/verify) Tj
+T*
+(- GET    /api/payments/my-payments) Tj
+T*
+(- GET    /api/payments/admin-stats) Tj
+T*
+() Tj
+T*
+(E\) Chats / Messages) Tj
+T*
+(- POST   /api/chats/open) Tj
+T*
+(- GET    /api/chats/) Tj
+T*
+(- GET    /api/chats/users/search) Tj
+T*
+(- GET    /api/chats/:chatId/messages) Tj
+T*
+(- POST   /api/chats/:chatId/messages) Tj
+T*
+(- PATCH  /api/chats/:chatId/read) Tj
+T*
+() Tj
+T*
+(F\) Profile Update) Tj
+T*
+(- PATCH  /api/auth/update-profile) Tj
+T*
+(\(Also related profile/account endpoints: PATCH /api/auth/switch-role and PATCH /api/auth/payment-) Tj
+T*
+(details\)) Tj
+T*
+() Tj
+T*
+(============================================================) Tj
+T*
+(3\) How Auth Is Handled) Tj
+T*
+(============================================================) Tj
+T*
+(Auth strategy in this codebase:) Tj
+T*
+(- JWT-based auth.) Tj
+T*
+(- Frontend stores JWT and user object in localStorage keys: token, user.) Tj
+T*
+(- Axios request interceptor reads localStorage token and sends:) Tj
+T*
+(  Authorization: Bearer <token>) Tj
+T*
+(- Backend protect middleware reads token only from Authorization header and verifies with ) Tj
+T*
+(JWT_SECRET.) Tj
+T*
+(- 401 response interceptor clears localStorage token/user and redirects to /login?expired=1.) Tj
+T*
+(- Cookie-based session/JWT auth is NOT implemented in middleware.) Tj
+T*
+() Tj
+T*
+(Google OAuth path:) Tj
+T*
+(- Backend Google callback issues JWT and redirects to frontend with token + user in query params.) Tj
+T*
+(- Frontend GoogleAuthSuccess page reads params and calls AuthContext login\(\), which persists to ) Tj
+T*
+(localStorage.) Tj
+T*
+() Tj
+T*
+(============================================================) Tj
+T*
+(4\) Current Client/src Folder and API/Axios Config) Tj
+T*
+(============================================================) Tj
+T*
+(Client/src/) Tj
+T*
+(|- assets/) Tj
+T*
+(|  `- react.svg) Tj
+T*
+(|- components/) Tj
+T*
+(|  |- AvailabilityCalendar.jsx) Tj
+T*
+(|  |- ChatModal.jsx) Tj
+T*
+(|  |- ErrorBoundary.jsx) Tj
+T*
+(|  |- LanguageSwitcher.jsx) Tj
+T*
+(|  |- PaymentDetailsForm.jsx) Tj
+T*
+(|  `- PaymentModal.jsx) Tj
+T*
+(|- context/) Tj
+T*
+(|  |- AuthContext.jsx) Tj
+T*
+(|  `- LanguageContext.jsx) Tj
+T*
+(|- features/) Tj
+T*
+(|  `- ownerDashboard/) Tj
+T*
+(|     |- components/) Tj
+T*
+(|     |  |- AnalyticsStrip.jsx) Tj
+T*
+(|     |  |- EditVenueModal.jsx) Tj
+T*
+(|     |  |- OwnerFloatingChat.jsx) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 1955 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+1 0 0 1 40 752 Tm
+(|     |  `- VenueCard.jsx) Tj
+T*
+(|     |- OwnerDashboardScreen.jsx) Tj
+T*
+(|     `- OwnerVenueDetails.jsx) Tj
+T*
+(|- i18n/) Tj
+T*
+(|  `- translations.js) Tj
+T*
+(|- pages/) Tj
+T*
+(|  |- About.jsx) Tj
+T*
+(|  |- AdminDashboard.jsx) Tj
+T*
+(|  |- BookerDashboard.jsx) Tj
+T*
+(|  |- Booking.jsx) Tj
+T*
+(|  |- ForgotPassword.jsx) Tj
+T*
+(|  |- GoogleAuthSuccess.jsx) Tj
+T*
+(|  |- HelpContact.jsx) Tj
+T*
+(|  |- Home.jsx) Tj
+T*
+(|  |- Login.jsx) Tj
+T*
+(|  |- MyBookings.jsx) Tj
+T*
+(|  |- NotFound.jsx) Tj
+T*
+(|  |- OwnerDashboard.jsx) Tj
+T*
+(|  |- Register.jsx) Tj
+T*
+(|  |- VenueDetail.jsx) Tj
+T*
+(|  `- VerifyOTP.jsx) Tj
+T*
+(|- services/) Tj
+T*
+(|  |- adminService.js) Tj
+T*
+(|  |- authService.js) Tj
+T*
+(|  |- bookingService.js) Tj
+T*
+(|  |- chatService.js) Tj
+T*
+(|  |- paymentService.js) Tj
+T*
+(|  |- reviewService.js) Tj
+T*
+(|  `- venueService.js) Tj
+T*
+(|- utils/) Tj
+T*
+(|  |- axiosInstance.js) Tj
+T*
+(|  `- helpers.js) Tj
+T*
+(|- App.css) Tj
+T*
+(|- App.jsx) Tj
+T*
+(|- index.css) Tj
+T*
+(`- main.jsx) Tj
+T*
+() Tj
+T*
+(Do you already have api.js or axios config?) Tj
+T*
+(- api.js: No file named api.js found under Client/src.) Tj
+T*
+(- Axios config: Yes, existing central axios setup at Client/src/utils/axiosInstance.js.) Tj
+T*
+() Tj
+T*
+(============================================================) Tj
+T*
+(5\) Source Files Used For This Snapshot) Tj
+T*
+(============================================================) Tj
+T*
+(- Server/Server.js) Tj
+T*
+(- Server/routes/AuthRouter.js) Tj
+T*
+(- Server/routes/VenueRouter.js) Tj
+T*
+(- Server/routes/BookingRouter.js) Tj
+T*
+(- Server/routes/PaymentRouter.js) Tj
+T*
+(- Server/routes/ChatRouter.js) Tj
+T*
+(- Server/middleware/authMiddleware.js) Tj
+T*
+(- Server/controllers/AuthController.js) Tj
+T*
+(- Client/src/context/AuthContext.jsx) Tj
+T*
+(- Client/src/utils/axiosInstance.js) Tj
+T*
+(- Client/src/pages/GoogleAuthSuccess.jsx) Tj
+T*
+(- Client/src/services/authService.js) Tj
+ET
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000140 00000 n 
+0000000208 00000 n 
+0000000334 00000 n 
+0000002191 00000 n 
+0000002317 00000 n 
+0000004657 00000 n 
+0000004783 00000 n 
+0000007324 00000 n 
+0000007452 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+9459
+%%EOF
