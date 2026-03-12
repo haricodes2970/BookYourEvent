@@ -1,4 +1,19 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
+
+:root {
+  --saas-primary: #4f46e5;
+  --saas-secondary: #6366f1;
+  --saas-accent: #22d3ee;
+  --saas-bg: #f8fafc;
+  --saas-text: #0f172a;
+  --saas-muted: #64748b;
+  --saas-card: rgba(255, 255, 255, 0.78);
+  --saas-border: rgba(79, 70, 229, 0.16);
+  --saas-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --saas-shadow-soft: 0 8px 20px rgba(79, 70, 229, 0.12);
+  --saas-radius: 16px;
+}
 
 * {
   box-sizing: border-box;
@@ -12,4 +27,96 @@ body,
 
 body {
   margin: 0;
+  font-family: "Inter", "Plus Jakarta Sans", sans-serif;
+  color: var(--saas-text);
+  background:
+    radial-gradient(1200px 520px at 85% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
+    radial-gradient(980px 520px at -10% 0%, rgba(99, 102, 241, 0.16), transparent 58%),
+    var(--saas-bg);
+}
+
+.saas-card {
+  border-radius: var(--saas-radius);
+  border: 1px solid var(--saas-border);
+  background: var(--saas-card);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--saas-shadow);
+}
+
+.saas-card-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.saas-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(34, 211, 238, 0.36);
+  box-shadow: 0 16px 34px rgba(79, 70, 229, 0.2);
+}
+
+.saas-heading {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.saas-gradient-text {
+  background: linear-gradient(100deg, #4f46e5 0%, #6366f1 38%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.saas-glow-btn {
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1 60%, #22d3ee);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.35);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.saas-glow-btn:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.08);
+  box-shadow: 0 14px 26px rgba(79, 70, 229, 0.42);
+}
+
+.saas-sidebar-active {
+  color: #fff !important;
+  background: linear-gradient(140deg, #4f46e5, #6366f1) !important;
+  box-shadow: 0 10px 18px rgba(79, 70, 229, 0.35);
+}
+
+.saas-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saas-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .saas-grid-12 {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .saas-mobile-bottom-nav {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 55;
+    padding: 8px;
+    border-radius: 14px;
+    border: 1px solid var(--saas-border);
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--saas-shadow-soft);
+  }
 }

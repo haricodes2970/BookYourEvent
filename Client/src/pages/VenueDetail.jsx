@@ -1,20 +1,20 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
 import { formatINR, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
 
-// ─── Google Fonts ─────────────────────────────────────────────────────────────
-const FONT_LINK = `https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap`;
+// â”€â”€â”€ Google Fonts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const FONT_LINK = `https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap`;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AMENITY_ICONS = {
-  "AC": "❄️", "Parking": "🅿️", "WiFi": "📶", "Stage": "🎭",
-  "Catering": "🍽️", "DJ Setup": "🎧", "Generator": "⚡", "CCTV": "📹",
-  "Security": "💂", "Elevator": "🛗", "Wheelchair Access": "♿",
-  "Swimming Pool": "🏊", "Decoration": "🎊", "Bridal Room": "💐",
-  "Green Room": "🪴", "Projector": "📽️", "Bar": "🍸", "Valet": "🚗",
+  "AC": "â„ï¸", "Parking": "ðŸ…¿ï¸", "WiFi": "ðŸ“¶", "Stage": "ðŸŽ­",
+  "Catering": "ðŸ½ï¸", "DJ Setup": "ðŸŽ§", "Generator": "âš¡", "CCTV": "ðŸ“¹",
+  "Security": "ðŸ’‚", "Elevator": "ðŸ›—", "Wheelchair Access": "â™¿",
+  "Swimming Pool": "ðŸŠ", "Decoration": "ðŸŽŠ", "Bridal Room": "ðŸ’",
+  "Green Room": "ðŸª´", "Projector": "ðŸ“½ï¸", "Bar": "ðŸ¸", "Valet": "ðŸš—",
 };
 
 const ALL_AMENITIES = Object.keys(AMENITY_ICONS);
@@ -94,9 +94,9 @@ const extractVenueList = (payload) => {
   return list.map(normalizeVenue).filter(Boolean);
 };
 
-// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tiny helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const avg = (arr) => arr.length ? (arr.reduce((s, x) => s + x, 0) / arr.length).toFixed(1) : "0.0";
-const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
+const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=4f46e5&fontColor=ffffff`;
 
 function Stars({ rating, size = 16 }) {
   return (
@@ -112,7 +112,7 @@ function Stars({ rating, size = 16 }) {
   );
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function useToast() {
   const [toasts, setToasts] = useState([]);
   const push = useCallback((msg, type = "success") => {
@@ -130,7 +130,7 @@ function ToastList({ toasts }) {
         {toasts.map((t) => (
           <motion.div key={t.id} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
             className={`px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto
-              ${t.type === "success" ? "bg-teal-600 text-white" : "bg-red-500 text-white"}`}>
+              ${t.type === "success" ? "bg-indigo-600 text-white" : "bg-red-500 text-white"}`}>
             {t.msg}
           </motion.div>
         ))}
@@ -139,7 +139,7 @@ function ToastList({ toasts }) {
   );
 }
 
-// ─── Lightbox ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Lightbox({ images, index, onClose }) {
   const [cur, setCur] = useState(index);
   useEffect(() => {
@@ -181,7 +181,7 @@ function Lightbox({ images, index, onClose }) {
   );
 }
 
-// ─── Availability Calendar ────────────────────────────────────────────────────
+// â”€â”€â”€ Availability Calendar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate }) {
   const [month, setMonth] = useState(new Date());
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -206,7 +206,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
           className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <p className="font-semibold text-zinc-800 text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>{monthLabel}</p>
+        <p className="font-semibold text-zinc-800 text-sm" style={{ fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif" }}>{monthLabel}</p>
         <button onClick={() => setMonth(new Date(year, mon + 1))}
           className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -231,11 +231,11 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
             <button key={i} disabled={isPast || isBlocked}
               onClick={() => !isPast && !isBlocked && onSelectDate(date.toISOString().split("T")[0])}
               className={`aspect-square flex items-center justify-center text-xs rounded-lg transition-all font-medium
-                ${isSelected ? "bg-teal-600 text-white shadow-md" : ""}
-                ${isToday && !isSelected ? "border-2 border-teal-400 text-teal-700" : ""}
+                ${isSelected ? "bg-indigo-600 text-white shadow-md" : ""}
+                ${isToday && !isSelected ? "border-2 border-indigo-400 text-indigo-700" : ""}
                 ${isBlocked ? "bg-red-100 text-red-400 cursor-not-allowed" : ""}
                 ${isPast ? "text-zinc-300 cursor-not-allowed" : ""}
-                ${!isPast && !isBlocked && !isSelected ? "hover:bg-teal-50 text-zinc-700 hover:text-teal-700" : ""}`}>
+                ${!isPast && !isBlocked && !isSelected ? "hover:bg-indigo-50 text-zinc-700 hover:text-indigo-700" : ""}`}>
               {date.getDate()}
             </button>
           );
@@ -244,7 +244,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
 
       <div className="flex items-center gap-4 mt-4 pt-3 border-t border-zinc-100">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-teal-500" />
+          <div className="w-3 h-3 rounded bg-indigo-500" />
           <span className="text-xs text-zinc-500">Available</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -260,7 +260,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
   );
 }
 
-// ─── Booking Form ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Booking Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -373,7 +373,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         description: `Booking: ${venue?.name}`,
         order_id: order.orderId,
         prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
-        theme: { color: "#0d9488" },
+        theme: { color: "#4f46e5" },
         handler: async (response) => {
           try {
             await api.post("/api/payments/verify", {
@@ -425,7 +425,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           min={new Date().toISOString().split("T")[0]}
           onChange={(e) => { set("date", e.target.value); onDateChange?.(e.target.value); }}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
       </div>
 
       {/* Time */}
@@ -434,7 +434,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Start Time</label>
           <select value={form.startTime} onChange={(e) => { set("startTime", e.target.value); set("endTime", ""); }}
             className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+              focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
             <option value="">Select</option>
             {TIME_SLOTS.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
           </select>
@@ -443,7 +443,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">End Time</label>
           <select value={form.endTime} onChange={(e) => set("endTime", e.target.value)}
             className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+              focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
             <option value="">Select</option>
             {endSlots.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
           </select>
@@ -455,9 +455,9 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Number of Guests</label>
         <input type="number" value={form.guests} min={1} max={venue?.capacity || 9999}
           onChange={(e) => set("guests", e.target.value)}
-          placeholder={`Max ${venue?.capacity || "—"}`}
+          placeholder={`Max ${venue?.capacity || "â€”"}`}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
       </div>
 
       {/* Event type */}
@@ -465,13 +465,13 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Event Type <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
         <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
-          <option value="">Select event type…</option>
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
+          <option value="">Select event typeâ€¦</option>
           {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
-      {/* Bid amount — only for bid venues */}
+      {/* Bid amount â€” only for bid venues */}
       {!isInstant && (
         <div>
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Your Bid Amount</label>
@@ -480,7 +480,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
             <input type="number" value={form.bidAmount} onChange={(e) => set("bidAmount", e.target.value)}
               placeholder="Enter your offer"
               className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
+                focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
           </div>
           <p className="text-xs text-zinc-400 mt-1">
             Suggested minimum: {formatINR(basePrice || venue?.pricePerHour || 0)}
@@ -492,16 +492,16 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Special Requests <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
         <textarea rows={2} value={form.specialRequests} onChange={(e) => set("specialRequests", e.target.value)}
-          placeholder="Any specific requirements…"
+          placeholder="Any specific requirementsâ€¦"
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 resize-none" />
+            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 resize-none" />
       </div>
 
-      {/* Price breakdown — only for instant with hours calculated */}
+      {/* Price breakdown â€” only for instant with hours calculated */}
       {isInstant && hours > 0 && (
         <div className="rounded-xl bg-zinc-50 border border-zinc-200 p-4 space-y-2">
           <div className="flex justify-between text-sm text-zinc-600">
-            <span>{formatINR(venue?.pricePerHour)}/hr × {hours} hr{hours !== 1 ? "s" : ""}</span>
+            <span>{formatINR(venue?.pricePerHour)}/hr Ã— {hours} hr{hours !== 1 ? "s" : ""}</span>
             <span className="font-medium">{formatINR(basePrice)}</span>
           </div>
           <div className="flex justify-between text-sm text-zinc-500">
@@ -510,7 +510,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           </div>
           <div className="border-t border-zinc-200 pt-2 flex justify-between font-bold text-zinc-900">
             <span>Total</span>
-            <span className="text-teal-700">{formatINR(total)}</span>
+            <span className="text-indigo-700">{formatINR(total)}</span>
           </div>
         </div>
       )}
@@ -524,22 +524,20 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
       {/* CTA */}
       {!user ? (
         <Link to={`/login?next=/venue/${venue?._id}`}
-          className="block w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
-            font-semibold text-sm text-center transition-colors shadow-md shadow-teal-900/20">
+          className="saas-glow-btn block w-full py-3.5 text-sm font-semibold text-center">
           Login to Book
         </Link>
       ) : (
         <button onClick={handleSubmit} disabled={loading}
-          className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
-            font-semibold text-sm transition-colors disabled:opacity-60 shadow-md shadow-teal-900/20">
-          {loading ? "Processing…" : isInstant ? "Book Now →" : "Submit Bid →"}
+          className="saas-glow-btn w-full py-3.5 text-sm font-semibold disabled:opacity-60">
+          {loading ? "Processingâ€¦" : isInstant ? "Book Now â†’" : "Submit Bid â†’"}
         </button>
       )}
     </div>
   );
 }
 
-// ─── Reviews Section ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Reviews Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ReviewsSection({ venueId, push }) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -592,7 +590,7 @@ function ReviewsSection({ venueId, push }) {
       {/* Summary */}
       <div className="flex items-start gap-8 flex-wrap">
         <div className="text-center">
-          <p className="text-5xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>{avgRating}</p>
+          <p className="text-5xl font-bold text-zinc-900" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>{avgRating}</p>
           <Stars rating={Number(avgRating)} size={18} />
           <p className="text-xs text-zinc-400 mt-1">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
         </div>
@@ -619,8 +617,8 @@ function ReviewsSection({ venueId, push }) {
       {/* Write review */}
       {canReview && !showForm && (
         <button onClick={() => setShowForm(true)}
-          className="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-700
-            text-sm font-semibold hover:bg-teal-50 transition-colors">
+          className="w-full py-2.5 rounded-xl border-2 border-dashed border-indigo-300 text-indigo-700
+            text-sm font-semibold hover:bg-indigo-50 transition-colors">
           + Write a Review
         </button>
       )}
@@ -646,9 +644,9 @@ function ReviewsSection({ venueId, push }) {
             </div>
 
             <textarea rows={3} value={form.text} onChange={(e) => setForm((p) => ({ ...p, text: e.target.value }))}
-              placeholder="Share your experience…"
+              placeholder="Share your experienceâ€¦"
               className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white resize-none" />
+                focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white resize-none" />
 
             <div className="flex gap-3">
               <button onClick={() => setShowForm(false)}
@@ -656,8 +654,8 @@ function ReviewsSection({ venueId, push }) {
                 Cancel
               </button>
               <button onClick={submitReview} disabled={submitting}
-                className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold disabled:opacity-60">
-                {submitting ? "Submitting…" : "Submit"}
+                className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-60">
+                {submitting ? "Submittingâ€¦" : "Submit"}
               </button>
             </div>
           </motion.div>
@@ -677,8 +675,8 @@ function ReviewsSection({ venueId, push }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-zinc-800 text-sm">{r.reviewer?.name}</p>
                   {r.isVerifiedBooking && (
-                    <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
-                      ✓ Verified Booking
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                      âœ“ Verified Booking
                     </span>
                   )}
                   <span className="text-xs text-zinc-400 ml-auto">{timeAgo(r.createdAt)}</span>
@@ -701,7 +699,7 @@ function ReviewsSection({ venueId, push }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function VenueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -784,8 +782,8 @@ export default function VenueDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>Loading venue…</p>
+          <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-zinc-500" style={{ fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif" }}>Loading venueâ€¦</p>
         </div>
       </div>
     );
@@ -795,8 +793,8 @@ export default function VenueDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
         <div className="text-center">
-          <p className="text-2xl font-bold text-zinc-700" style={{ fontFamily: "'Playfair Display', serif" }}>Venue not found</p>
-          <Link to="/" className="mt-4 inline-block text-teal-600 hover:underline text-sm">← Back to Home</Link>
+          <p className="text-2xl font-bold text-zinc-700" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>Venue not found</p>
+          <Link to="/" className="mt-4 inline-block text-indigo-600 hover:underline text-sm">â† Back to Home</Link>
         </div>
       </div>
     );
@@ -812,23 +810,30 @@ export default function VenueDetail() {
   const descShort = venue.description?.length > DESC_LIMIT;
 
   const INFO_STRIP = [
-    { icon: "👥", label: "Capacity", value: `Up to ${venue.capacity || "—"} guests` },
-    { icon: "💰", label: "Price", value: `${formatINR(venue.pricePerHour)}/hr` },
-    { icon: "📅", label: "Booking", value: isInstant ? "⚡ Instant" : "🏷️ Bid" },
-    { icon: "🏛️", label: "Type", value: venue.venueType || "Event Venue" },
+    { icon: "ðŸ‘¥", label: "Capacity", value: `Up to ${venue.capacity || "â€”"} guests` },
+    { icon: "ðŸ’°", label: "Price", value: `${formatINR(venue.pricePerHour)}/hr` },
+    { icon: "ðŸ“…", label: "Booking", value: isInstant ? "âš¡ Instant" : "ðŸ·ï¸ Bid" },
+    { icon: "ðŸ›ï¸", label: "Type", value: venue.venueType || "Event Venue" },
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div
+      className="min-h-screen"
+      style={{
+        fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
+        background:
+          "radial-gradient(900px 420px at 90% -10%, rgba(34,211,238,0.18), transparent 55%), radial-gradient(900px 420px at -5% 0%, rgba(99,102,241,0.16), transparent 60%), #f8fafc",
+      }}
+    >
       <ToastList toasts={toasts} />
       {lightbox !== null && (
         <Lightbox images={images} index={lightbox} onClose={() => setLightbox(null)} />
       )}
 
-      {/* ── Back nav ── */}
-      <div className="bg-white border-b border-zinc-100 px-4 md:px-8 py-3 flex items-center gap-3">
+      {/* â”€â”€ Back nav â”€â”€ */}
+      <div className="bg-white/85 backdrop-blur border-b border-indigo-100 px-4 md:px-8 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-teal-600 transition-colors">
+          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-indigo-600 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           Back
         </button>
@@ -839,7 +844,7 @@ export default function VenueDetail() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 lg:py-10">
         <div className="flex gap-10 items-start">
 
-          {/* ── LEFT COLUMN ── */}
+          {/* â”€â”€ LEFT COLUMN â”€â”€ */}
           <div className="flex-1 min-w-0 space-y-8">
 
             {/* Hero Gallery */}
@@ -849,17 +854,34 @@ export default function VenueDetail() {
                 <img src={images[activeImage]} alt={venue.name}
                   onError={imageFallback}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
                 <div className="absolute bottom-4 left-5 right-5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-zinc-700">
-                      {venue.venueType || "Event Venue"}
-                    </span>
-                    {isInstant && (
-                      <span className="px-3 py-1 rounded-full bg-teal-500/90 backdrop-blur-sm text-xs font-semibold text-white">
-                        ⚡ Instant Book
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-slate-700">
+                          {venue.venueType || "Event Venue"}
+                        </span>
+                        {isInstant && (
+                          <span className="px-3 py-1 rounded-full bg-indigo-500/90 backdrop-blur-sm text-xs font-semibold text-white">
+                            Instant Book
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xl md:text-2xl font-bold text-white saas-heading">{venue.name}</p>
+                      <p className="text-sm text-white/85">
+                        {Number(avgRating).toFixed(1)} rating | {[venue.city, venue.pincode].filter(Boolean).join(", ")}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }}
+                      className="saas-glow-btn px-4 py-2.5 text-sm font-semibold"
+                    >
+                      {isInstant ? "Book Instantly" : "Start Booking"}
+                    </button>
                   </div>
                 </div>
                 <button className="absolute top-4 right-4 p-2 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
@@ -876,7 +898,7 @@ export default function VenueDetail() {
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setActiveImage(i)}
                       className={`flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all
-                        ${activeImage === i ? "border-teal-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                        ${activeImage === i ? "border-indigo-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
                       <img src={img} alt="" onError={imageFallback} className="w-full h-full object-cover" />
                     </button>
                   ))}
@@ -887,18 +909,18 @@ export default function VenueDetail() {
             {/* Venue title + rating */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-zinc-900 leading-tight"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
+                style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                 {venue.name}
               </h1>
               <div className="flex items-center gap-3 mt-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <Stars rating={avgRating} size={16} />
                   <span className="text-sm font-semibold text-zinc-700">{Number(avgRating).toFixed(1)}</span>
-                  <span className="text-sm text-zinc-400">· {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
+                  <span className="text-sm text-zinc-400">Â· {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
                 </div>
                 <span className="text-zinc-300">|</span>
                 <span className="text-sm text-zinc-500">
-                  📍 {[venue.address, venue.city, venue.pincode].filter(Boolean).join(", ")}
+                  ðŸ“ {[venue.address, venue.city, venue.pincode].filter(Boolean).join(", ")}
                 </span>
               </div>
             </div>
@@ -906,7 +928,7 @@ export default function VenueDetail() {
             {/* Info strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {INFO_STRIP.map(({ icon, label, value }) => (
-                <div key={label} className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
+                <div key={label} className="saas-card p-4 text-center">
                   <div className="text-2xl mb-1">{icon}</div>
                   <p className="text-xs text-zinc-400 font-medium uppercase tracking-wide">{label}</p>
                   <p className="text-sm font-semibold text-zinc-800 mt-0.5">{value}</p>
@@ -915,26 +937,26 @@ export default function VenueDetail() {
             </div>
 
             {/* Description */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <div className="saas-card p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-3" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                 About this venue
               </h2>
               <p className="text-sm text-zinc-600 leading-relaxed">
                 {descShort && !descExpanded
-                  ? venue.description?.slice(0, DESC_LIMIT) + "…"
+                  ? venue.description?.slice(0, DESC_LIMIT) + "â€¦"
                   : venue.description}
               </p>
               {descShort && (
                 <button onClick={() => setDescExpanded((p) => !p)}
-                  className="mt-2 text-sm font-semibold text-teal-700 hover:underline">
-                  {descExpanded ? "Read less ↑" : "Read more ↓"}
+                  className="mt-2 text-sm font-semibold text-indigo-700 hover:underline">
+                  {descExpanded ? "Read less â†‘" : "Read more â†“"}
                 </button>
               )}
             </div>
 
             {/* Amenities */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <div className="saas-card p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                 Amenities
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -943,11 +965,11 @@ export default function VenueDetail() {
                   return (
                     <div key={a} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all
                       ${has
-                        ? "border-teal-200 bg-teal-50 text-teal-800"
+                        ? "border-indigo-200 bg-indigo-50 text-indigo-800"
                         : "border-zinc-100 bg-zinc-50 text-zinc-400"}`}>
                       <span className={`text-lg ${!has ? "grayscale opacity-40" : ""}`}>{AMENITY_ICONS[a]}</span>
                       <span className="text-xs font-medium">{a}</span>
-                      {!has && <span className="ml-auto text-zinc-300 text-xs">✕</span>}
+                      {!has && <span className="ml-auto text-zinc-300 text-xs">âœ•</span>}
                     </div>
                   );
                 })}
@@ -956,7 +978,7 @@ export default function VenueDetail() {
 
             {/* Calendar */}
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                 Availability
               </h2>
               <AvailabilityCalendar
@@ -970,52 +992,52 @@ export default function VenueDetail() {
             </div>
 
             {/* Reviews */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <div className="saas-card p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-5" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                 Reviews
               </h2>
               <ReviewsSection venueId={id} push={push} />
             </div>
 
             {/* Owner card */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 flex items-center gap-5">
+            <div className="saas-card p-6 flex items-center gap-5">
               <img src={avatar(venue.owner?.name)} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-zinc-800">{venue.owner?.name || "Venue Owner"}</p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Member since {venue.owner?.createdAt ? new Date(venue.owner.createdAt).getFullYear() : "—"}
+                  Member since {venue.owner?.createdAt ? new Date(venue.owner.createdAt).getFullYear() : "â€”"}
                 </p>
                 <p className="text-xs text-zinc-500 mt-1">{venue.owner?.totalVenues || 1} venue{(venue.owner?.totalVenues || 1) !== 1 ? "s" : ""} listed</p>
               </div>
               <button onClick={handleChatOwner} disabled={chatLoading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700
                   text-white text-sm font-semibold transition-colors disabled:opacity-60 flex-shrink-0">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                {chatLoading ? "Opening…" : "Chat with Owner"}
+                {chatLoading ? "Openingâ€¦" : "Chat with Owner"}
               </button>
             </div>
 
             {/* Similar venues */}
             {similar.length > 0 && (
               <div>
-                <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                   Similar Venues
                 </h2>
                 <div className="flex gap-4 overflow-x-auto pb-2">
                   {similar.map((v) => (
                     <Link key={v._id} to={`/venue/${v._id}`}
-                      className="flex-shrink-0 w-60 rounded-2xl border border-zinc-200 bg-white overflow-hidden hover:shadow-md transition-shadow group">
+                      className="flex-shrink-0 w-60 saas-card saas-card-hover overflow-hidden group">
                       <div className="h-36 bg-zinc-100 overflow-hidden">
                         {v.images?.[0]
                           ? <img src={v.images[0]} alt={v.name} onError={imageFallback} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">🏛️</div>
+                          : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">ðŸ›ï¸</div>
                         }
                       </div>
                       <div className="p-3">
                         <p className="font-semibold text-zinc-800 text-sm truncate">{v.name}</p>
-                        <p className="text-xs text-zinc-400">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
+                        <p className="text-xs text-zinc-400">{v.city} Â· {formatINR(v.pricePerHour)}/hr</p>
                       </div>
                     </Link>
                   ))}
@@ -1024,20 +1046,20 @@ export default function VenueDetail() {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN — Sticky Booking Form ── */}
+          {/* â”€â”€ RIGHT COLUMN â€” Sticky Booking Form â”€â”€ */}
           <div ref={bookingRef} className="hidden lg:block w-[360px] flex-shrink-0">
             <div className="sticky top-6">
-              <div className="rounded-2xl border border-zinc-200 bg-white shadow-xl shadow-zinc-200/50 p-6">
+              <div className="rounded-2xl border border-indigo-100 bg-white/95 backdrop-blur shadow-[0_18px_45px_rgba(79,70,229,0.16)] p-6">
                 <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="text-2xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <p className="text-2xl font-bold text-zinc-900" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                       {formatINR(venue.pricePerHour)}
                       <span className="text-sm font-normal text-zinc-400">/hr</span>
                     </p>
                   </div>
                   {isInstant
-                    ? <span className="px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-bold">⚡ Instant</span>
-                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">🏷️ Bid</span>
+                    ? <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">Instant</span>
+                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">ðŸ·ï¸ Bid</span>
                   }
                 </div>
                 <BookingForm
@@ -1054,18 +1076,18 @@ export default function VenueDetail() {
         </div>
       </div>
 
-      {/* ── Mobile sticky bottom bar ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-200 px-4 py-3
+      {/* â”€â”€ Mobile sticky bottom bar â”€â”€ */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-indigo-100 px-4 py-3
         flex items-center justify-between shadow-2xl">
         <div>
           <p className="text-lg font-bold text-zinc-900">{formatINR(venue.pricePerHour)}<span className="text-xs font-normal text-zinc-400">/hr</span></p>
           {isInstant
-            ? <span className="text-xs text-teal-600 font-semibold">⚡ Instant Book</span>
-            : <span className="text-xs text-amber-600 font-semibold">🏷️ Bid Required</span>
+            ? <span className="text-xs text-indigo-600 font-semibold">Instant Book</span>
+            : <span className="text-xs text-amber-600 font-semibold">ðŸ·ï¸ Bid Required</span>
           }
         </div>
         <button onClick={() => setShowMobileForm(true)}
-          className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition-colors">
+          className="saas-glow-btn px-6 py-3 text-sm font-semibold">
           {isInstant ? "Book Now" : "Place Bid"}
         </button>
       </div>
@@ -1081,7 +1103,7 @@ export default function VenueDetail() {
               className="w-full bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[92vh] overflow-y-auto">
               <div className="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-5" />
               <div className="flex items-center justify-between mb-5">
-                <p className="font-bold text-zinc-900 text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="font-bold text-zinc-900 text-lg" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
                   {isInstant ? "Book Venue" : "Place a Bid"}
                 </p>
                 <button onClick={() => setShowMobileForm(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400">
@@ -1102,3 +1124,4 @@ export default function VenueDetail() {
     </div>
   );
 }
+

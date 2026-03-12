@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
 import { formatINR, formatDateIN, timeAgo, truncate } from "../utils/helpers";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Icon = ({ d, size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={2} strokeLinecap="round"
@@ -19,9 +19,13 @@ const ICONS = {
   venues:     "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z",
   bookings:   "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
   payments:   "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+  calendar:   "M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z",
+  analytics:  "M3 3v18h18M7 13l3-3 3 2 4-5",
   chat:       "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
   profile:    "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
   logout:     "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  settings:   "M12 8a4 4 0 100 8 4 4 0 000-8zM2 12h2m16 0h2M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41m0-14.14l-1.41 1.41M6.34 17.66l-1.41 1.41",
+  bell:       "M15 17h5l-1.4-1.4a2 2 0 01-.6-1.4V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9",
   sun:        "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 5a7 7 0 100 14A7 7 0 0012 5z",
   moon:       "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
   search:     "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
@@ -33,39 +37,36 @@ const ICONS = {
   arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
-const DASHBOARD_TABS = new Set(["overview", "venues", "bookings", "payments", "chat", "profile"]);
+const DASHBOARD_TABS = new Set(["overview", "bookings", "venues", "calendar", "analytics", "chat", "profile", "payments"]);
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  COLOR SYSTEM — extracted from Image 2
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  COLOR SYSTEM â€” extracted from Image 2
 //  Light:  warm ivory bg #f5f0e8, cream cards #fffdf7, gold CTA #C8973A
 //  Dark:   true black bg #0a0a0a, charcoal cards #161616, same gold CTA
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const C = {
-  // Primary gold — the signature CTA color from Image 2
-  gold:        "#C8973A",
-  goldHover:   "#B5862F",
-  goldLight:   "rgba(200,151,58,0.12)",
-  goldDark:    "rgba(200,151,58,0.18)",
-
-  // Hero gradient — warm champagne-to-ivory in light, dark charcoal-to-black in dark
-  heroLight:   "linear-gradient(135deg, #2d6a4f 0%, #1b4332 40%, #6b3fa0 80%, #3d1c8a 100%)",
-  heroDark:    "linear-gradient(135deg, #1a3a2a 0%, #0d2218 40%, #3d2060 80%, #1e0e4a 100%)",
-
-  // Stat card gradients — kept from original but shifted to match image palette
-  teal:        "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",      // teal stat (Total Venues)
-  amber:       "linear-gradient(135deg, #d97706 0%, #b45309 100%)",      // amber stat (Upcoming)
-  green:       "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",      // green stat (Revenue)
-  purple:      "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",      // purple stat (Pending)
-
-  // Error/danger
+  primary:     "#4F46E5",
+  secondary:   "#6366F1",
+  accent:      "#22D3EE",
+  primaryLight:"rgba(99,102,241,0.16)",
+  primaryDark: "rgba(79,70,229,0.22)",
+  heroLight:   "linear-gradient(132deg, #4F46E5 0%, #6366F1 42%, #22D3EE 100%)",
+  heroDark:    "linear-gradient(132deg, #312E81 0%, #4338CA 42%, #0E7490 100%)",
+  teal:        "linear-gradient(132deg, #4F46E5 0%, #6366F1 70%, #22D3EE 100%)",
+  amber:       "linear-gradient(132deg, #4338CA 0%, #4F46E5 100%)",
+  green:       "linear-gradient(132deg, #0EA5E9 0%, #22D3EE 100%)",
+  purple:      "linear-gradient(132deg, #6366F1 0%, #8B5CF6 100%)",
   red:         "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
   redSolid:    "#dc2626",
-
-  // Sidebar active — gold pill in both modes
-  sidebarActive: "#C8973A",
+  sidebarActive: "#4F46E5",
+  // Backward-compatible aliases used across existing JSX
+  gold: "#4F46E5",
+  goldHover: "#4338CA",
+  goldLight: "rgba(99,102,241,0.14)",
+  goldDark: "rgba(79,70,229,0.22)",
 };
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Toast({ toasts }) {
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
@@ -93,7 +94,7 @@ function useToast() {
   return { toasts, push };
 }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Badge({ status }) {
   const map = {
     pending:         "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
@@ -111,7 +112,7 @@ function Badge({ status }) {
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -126,7 +127,7 @@ function StatCard({ label, value, grad }) {
   );
 }
 
-// ─── Hero Banner — Image 2 style: large serif title, warm gradient ────────────
+// â”€â”€â”€ Hero Banner â€” Image 2 style: large serif title, warm gradient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function HeroBanner({ name, dark }) {
   return (
     <div className="relative rounded-2xl overflow-hidden p-8"
@@ -140,21 +141,20 @@ function HeroBanner({ name, dark }) {
         style={{ background: "rgba(200,151,58,0.2)" }} />
       <div className="relative z-10">
         <p className="text-xs font-bold uppercase tracking-widest mb-2"
-          style={{ color: "rgba(255,255,255,0.6)" }}>Booker Dashboard</p>
-        {/* Image 2: large serif-style title */}
+          style={{ color: "rgba(255,255,255,0.72)" }}>Booker Dashboard</p>
         <h1 className="text-4xl font-black text-white mb-2"
-          style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "-0.02em" }}>
-          Booker Dashboard
+          style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", letterSpacing: "-0.02em" }}>
+          Find and Book Your Perfect Venue
         </h1>
         <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm">
-          Hey, {name?.split(" ")[0] || "there"} 👋  — here's your booking summary
+          Welcome back, {name?.split(" ")[0] || "there"} â€” discover premium spaces with instant decisions.
         </p>
       </div>
     </div>
   );
 }
 
-// ─── Missing Credentials Popup ────────────────────────────────────────────────
+// â”€â”€â”€ Missing Credentials Popup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MissingCredentials({ user, onLater, onUpdateNow }) {
   const missing = [];
   if (!user?.phone) missing.push("phone number");
@@ -195,7 +195,7 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
   );
 }
 
-// ─── Chat Panel ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Chat Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ChatPanel({ user, initialChatId }) {
   const [chats,    setChats]    = useState([]);
   const [active,   setActive]   = useState(null);
@@ -247,7 +247,7 @@ function ChatPanel({ user, initialChatId }) {
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate">{c.lastMessage?.content?.slice(0, 28) || op?.email || "—"}</p>
+                  <p className="text-xs text-zinc-400 truncate">{c.lastMessage?.content?.slice(0, 28) || op?.email || "â€”"}</p>
                 </div>
                 {c.unreadCount > 0 && (
                   <span className="ml-auto w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
@@ -296,7 +296,7 @@ function ChatPanel({ user, initialChatId }) {
             <div className="px-4 py-3 border-t border-stone-100 dark:border-zinc-800 flex gap-2">
               <input value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-                placeholder="Type a message…"
+                placeholder="Type a messageâ€¦"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-stone-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
                   focus:outline-none placeholder:text-zinc-400"
                 style={{ outline: "none" }}
@@ -315,7 +315,7 @@ function ChatPanel({ user, initialChatId }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function BookerDashboard() {
   const { user, logout, login } = useAuth();
   const navigate                = useNavigate();
@@ -328,6 +328,7 @@ export default function BookerDashboard() {
       : null;
     return requestedTab && DASHBOARD_TABS.has(requestedTab) ? requestedTab : "venues";
   }); // Image 2 shows venue grid as main view
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== "undefined" ? window.innerWidth < 1200 : false);
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("bookerTheme");
     if (saved === "dark") document.documentElement.classList.add("dark");
@@ -342,6 +343,9 @@ export default function BookerDashboard() {
   const [loading,   setLoading]   = useState(true);
 
   const [venueSearch,      setVenueSearch]      = useState("");
+  const [smartLocation,    setSmartLocation]    = useState("");
+  const [smartDate,        setSmartDate]        = useState("");
+  const [smartGuests,      setSmartGuests]      = useState("");
   const [venueTypeFilter,  setVenueTypeFilter]  = useState("All");
   const [bookingFilter,    setBookingFilter]    = useState("all");
   const [raiseBidId,       setRaiseBidId]       = useState(null);
@@ -362,13 +366,21 @@ export default function BookerDashboard() {
     }
   }, [location.search, tab]);
 
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth < 1024) setSidebarCollapsed(true);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
     { code: "en", native: "English",  font: "DM Sans" },
-    { code: "hi", native: "हिन्दी",    font: "Noto Sans Devanagari" },
-    { code: "te", native: "తెలుగు",   font: "Noto Sans Telugu" },
-    { code: "ta", native: "தமிழ்",    font: "Noto Sans Tamil" },
-    { code: "kn", native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
+    { code: "hi", native: "à¤¹à¤¿à¤¨à¥à¤¦à¥€",    font: "Noto Sans Devanagari" },
+    { code: "te", native: "à°¤à±†à°²à±à°—à±",   font: "Noto Sans Telugu" },
+    { code: "ta", native: "à®¤à®®à®¿à®´à¯",    font: "Noto Sans Tamil" },
+    { code: "kn", native: "à²•à²¨à³à²¨à²¡",    font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
 
@@ -458,17 +470,20 @@ export default function BookerDashboard() {
     } catch { push("Switch failed", "error"); }
   };
 
-  // Venue type filters — Image 2 shows pill buttons: All, Marriage Hall, Rooftop, Resort, Farmhouse, Studio
+  // Venue type filters â€” Image 2 shows pill buttons: All, Marriage Hall, Rooftop, Resort, Farmhouse, Studio
   const venueTypes = ["All", ...new Set(venues.map((v) => v.venueType || v.type).filter(Boolean))];
 
   const filteredVenues = venues.filter((v) => {
     const matchActive = v.isActive !== false && v.isApproved;
-    const matchSearch = !venueSearch ||
-      v.name?.toLowerCase().includes(venueSearch.toLowerCase()) ||
-      v.location?.city?.toLowerCase().includes(venueSearch.toLowerCase()) ||
-      v.city?.toLowerCase().includes(venueSearch.toLowerCase());
+    const combinedLocation = smartLocation || venueSearch;
+    const matchSearch = !combinedLocation ||
+      v.name?.toLowerCase().includes(combinedLocation.toLowerCase()) ||
+      v.location?.city?.toLowerCase().includes(combinedLocation.toLowerCase()) ||
+      v.city?.toLowerCase().includes(combinedLocation.toLowerCase());
+    const minGuests = Number(smartGuests);
+    const matchGuestCapacity = !Number.isFinite(minGuests) || minGuests <= 0 || Number(v.capacity || 0) >= minGuests;
     const matchType = venueTypeFilter === "All" || (v.venueType || v.type) === venueTypeFilter;
-    return matchActive && matchSearch && matchType;
+    return matchActive && matchSearch && matchType && matchGuestCapacity;
   });
 
   const filteredBookings = bookings.filter((b) => {
@@ -485,27 +500,28 @@ export default function BookerDashboard() {
     `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=c8973a&fontColor=ffffff`;
 
   const TABS = [
-    { key: "overview",  icon: ICONS.overview },
-    { key: "venues",    icon: ICONS.venues },
-    { key: "bookings",  icon: ICONS.bookings },
-    { key: "payments",  icon: ICONS.payments },
-    { key: "chat",      icon: ICONS.chat,    dot: unreadChats },
-    { key: "profile",   icon: ICONS.profile },
+    { key: "overview",  label: "Dashboard", icon: ICONS.overview },
+    { key: "bookings",  label: "Bookings",  icon: ICONS.bookings },
+    { key: "venues",    label: "Venues",    icon: ICONS.venues },
+    { key: "calendar",  label: "Calendar",  icon: ICONS.calendar },
+    { key: "analytics", label: "Analytics", icon: ICONS.analytics },
+    { key: "chat",      label: "Messages",  icon: ICONS.chat, dot: unreadChats },
+    { key: "profile",   label: "Settings",  icon: ICONS.settings },
   ];
 
   const BOOKING_FILTERS = ["all", "pending", "approved", "confirmed", "paid", "rejected", "expired"];
 
-  // ── Page background and card colors based on dark mode ─────────────────────
+  // â”€â”€ Page background and card colors based on dark mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Light: warm ivory #f5f0e8 bg, cream white cards
   // Dark:  true black #0a0a0a bg, #161616 cards
-  const pageBg    = dark ? "#0a0a0a" : "#f5f0e8";
-  const cardBg    = dark ? "#161616" : "#fffdf7";
-  const cardBorder = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-  const textMain  = dark ? "#f5f0e8" : "#1a1209";
-  const textMuted = dark ? "rgba(245,240,232,0.5)" : "rgba(26,18,9,0.45)";
-  const sidebarBg = dark ? "#111111" : "#fffff8";
-  const sidebarBorder = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
-  const inputBg   = dark ? "#1e1e1e" : "#f0ebe0";
+  const pageBg     = dark ? "#0B1020" : "#F8FAFC";
+  const cardBg     = dark ? "rgba(17,24,39,0.85)" : "rgba(255,255,255,0.82)";
+  const cardBorder = dark ? "rgba(99,102,241,0.32)" : "rgba(79,70,229,0.18)";
+  const textMain   = dark ? "#E2E8F0" : "#0F172A";
+  const textMuted  = dark ? "rgba(226,232,240,0.62)" : "#64748B";
+  const sidebarBg  = dark ? "rgba(15,23,42,0.92)" : "rgba(255,255,255,0.8)";
+  const sidebarBorder = dark ? "rgba(99,102,241,0.28)" : "rgba(79,70,229,0.16)";
+  const inputBg    = dark ? "rgba(30,41,59,0.9)" : "rgba(248,250,252,0.92)";
 
   return (
     <div style={{ fontFamily: `'${currentFont}', sans-serif`, background: pageBg, minHeight: "100vh" }}
@@ -519,57 +535,95 @@ export default function BookerDashboard() {
           onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }} />
       )}
 
-      {/* ── Sidebar — Image 2 style: clean, top-nav feel but sidebar ─── */}
-      <aside style={{ background: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
-        className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center z-40 py-4 gap-1">
-
-        {/* Logo — Image 2: circular B.Y monogram */}
-        <button onClick={() => navigate("/")}
-          className="w-11 h-11 rounded-full flex items-center justify-center mb-4 flex-shrink-0"
-          style={{ background: "transparent", border: `2px solid ${C.gold}` }}>
-          <span style={{ color: C.gold, fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 11, letterSpacing: "-0.02em" }}>B.Y</span>
-        </button>
-
-        {TABS.map(({ key, icon, dot }) => (
-          <button key={key} onClick={() => setTab(key)} title={key}
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center transition-all"
-            style={tab === key
-              ? { background: C.gold, color: "#fff", boxShadow: `0 4px 14px ${C.gold}50` }
-              : { color: dark ? "rgba(245,240,232,0.4)" : "rgba(26,18,9,0.35)" }}>
-            <Icon d={icon} size={18} />
-            {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
+      {/* â”€â”€ Sidebar â€” Image 2 style: clean, top-nav feel but sidebar â”€â”€â”€ */}
+      <aside style={{ background: sidebarBg, borderRight: `1px solid ${sidebarBorder}`, backdropFilter: "blur(10px)" }}
+        className={`hidden md:block fixed left-0 top-0 h-full z-40 py-4 px-3 transition-all duration-200 ${sidebarCollapsed ? "w-[84px]" : "w-[248px]"}`}>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => navigate("/")}
+            className={`rounded-2xl flex items-center justify-center ${sidebarCollapsed ? "w-11 h-11" : "px-3 h-11"}`}
+            style={{ background: "linear-gradient(135deg,#4F46E5,#22D3EE)", color: "#fff" }}>
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 12 }}>BYE</span>
           </button>
-        ))}
+          {!sidebarCollapsed && (
+            <button onClick={() => setSidebarCollapsed(true)} className="p-2 rounded-xl text-slate-500 hover:bg-white/60">
+              <Icon d={ICONS.arrowRight} size={14} />
+            </button>
+          )}
+        </div>
+
+        {sidebarCollapsed && (
+          <button onClick={() => setSidebarCollapsed(false)} className="mb-3 w-full py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-white/60">
+            Expand
+          </button>
+        )}
+
+        <div className="space-y-1.5">
+          {TABS.map(({ key, label, icon, dot }) => (
+            <button key={key} onClick={() => setTab(key)} title={label}
+              className={`relative w-full rounded-xl transition-all ${sidebarCollapsed ? "h-10 px-0 flex items-center justify-center" : "h-10 px-3 flex items-center gap-2.5"}`}
+              style={tab === key
+                ? { background: C.sidebarActive, color: "#fff", boxShadow: "0 8px 18px rgba(79,70,229,0.35)" }
+                : { color: textMuted }}>
+              <Icon d={icon} size={17} />
+              {!sidebarCollapsed && <span className="text-sm font-semibold">{label}</span>}
+              {dot && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full" />}
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1" />
 
-        <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-          style={{ color: dark ? "rgba(245,240,232,0.4)" : "rgba(26,18,9,0.35)" }}>
-          <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
-        </button>
+        <div className={`mt-4 ${sidebarCollapsed ? "space-y-2" : "space-y-2.5"}`}>
+          <button onClick={() => setDark((p) => !p)}
+            className={`w-full rounded-xl transition-colors ${sidebarCollapsed ? "h-10 flex items-center justify-center" : "h-10 px-3 flex items-center gap-2"}`}
+            style={{ color: textMuted, background: dark ? "rgba(51,65,85,0.35)" : "rgba(248,250,252,0.8)" }}>
+            <Icon d={dark ? ICONS.sun : ICONS.moon} size={16} />
+            {!sidebarCollapsed && <span className="text-sm font-semibold">{dark ? "Light" : "Dark"} Mode</span>}
+          </button>
 
-        <button onClick={() => setTab("profile")} className="mt-1">
-          <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover"
-            style={{ ring: `2px solid ${C.gold}60` }} />
-        </button>
+          <button onClick={() => setTab("profile")}
+            className={`w-full rounded-xl transition-colors ${sidebarCollapsed ? "h-10 flex items-center justify-center" : "h-10 px-3 flex items-center gap-2.5"}`}
+            style={{ color: textMuted, background: dark ? "rgba(51,65,85,0.35)" : "rgba(248,250,252,0.8)" }}>
+            <img src={user?.avatar || avatar(user?.name)} alt="" className="w-6 h-6 rounded-full object-cover" />
+            {!sidebarCollapsed && <span className="text-sm font-semibold">Account</span>}
+          </button>
 
-        <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors mt-1 mb-1"
-          style={{ color: "#dc2626" }}>
-          <Icon d={ICONS.logout} size={18} />
-        </button>
+          <button onClick={() => { logout(); navigate("/login"); }}
+            className={`w-full rounded-xl ${sidebarCollapsed ? "h-10 flex items-center justify-center" : "h-10 px-3 flex items-center gap-2.5"}`}
+            style={{ color: "#dc2626", background: "rgba(220,38,38,0.08)" }}>
+            <Icon d={ICONS.logout} size={16} />
+            {!sidebarCollapsed && <span className="text-sm font-semibold">Logout</span>}
+          </button>
+        </div>
       </aside>
 
-      {/* ── Main Content ─────────────────────────────────────────── */}
-      <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
+      {/* â”€â”€ Main Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <main className={`${sidebarCollapsed ? "md:ml-[84px]" : "md:ml-[248px]"} ml-0 flex-1 min-h-screen p-4 md:p-6 lg:p-8 pb-24 md:pb-8 transition-all duration-200`}>
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="saas-card px-4 md:px-5 py-3 md:py-4 flex flex-wrap items-center gap-3 justify-between">
+            <div className="relative flex-1 min-w-[220px] md:max-w-xl">
+              <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                placeholder="Search venues, bookings, locations..."
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm focus:outline-none border border-indigo-100 bg-white/80"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="w-10 h-10 rounded-xl border border-indigo-100 bg-white/80 text-slate-500 hover:text-indigo-600 transition-colors">
+                <Icon d={ICONS.bell} size={16} />
+              </button>
+              <button onClick={() => setTab("venues")} className="saas-glow-btn px-4 py-2.5 text-sm font-semibold">
+                Quick Book
+              </button>
+            </div>
+          </div>
+        </div>
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
-            className="max-w-6xl mx-auto">
+            className="max-w-7xl mx-auto">
 
-            {/* ── Overview ──────────────────────────────────────────── */}
+            {/* â”€â”€ Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "overview" && (
               <div className="space-y-6">
                 <HeroBanner name={user?.name} dark={dark} />
@@ -592,7 +646,7 @@ export default function BookerDashboard() {
                     </button>
                   </div>
                   {loading ? (
-                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>Loading…</p>
+                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>Loadingâ€¦</p>
                   ) : recentBookings.length === 0 ? (
                     <p className="text-center py-12 text-sm" style={{ color: textMuted }}>No bookings yet</p>
                   ) : (
@@ -605,7 +659,7 @@ export default function BookerDashboard() {
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm truncate" style={{ color: textMain }}>{b.venue?.name || "Venue"}</p>
                             <p className="text-xs mt-0.5" style={{ color: textMuted }}>
-                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                              {formatDateIN(b.eventDate)} Â· {formatINR(b.bidAmount)} Â· {timeAgo(b.createdAt)}
                             </p>
                           </div>
                           <Badge status={b.status} />
@@ -617,17 +671,45 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Venues — Image 2 exact layout: pill filters + 2-col card grid ── */}
+            {/* â”€â”€ Venues â€” Image 2 exact layout: pill filters + 2-col card grid â”€â”€ */}
             {tab === "venues" && (
               <div className="space-y-5">
-                {/* Image 2: large serif title */}
-                <h1 className="text-4xl font-black" style={{
-                  color: textMain,
-                  fontFamily: "'Georgia', 'Times New Roman', serif",
-                  letterSpacing: "-0.02em",
-                }}>
-                  Booker Dashboard
-                </h1>
+                <div className="saas-card p-5 md:p-6 space-y-4">
+                  <h1 className="text-3xl md:text-4xl font-black saas-heading" style={{ color: textMain }}>
+                    Find and Book Your Perfect Venue
+                  </h1>
+                  <p className="text-sm" style={{ color: textMuted }}>
+                    Search by location, date, and guest capacity to discover spaces tailored for your event.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                      value={smartLocation}
+                      onChange={(e) => setSmartLocation(e.target.value)}
+                      placeholder="Location"
+                      className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none border border-indigo-100 bg-white/90"
+                    />
+                    <input
+                      type="date"
+                      value={smartDate}
+                      onChange={(e) => setSmartDate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none border border-indigo-100 bg-white/90"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={smartGuests}
+                      onChange={(e) => setSmartGuests(e.target.value)}
+                      placeholder="Guests"
+                      className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none border border-indigo-100 bg-white/90"
+                    />
+                    <button
+                      onClick={() => setVenueSearch(smartLocation)}
+                      className="saas-glow-btn px-4 py-2.5 text-sm font-semibold"
+                    >
+                      Smart Search
+                    </button>
+                  </div>
+                </div>
 
                 {/* Image 2: horizontal pill-style type filters */}
                 <div className="flex gap-2 flex-wrap">
@@ -635,11 +717,11 @@ export default function BookerDashboard() {
                     <button key={t} onClick={() => setVenueTypeFilter(t)}
                       className="px-4 py-2 rounded-full text-sm font-semibold transition-all border"
                       style={venueTypeFilter === t
-                        ? { background: C.gold, color: "#fff", border: `1px solid ${C.gold}` }
+                        ? { background: C.primary, color: "#fff", border: `1px solid ${C.primary}` }
                         : {
-                            background: "transparent",
+                            background: "rgba(255,255,255,0.68)",
                             color: textMain,
-                            border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.18)"}`,
+                            border: `1px solid ${cardBorder}`,
                           }}>
                       {t}
                     </button>
@@ -651,7 +733,7 @@ export default function BookerDashboard() {
                   <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
                     style={{ color: textMuted }} />
                   <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
-                    placeholder="Search venues…"
+                    placeholder="Search venues..."
                     className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
                     style={{
                       background: inputBg,
@@ -661,7 +743,7 @@ export default function BookerDashboard() {
                 </div>
 
                 {loading ? (
-                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading venues…</p>
+                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading venues...</p>
                 ) : filteredVenues.length === 0 ? (
                   <div className="py-16 text-center rounded-2xl border-2 border-dashed"
                     style={{ borderColor: cardBorder }}>
@@ -698,7 +780,7 @@ export default function BookerDashboard() {
                           )}
                         </div>
 
-                        {/* Image 2: card body — name large, location small, price+rating row, full-width button */}
+                        {/* Image 2: card body â€” name large, location small, price+rating row, full-width button */}
                         <div className="p-5">
                           {/* Image 2: serif-style venue name */}
                           <p className="text-xl font-black mb-1"
@@ -707,7 +789,7 @@ export default function BookerDashboard() {
                           </p>
                           <p className="text-xs mb-1" style={{ color: textMuted }}>Location</p>
                           <p className="text-sm mb-3" style={{ color: dark ? "rgba(245,240,232,0.6)" : "rgba(26,18,9,0.5)" }}>
-                            {[v.location?.city || v.city, v.location?.address || v.address].filter(Boolean).join(" | ") || "—"}
+                            {[v.location?.city || v.city, v.location?.address || v.address].filter(Boolean).join(" | ") || "â€”"}
                           </p>
 
                           {/* Image 2: price + rating inline */}
@@ -720,7 +802,7 @@ export default function BookerDashboard() {
                               <div>
                                 <p className="text-xs" style={{ color: textMuted }}>Rating</p>
                                 <p className="font-bold text-sm flex items-center gap-1" style={{ color: C.gold }}>
-                                  ★ {v.rating} Stars
+                                  â˜… {v.rating} Stars
                                 </p>
                               </div>
                             )}
@@ -737,10 +819,109 @@ export default function BookerDashboard() {
                     ))}
                   </div>
                 )}
+
+                <div className="saas-card p-4 md:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold" style={{ color: textMain }}>Map Preview</h3>
+                    <span className="text-xs" style={{ color: textMuted }}>Venue discovery</span>
+                  </div>
+                  <div className="rounded-2xl overflow-hidden border border-indigo-100 bg-white">
+                    <iframe
+                      title="Venue map preview"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=77.46%2C12.86%2C77.74%2C13.08&layer=mapnik`}
+                      className="w-full h-64 border-0"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* ── My Bookings ─────────────────────────────────────────── */}
+            {/* â”€â”€ My Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {tab === "calendar" && (
+              <div className="space-y-5">
+                <h1 className="text-2xl font-black saas-heading" style={{ color: textMain }}>Event Calendar</h1>
+                <div className="saas-card p-5">
+                  <p className="text-sm mb-4" style={{ color: textMuted }}>
+                    Upcoming event timeline based on your active bookings.
+                  </p>
+                  <div className="space-y-3">
+                    {[...bookings]
+                      .filter((b) => ["pending", "payment_pending", "confirmed"].includes(b.status))
+                      .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate))
+                      .slice(0, 8)
+                      .map((b) => (
+                        <div key={b._id} className="flex items-center justify-between rounded-xl border border-indigo-100 bg-white/70 px-4 py-3">
+                          <div>
+                            <p className="font-semibold text-sm" style={{ color: textMain }}>{b.venue?.name || "Venue"}</p>
+                            <p className="text-xs" style={{ color: textMuted }}>{formatDateIN(b.eventDate)} ï¿½ {b.startTime} - {b.endTime}</p>
+                          </div>
+                          <Badge status={b.status} />
+                        </div>
+                      ))}
+                    {bookings.length === 0 && (
+                      <p className="text-sm" style={{ color: textMuted }}>No scheduled events yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tab === "analytics" && (
+              <div className="space-y-5">
+                <h1 className="text-2xl font-black saas-heading" style={{ color: textMain }}>Booking Analytics</h1>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="saas-card p-5 lg:col-span-2">
+                    <p className="text-sm font-semibold mb-4" style={{ color: textMain }}>Bookings Per Month</p>
+                    <div className="space-y-3">
+                      {Array.from({ length: 6 }).map((_, idx) => {
+                        const date = new Date();
+                        date.setMonth(date.getMonth() - (5 - idx));
+                        const label = date.toLocaleString("en-IN", { month: "short" });
+                        const value = bookings.filter((b) => {
+                          const d = new Date(b.createdAt);
+                          return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
+                        }).length;
+                        const width = `${Math.max(10, Math.min(100, value * 18))}%`;
+                        return (
+                          <div key={label} className="grid grid-cols-[56px_1fr_40px] items-center gap-3">
+                            <span className="text-xs font-semibold" style={{ color: textMuted }}>{label}</span>
+                            <div className="h-2.5 rounded-full bg-indigo-100 overflow-hidden">
+                              <motion.div initial={{ width: 0 }} animate={{ width }} transition={{ duration: 0.6, delay: idx * 0.06 }}
+                                className="h-full rounded-full"
+                                style={{ background: "linear-gradient(90deg,#4F46E5,#22D3EE)" }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-right" style={{ color: textMain }}>{value}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="saas-card p-5">
+                    <p className="text-sm font-semibold mb-3" style={{ color: textMain }}>Top Metrics</p>
+                    <div className="space-y-3 text-sm">
+                      <div className="rounded-xl border border-indigo-100 bg-white/75 px-3 py-2.5">
+                        <p style={{ color: textMuted }}>Average Bid</p>
+                        <p className="font-bold" style={{ color: textMain }}>
+                          {formatINR(bookings.length ? bookings.reduce((s, b) => s + (b.bidAmount || 0), 0) / bookings.length : 0)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-indigo-100 bg-white/75 px-3 py-2.5">
+                        <p style={{ color: textMuted }}>Confirmation Rate</p>
+                        <p className="font-bold" style={{ color: textMain }}>
+                          {bookings.length ? `${Math.round((bookings.filter((b) => ["confirmed", "approved"].includes(b.status)).length / bookings.length) * 100)}%` : "0%"}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-indigo-100 bg-white/75 px-3 py-2.5">
+                        <p style={{ color: textMuted }}>Pending Actions</p>
+                        <p className="font-bold" style={{ color: textMain }}>{bookings.filter((b) => ["pending", "payment_pending"].includes(b.status)).length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {tab === "bookings" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-black" style={{ color: textMain }}>My Bookings</h1>
@@ -758,7 +939,7 @@ export default function BookerDashboard() {
                 </div>
 
                 {loading ? (
-                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading…</p>
+                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loadingâ€¦</p>
                 ) : filteredBookings.length === 0 ? (
                   <div className="py-16 text-center rounded-2xl border-2 border-dashed"
                     style={{ borderColor: cardBorder }}>
@@ -777,7 +958,7 @@ export default function BookerDashboard() {
                               <Badge status={b.status} />
                             </div>
                             <p className="text-sm mt-1" style={{ color: textMuted }}>
-                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                              {formatDateIN(b.eventDate)} Â· {formatINR(b.bidAmount)} Â· {timeAgo(b.createdAt)}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-wrap justify-end">
@@ -786,7 +967,7 @@ export default function BookerDashboard() {
                                 <div className="flex items-center gap-2">
                                   <input type="number" value={raiseBidAmount}
                                     onChange={(e) => setRaiseBidAmount(e.target.value)}
-                                    placeholder="New amount (₹)"
+                                    placeholder="New amount (â‚¹)"
                                     className="w-32 px-3 py-1.5 rounded-lg text-sm focus:outline-none"
                                     style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
                                   <button onClick={() => handleRaiseBid(b._id)}
@@ -824,7 +1005,7 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Payments ─────────────────────────────────────────────── */}
+            {/* â”€â”€ Payments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "payments" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-black" style={{ color: textMain }}>Payments</h1>
@@ -849,12 +1030,12 @@ export default function BookerDashboard() {
                               onMouseEnter={(e) => e.currentTarget.style.background = dark ? "#1e1e1e" : "#f8f4ec"}
                               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                               <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: textMain }}>
-                                {truncate(p.booking?.venue?.name || p.venue?.name || "—", 22)}
+                                {truncate(p.booking?.venue?.name || p.venue?.name || "â€”", 22)}
                               </td>
                               <td className="px-5 py-4 whitespace-nowrap" style={{ color: textMuted }}>{formatDateIN(p.createdAt)}</td>
                               <td className="px-5 py-4 font-bold whitespace-nowrap" style={{ color: C.gold }}>{formatINR(p.amount)}</td>
                               <td className="px-5 py-4"><Badge status={p.status || "paid"} /></td>
-                              <td className="px-5 py-4 font-mono text-xs" style={{ color: textMuted }}>{p.razorpayPaymentId || "—"}</td>
+                              <td className="px-5 py-4 font-mono text-xs" style={{ color: textMuted }}>{p.razorpayPaymentId || "â€”"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -865,7 +1046,7 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ─────────────────────────────────────────────────── */}
+            {/* â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "chat" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-black" style={{ color: textMain }}>Messages</h1>
@@ -875,10 +1056,10 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Profile ──────────────────────────────────────────────── */}
+            {/* â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
-                <h1 className="text-2xl font-black" style={{ color: textMain }}>Profile</h1>
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Settings</h1>
 
                 {/* Profile card with hero gradient */}
                 <div className="rounded-2xl overflow-hidden shadow-lg">
@@ -928,7 +1109,7 @@ export default function BookerDashboard() {
                           <button onClick={handleSaveProfile} disabled={profileLoading}
                             className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90"
                             style={{ background: C.gold }}>
-                            {profileLoading ? "Saving…" : "Save Changes"}
+                            {profileLoading ? "Savingâ€¦" : "Save Changes"}
                           </button>
                         </div>
                       </motion.div>
@@ -971,6 +1152,29 @@ export default function BookerDashboard() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <nav className="md:hidden saas-mobile-bottom-nav grid grid-cols-4 gap-1">
+        {[
+          { key: "venues", label: "Venues", icon: ICONS.venues },
+          { key: "bookings", label: "Bookings", icon: ICONS.bookings },
+          { key: "calendar", label: "Calendar", icon: ICONS.calendar },
+          { key: "chat", label: "Chat", icon: ICONS.chat },
+        ].map((item) => (
+          <button
+            key={item.key}
+            onClick={() => setTab(item.key)}
+            className={`h-11 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all ${
+              tab === item.key ? "saas-sidebar-active" : ""
+            }`}
+            style={tab === item.key ? {} : { color: textMuted }}
+          >
+            <Icon d={item.icon} size={14} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
+
+

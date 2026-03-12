@@ -43,25 +43,24 @@ const createBooking = async (req, res) => {
 
         const isInstantBooking = venue.bookingType === 'instant';
 
-        // Check if this booker already has a pending request for this slot.
-        const existingBid = await Booking.findOne({
-            venue:     venueId,
-            booker:    req.user.id,
-            eventDate: new Date(eventDate),
-            status:    { $in: ['pending', 'payment_pending'] },
-        });
-        if (existingBid)
-            return res.status(400).json({
-                message: isInstantBooking
-                    ? 'You already have a pending booking request for this slot.'
-                    : 'You already have a bid for this slot. Raise your bid instead.',
-            });
-
         const overlapQuery = {
             venue:     venueId,
             eventDate: new Date(eventDate),
             $and: [{ startTime: { $lt: endTime } }, { endTime: { $gt: startTime } }],
         };
+
+        // Prevent duplicate active requests only for overlapping time windows.
+        const existingBid = await Booking.findOne({
+            ...overlapQuery,
+            booker: req.user.id,
+            status: { $in: ['pending', 'payment_pending'] },
+        });
+        if (existingBid)
+            return res.status(400).json({
+                message: isInstantBooking
+                    ? 'You already have a pending booking request for this time slot.'
+                    : 'You already have a bid for this time slot. Raise your bid instead.',
+            });
 
         if (isInstantBooking) {
             const lockedSlot = await Booking.findOne({
