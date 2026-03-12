@@ -14,12 +14,12 @@ export const TRANSLATIONS = {
     'chat.withOwner': 'Chat with Owner',
   },
   hi: {
-    'common.logout': 'Logout',
-    'chat.withOwner': 'Chat with Owner',
+    'common.logout': 'लॉग आउट',
+    'chat.withOwner': 'मालिक से चैट करें',
   },
   kn: {
-    'common.logout': 'Logout',
-    'chat.withOwner': 'Chat with Owner',
+    'common.logout': 'ಲಾಗ್ ಔಟ್',
+    'chat.withOwner': 'ಮಾಲೀಕರೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ',
   },
   ta: {
     'common.logout': 'Logout',

@@ -184,11 +184,15 @@ const raiseBid = async (req, res) => {
             return res.status(403).json({ message: 'Unauthorized' });
         if (!['pending'].includes(booking.status))
             return res.status(400).json({ message: 'Cannot raise bid at this stage' });
-        if (newBidAmount <= booking.bidAmount)
+        const numericBid = Number(newBidAmount);
+        if (!Number.isFinite(numericBid) || numericBid <= 0) {
+            return res.status(400).json({ message: 'New bid amount must be a valid number' });
+        }
+        if (numericBid <= booking.bidAmount)
             return res.status(400).json({ message: `New bid must be higher than current bid ₹${booking.bidAmount}` });
 
-        booking.bidAmount = newBidAmount;
-        booking.bids.push({ booker: req.user.id, bidAmount: newBidAmount, message: message || '' });
+        booking.bidAmount = numericBid;
+        booking.bids.push({ booker: req.user.id, bidAmount: numericBid, message: message || '' });
         await booking.save();
 
         await booking.populate([

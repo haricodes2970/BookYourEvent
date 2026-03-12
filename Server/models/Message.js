@@ -17,6 +17,10 @@ const messageSchema = new mongoose.Schema({
         trim: true,
         maxlength: 1000,
     },
+    read: {
+        type: Boolean,
+        default: false,
+    },
     readBy: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

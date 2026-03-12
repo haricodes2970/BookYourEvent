@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Chat = require('../models/Chat');
 const Message = require('../models/Message');
 const User = require('../models/User');
@@ -67,7 +68,7 @@ exports.getMyChats = async (req, res) => {
   try {
     const chats = await Chat.find({ participants: req.user._id })
       .populate('participants', 'name email avatar')
-      .populate('lastMessage')
+      .populate('lastMessage', 'text sender createdAt')
       .sort({ updatedAt: -1 });
 
     // Deduplicate in case duplicates exist in DB already
@@ -82,7 +83,31 @@ exports.getMyChats = async (req, res) => {
       return true;
     });
 
-    res.json(dedupedChats);
+    const unreadMap = new Map();
+    if (dedupedChats.length) {
+      const userId = new mongoose.Types.ObjectId(req.user._id);
+      const unreadCounts = await Message.aggregate([
+        {
+          $match: {
+            chat: { $in: dedupedChats.map((chat) => chat._id) },
+            sender: { $ne: userId },
+            read: false,
+          },
+        },
+        { $group: { _id: '$chat', count: { $sum: 1 } } },
+      ]);
+      unreadCounts.forEach((row) => {
+        unreadMap.set(row._id.toString(), row.count);
+      });
+    }
+
+    const payload = dedupedChats.map((chat) => {
+      const data = chat.toObject();
+      data.unreadCount = unreadMap.get(chat._id.toString()) || 0;
+      return data;
+    });
+
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -132,6 +157,8 @@ exports.sendMessage = async (req, res) => {
     // Update chat's updatedAt so it bubbles to top in getMyChats
     await Chat.findByIdAndUpdate(req.params.chatId, {
       lastMessage: message._id,
+      lastMessageAt: message.createdAt,
+      lastMessageSender: req.user._id,
       updatedAt: new Date(),
     });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../utils/axiosInstance';
 
 const sameUser = (a, b) => String(a || '') === String(b || '');
@@ -10,6 +10,7 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const bottomRef = useRef(null);
 
   const userId = useMemo(() => {
     try {
@@ -70,6 +71,42 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
       setError('');
     };
   }, [isOpen, otherUser?.id, bookingId]);
+
+  useEffect(() => {
+    if (!isOpen || !chatId) {
+      return;
+    }
+
+    let mounted = true;
+    const pollMessages = async () => {
+      try {
+        const res = await api.get(`/chats/${chatId}/messages`);
+        if (!mounted) {
+          return;
+        }
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setMessages(list);
+        api.patch(`/chats/${chatId}/read`).catch(() => {});
+      } catch {
+        // Ignore polling errors to avoid spamming the UI.
+      }
+    };
+
+    pollMessages();
+    const id = setInterval(pollMessages, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [isOpen, chatId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const id = setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+    return () => clearTimeout(id);
+  }, [messages, isOpen]);
 
   const send = async () => {
     const content = text.trim();
@@ -195,6 +232,7 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
                 </div>
               );
             })}
+          <div ref={bottomRef} />
         </div>
 
         {error && (

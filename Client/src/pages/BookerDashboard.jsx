@@ -204,7 +204,30 @@ function ChatPanel({ user, initialChatId }) {
   const [sending,  setSending]  = useState(false);
   const bottomRef               = useRef(null);
 
-  useEffect(() => { api.get("/chats").then((r) => setChats(r.data?.chats || r.data || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    let mounted = true;
+    const loadChats = async () => {
+      try {
+        const r = await api.get("/chats");
+        if (!mounted) return;
+        const list = Array.isArray(r.data) ? r.data : r.data?.chats || [];
+        setChats(list);
+        if (active) {
+          const refreshed = list.find((chat) => chat?._id === active._id);
+          if (refreshed) setActive(refreshed);
+        }
+      } catch {
+        // Ignore polling errors.
+      }
+    };
+
+    loadChats();
+    const id = setInterval(loadChats, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [active?._id]);
   useEffect(() => {
     if (!initialChatId || !chats.length || active) return;
     const requested = chats.find((chat) => chat?._id === initialChatId);
@@ -212,9 +235,25 @@ function ChatPanel({ user, initialChatId }) {
   }, [initialChatId, chats, active]);
   useEffect(() => {
     if (!active) return;
-    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data?.messages || r.data || []); scrollBottom(); }).catch(() => {});
-    api.patch(`/chats/${active._id}/read`).catch(() => {});
-  }, [active]);
+    let mounted = true;
+    const loadMessages = async () => {
+      try {
+        const r = await api.get(`/chats/${active._id}/messages`);
+        if (!mounted) return;
+        setMessages(r.data?.messages || r.data || []);
+        api.patch(`/chats/${active._id}/read`).catch(() => {});
+      } catch {
+        // Ignore polling errors.
+      }
+    };
+
+    loadMessages();
+    const id = setInterval(loadMessages, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [active?._id]);
   useEffect(() => { scrollBottom(); }, [messages]);
   const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
@@ -247,7 +286,9 @@ function ChatPanel({ user, initialChatId }) {
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate">{c.lastMessage?.content?.slice(0, 28) || op?.email || "â€”"}</p>
+                  <p className="text-xs text-zinc-400 truncate">
+                    {(typeof c.lastMessage === "string" ? c.lastMessage : c.lastMessage?.text)?.slice(0, 28) || op?.email || "â€”"}
+                  </p>
                 </div>
                 {c.unreadCount > 0 && (
                   <span className="ml-auto w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
@@ -317,7 +358,7 @@ function ChatPanel({ user, initialChatId }) {
 
 // â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function BookerDashboard() {
-  const { user, logout, login } = useAuth();
+  const { user, logout, login, updateUser } = useAuth();
   const navigate                = useNavigate();
   const location                = useLocation();
   const { toasts, push }        = useToast();
@@ -377,10 +418,10 @@ export default function BookerDashboard() {
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
     { code: "en", native: "English",  font: "DM Sans" },
-    { code: "hi", native: "à¤¹à¤¿à¤¨à¥à¤¦à¥€",    font: "Noto Sans Devanagari" },
-    { code: "te", native: "à°¤à±†à°²à±à°—à±",   font: "Noto Sans Telugu" },
-    { code: "ta", native: "à®¤à®®à®¿à®´à¯",    font: "Noto Sans Tamil" },
-    { code: "kn", native: "à²•à²¨à³à²¨à²¡",    font: "Noto Sans Kannada" },
+    { code: "hi", native: "हिंदी",   font: "Noto Sans Devanagari" },
+    { code: "te", native: "తెలుగు", font: "Noto Sans Telugu" },
+    { code: "ta", native: "தமிழ்",  font: "Noto Sans Tamil" },
+    { code: "kn", native: "ಕನ್ನಡ",  font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
 
@@ -455,7 +496,9 @@ export default function BookerDashboard() {
     setProfileLoading(true);
     try {
       const r = await api.patch("/auth/update-profile", profileForm);
-      if (r.data.token) login(r.data.user, r.data.token);
+      const updatedUser = r.data?.user || r.data;
+      if (r.data?.token) login(updatedUser, r.data.token);
+      else if (updatedUser) updateUser(updatedUser);
       push("Profile updated!"); setEditMode(false);
     } catch (err) { push(err.response?.data?.message || "Failed to update profile", "error"); }
     finally { setProfileLoading(false); }
@@ -962,7 +1005,7 @@ export default function BookerDashboard() {
                             </p>
                           </div>
                           <div className="flex gap-2 flex-wrap justify-end">
-                            {["pending", "payment_pending"].includes(b.status) && (
+                            {b.status === "pending" && (
                               raiseBidId === b._id ? (
                                 <div className="flex items-center gap-2">
                                   <input type="number" value={raiseBidAmount}

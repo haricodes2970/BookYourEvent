@@ -56,9 +56,26 @@ router.patch('/update-profile', protect, async (req, res) => {
   try {
     const { name, phone, username } = req.body;
     const updates = {};
-    if (name)                updates.name     = name.trim();
-    if (phone !== undefined) updates.phone    = phone || null;
-    if (username)            updates.username = username.trim().toLowerCase();
+    if (typeof name === 'string') {
+      const trimmed = name.trim();
+      if (trimmed) updates.name = trimmed;
+    }
+    if (phone !== undefined) {
+      const normalizedPhone = typeof phone === 'string' ? phone.trim() : phone;
+      updates.phone = normalizedPhone || null;
+    }
+    if (username !== undefined) {
+      const normalizedUsername = normalizeUsername(username);
+      if (!normalizedUsername) {
+        return res.status(400).json({ message: 'Username is required' });
+      }
+      if (!/^[a-z0-9._]{3,24}$/.test(normalizedUsername)) {
+        return res.status(400).json({
+          message: 'Username must be 3-24 chars and can include lowercase letters, numbers, dot, and underscore.',
+        });
+      }
+      updates.username = normalizedUsername;
+    }
 
     if (updates.username) {
       const exists = await User.findOne({ username: updates.username, _id: { $ne: req.user._id } });
