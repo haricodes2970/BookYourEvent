@@ -24,6 +24,75 @@ const EVENT_TYPES = ["Wedding", "Birthday", "Corporate Event", "Engagement",
 
 const TIME_SLOTS = generateTimeSlots(6, 24, 60);
 const PLATFORM_FEE_PCT = 0.02;
+const PLACEHOLDER_IMAGE = "/placeholder-venue.svg";
+const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (typeof window !== "undefined" && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existing = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true), { once: true });
+      existing.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = RAZORPAY_SCRIPT_URL;
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+
+const imageFallback = (event) => {
+  if (event.currentTarget.dataset.fallbackApplied) return;
+  event.currentTarget.dataset.fallbackApplied = "1";
+  event.currentTarget.src = PLACEHOLDER_IMAGE;
+};
+
+const normalizeVenue = (rawVenue) => {
+  if (!rawVenue || typeof rawVenue !== "object") return null;
+
+  const location = rawVenue.location && typeof rawVenue.location === "object" ? rawVenue.location : {};
+  const ownerObj = rawVenue.owner && typeof rawVenue.owner === "object" ? rawVenue.owner : null;
+  const ownerId = ownerObj?._id || ownerObj?.id || (typeof rawVenue.owner === "string" ? rawVenue.owner : "");
+  const images = Array.isArray(rawVenue.images)
+    ? rawVenue.images.filter((img) => typeof img === "string" && img.trim())
+    : [];
+
+  return {
+    ...rawVenue,
+    _id: rawVenue._id || rawVenue.id,
+    venueType: rawVenue.venueType || rawVenue.type || "",
+    type: rawVenue.type || rawVenue.venueType || "",
+    bookingType: rawVenue.bookingType || "manual",
+    address: rawVenue.address || location.address || "",
+    city: rawVenue.city || location.city || "",
+    pincode: rawVenue.pincode || location.pincode || "",
+    images,
+    location: {
+      ...location,
+      address: rawVenue.address || location.address || "",
+      city: rawVenue.city || location.city || "",
+      pincode: rawVenue.pincode || location.pincode || "",
+    },
+    owner: ownerObj
+      ? { ...ownerObj, _id: ownerId || ownerObj._id || ownerObj.id }
+      : ownerId
+        ? { _id: ownerId }
+        : null,
+  };
+};
+
+const extractVenueList = (payload) => {
+  const list = Array.isArray(payload) ? payload : Array.isArray(payload?.venues) ? payload.venues : [];
+  return list.map(normalizeVenue).filter(Boolean);
+};
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 const avg = (arr) => arr.length ? (arr.reduce((s, x) => s + x, 0) / arr.length).toFixed(1) : "0.0";
@@ -96,6 +165,7 @@ function Lightbox({ images, index, onClose }) {
       </button>
       <motion.img key={cur} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         src={images[cur]} alt="" className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl"
+        onError={imageFallback}
         onClick={(e) => e.stopPropagation()} />
       <button onClick={(e) => { e.stopPropagation(); setCur((p) => (p + 1) % images.length); }}
         className="absolute right-4 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10">
@@ -230,7 +300,22 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
     if (!form.startTime || !form.endTime) return push("Select start and end time", "error");
     if (hours <= 0) return push("End time must be after start time", "error");
     if (!form.guests) return push("Enter number of guests", "error");
-    if (!isInstant && !form.bidAmount) return push("Enter your bid amount", "error");
+
+    const guestCount = Number(form.guests);
+    if (!Number.isFinite(guestCount) || guestCount <= 0) {
+      return push("Enter a valid guest count", "error");
+    }
+    if (venue?.capacity && guestCount > venue.capacity) {
+      return push(`Guest count cannot exceed ${venue.capacity}`, "error");
+    }
+
+    const bidAmount = Number(form.bidAmount);
+    if (!isInstant && (!Number.isFinite(bidAmount) || bidAmount <= 0)) {
+      return push("Enter a valid bid amount", "error");
+    }
+    if (!isInstant && bidAmount < basePrice) {
+      return push(`Bid should be at least ${formatINR(basePrice)}`, "error");
+    }
 
     setLoading(true);
     try {
@@ -239,16 +324,18 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         eventDate: form.date,
         startTime: form.startTime,
         endTime: form.endTime,
-        guestCount: Number(form.guests),
+        guestCount,
         eventType: form.eventType,
         specialRequests: form.specialRequests,
-        bidAmount: isInstant ? total : Number(form.bidAmount),
+        bidAmount: isInstant ? undefined : bidAmount,
       };
       const res = await api.post("/api/bookings/create", payload);
-      setCreatedBooking(res.data);
+      const booking = res.data?.booking || res.data;
+      setCreatedBooking(booking);
 
       if (isInstant) {
         setShowPayment(true);
+        push("Booking created. Complete payment to confirm your slot.");
       } else {
         push("Bid submitted! Owner will review shortly.");
         onSuccess?.();
@@ -260,34 +347,67 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
     }
   };
 
-  // Razorpay trigger
-  const triggerRazorpay = useCallback(() => {
-    if (!createdBooking) return;
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: total * 100,
-      currency: "INR",
-      name: "BookYourEvent",
-      description: `Booking: ${venue?.name}`,
-      order_id: createdBooking.razorpayOrderId,
-      handler: async (response) => {
-        try {
-          await api.post("/api/payments/verify", {
-            bookingId: createdBooking._id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
-          push("Payment successful! 🎉");
-          setShowPayment(false);
-          onSuccess?.();
-        } catch { push("Payment verification failed", "error"); }
-      },
-      prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
-      theme: { color: "#0d9488" },
-    };
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+  // Razorpay trigger for instant booking payment
+  const triggerRazorpay = useCallback(async () => {
+    if (!createdBooking?._id) {
+      setShowPayment(false);
+      return;
+    }
+
+    const sdkLoaded = await loadRazorpayScript();
+    if (!sdkLoaded || typeof window.Razorpay === "undefined") {
+      push("Unable to load payment gateway. Please try again.", "error");
+      setShowPayment(false);
+      return;
+    }
+
+    try {
+      const orderRes = await api.post("/api/payments/create-order", { bookingId: createdBooking._id });
+      const order = orderRes.data || {};
+
+      const options = {
+        key: order.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount || Math.round(total * 100),
+        currency: order.currency || "INR",
+        name: "BookYourEvent",
+        description: `Booking: ${venue?.name}`,
+        order_id: order.orderId,
+        prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
+        theme: { color: "#0d9488" },
+        handler: async (response) => {
+          try {
+            await api.post("/api/payments/verify", {
+              bookingId: order.bookingId || createdBooking._id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            push("Payment successful! Booking confirmed.");
+            setShowPayment(false);
+            onSuccess?.();
+          } catch (err) {
+            push(err.response?.data?.message || "Payment verification failed", "error");
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setShowPayment(false);
+            push("Payment cancelled. You can retry from My Bookings.", "error");
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (failure) => {
+        const message = failure?.error?.description || "Payment failed. Please try again.";
+        push(message, "error");
+        setShowPayment(false);
+      });
+      rzp.open();
+    } catch (err) {
+      push(err.response?.data?.message || "Unable to start payment", "error");
+      setShowPayment(false);
+    }
   }, [createdBooking, total, venue, user, push, onSuccess]);
 
   useEffect(() => {
@@ -354,15 +474,17 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
       {/* Bid amount — only for bid venues */}
       {!isInstant && (
         <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Your Bid Amount (₹)</label>
+          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Your Bid Amount</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-semibold">₹</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-semibold">INR</span>
             <input type="number" value={form.bidAmount} onChange={(e) => set("bidAmount", e.target.value)}
               placeholder="Enter your offer"
-              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+              className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
                 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
           </div>
-          <p className="text-xs text-zinc-400 mt-1">Base price: {formatINR(venue?.pricePerHour)}/hr</p>
+          <p className="text-xs text-zinc-400 mt-1">
+            Suggested minimum: {formatINR(basePrice || venue?.pricePerHour || 0)}
+          </p>
         </div>
       )}
 
@@ -392,6 +514,12 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           </div>
         </div>
       )}
+
+      <p className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5">
+        {isInstant
+          ? "Instant booking: complete payment now to lock this slot."
+          : "Bid booking: owner will review bids, and payment is requested only after approval."}
+      </p>
 
       {/* CTA */}
       {!user ? (
@@ -435,8 +563,9 @@ function ReviewsSection({ venueId, push }) {
 
   useEffect(() => {
     if (!user) return;
-    api.get(`/api/bookings/my`).then((res) => {
-      const hasPaid = res.data.some((b) => b.venue?._id === venueId && b.status === "paid");
+    api.get(`/api/bookings/my-bookings`).then((res) => {
+      const bookings = Array.isArray(res.data) ? res.data : res.data?.bookings || [];
+      const hasPaid = bookings.some((b) => b.venue?._id === venueId && b.status === "confirmed");
       setCanReview(hasPaid);
     }).catch(() => {});
   }, [user, venueId]);
@@ -598,17 +727,23 @@ export default function VenueDetail() {
 
   useEffect(() => {
     setLoading(true);
+    setSimilar([]);
     api.get(`/api/venues/${id}`)
       .then((res) => {
-        setVenue(res.data);
-        if (res.data.venueType || res.data.city) {
+        const fetchedVenue = normalizeVenue(res.data?.venue || res.data);
+        setVenue(fetchedVenue);
+        setActiveImage(0);
+        setSelectedDate("");
+
+        if (fetchedVenue?.venueType || fetchedVenue?.city) {
           const params = new URLSearchParams();
-          if (res.data.venueType) params.set("type", res.data.venueType);
-          if (res.data.city) params.set("city", res.data.city);
+          if (fetchedVenue.venueType) params.set("type", fetchedVenue.venueType);
+          if (fetchedVenue.city) params.set("city", fetchedVenue.city);
           params.set("limit", "4");
           params.set("exclude", id);
           api.get(`/api/venues?${params}`).then((r) => {
-            setSimilar(r.data.filter((v) => v._id !== id).slice(0, 4));
+            const list = extractVenueList(r.data);
+            setSimilar(list.filter((v) => v._id !== id).slice(0, 4));
           }).catch(() => {});
         }
       })
@@ -623,10 +758,24 @@ export default function VenueDetail() {
 
   const handleChatOwner = async () => {
     if (!user) return navigate(`/login?next=/venue/${id}`);
+    const ownerId = venue?.owner?._id || venue?.owner?.id;
+    if (!ownerId) {
+      push("Owner chat is unavailable for this venue right now", "error");
+      return;
+    }
+    if (ownerId === user?._id || ownerId === user?.id) {
+      push("This is your own venue", "error");
+      return;
+    }
+
     setChatLoading(true);
     try {
-      await api.post("/api/chats/open", { otherUserId: venue.owner?._id });
-      navigate("/booker/dashboard?tab=chat");
+      const opened = await api.post("/api/chats/open", { otherUserId: ownerId });
+      const chatId = opened.data?._id || opened.data?.chat?._id;
+      const target = chatId
+        ? `/booker/dashboard?tab=chat&chatId=${chatId}`
+        : "/booker/dashboard?tab=chat";
+      navigate(target);
     } catch { push("Could not open chat", "error"); }
     finally { setChatLoading(false); }
   };
@@ -653,7 +802,7 @@ export default function VenueDetail() {
     );
   }
 
-  const images = venue.images?.length ? venue.images : ["/placeholder-venue.jpg"];
+  const images = venue.images?.length ? venue.images : [PLACEHOLDER_IMAGE];
   const blockedDates = venue.blockedDates || [];
   const isInstant = venue.bookingType === "instant";
   const avgRating = venue.avgRating || 0;
@@ -698,6 +847,7 @@ export default function VenueDetail() {
               <div className="relative rounded-2xl overflow-hidden bg-zinc-200 aspect-[16/9] cursor-pointer group"
                 onClick={() => setLightbox(activeImage)}>
                 <img src={images[activeImage]} alt={venue.name}
+                  onError={imageFallback}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-5 right-5">
@@ -727,7 +877,7 @@ export default function VenueDetail() {
                     <button key={i} onClick={() => setActiveImage(i)}
                       className={`flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all
                         ${activeImage === i ? "border-teal-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <img src={img} alt="" onError={imageFallback} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -859,7 +1009,7 @@ export default function VenueDetail() {
                       className="flex-shrink-0 w-60 rounded-2xl border border-zinc-200 bg-white overflow-hidden hover:shadow-md transition-shadow group">
                       <div className="h-36 bg-zinc-100 overflow-hidden">
                         {v.images?.[0]
-                          ? <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ? <img src={v.images[0]} alt={v.name} onError={imageFallback} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">🏛️</div>
                         }
                       </div>

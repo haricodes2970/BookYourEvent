@@ -69,7 +69,7 @@ const getMyVenues = async (req, res) => {
 const getVenueById = async (req, res) => {
     try {
         const venue = await Venue.findById(req.params.id)
-            .populate('owner', 'name email phone');
+            .populate('owner', 'name username email phone avatar createdAt');
         if (!venue) return res.status(404).json({ message: 'Venue not found' });
         res.status(200).json({ venue });
     } catch (err) {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
@@ -32,6 +32,8 @@ const ICONS = {
   alert:      "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
   arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
+
+const DASHBOARD_TABS = new Set(["overview", "venues", "bookings", "payments", "chat", "profile"]);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  COLOR SYSTEM — extracted from Image 2
@@ -194,7 +196,7 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
 }
 
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
-function ChatPanel({ user }) {
+function ChatPanel({ user, initialChatId }) {
   const [chats,    setChats]    = useState([]);
   const [active,   setActive]   = useState(null);
   const [messages, setMessages] = useState([]);
@@ -203,6 +205,11 @@ function ChatPanel({ user }) {
   const bottomRef               = useRef(null);
 
   useEffect(() => { api.get("/chats").then((r) => setChats(r.data?.chats || r.data || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!initialChatId || !chats.length || active) return;
+    const requested = chats.find((chat) => chat?._id === initialChatId);
+    if (requested) setActive(requested);
+  }, [initialChatId, chats, active]);
   useEffect(() => {
     if (!active) return;
     api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data?.messages || r.data || []); scrollBottom(); }).catch(() => {});
@@ -312,9 +319,15 @@ function ChatPanel({ user }) {
 export default function BookerDashboard() {
   const { user, logout, login } = useAuth();
   const navigate                = useNavigate();
+  const location                = useLocation();
   const { toasts, push }        = useToast();
 
-  const [tab,  setTab]  = useState("venues"); // Image 2 shows venue grid as main view
+  const [tab,  setTab]  = useState(() => {
+    const requestedTab = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("tab")
+      : null;
+    return requestedTab && DASHBOARD_TABS.has(requestedTab) ? requestedTab : "venues";
+  }); // Image 2 shows venue grid as main view
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("bookerTheme");
     if (saved === "dark") document.documentElement.classList.add("dark");
@@ -339,6 +352,15 @@ export default function BookerDashboard() {
   const [editMode,       setEditMode]       = useState(false);
   const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(false);
+
+  const requestedChatId = new URLSearchParams(location.search).get("chatId") || "";
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(location.search).get("tab");
+    if (requestedTab && DASHBOARD_TABS.has(requestedTab) && requestedTab !== tab) {
+      setTab(requestedTab);
+    }
+  }, [location.search, tab]);
 
   const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
   const LANGS = [
@@ -848,7 +870,7 @@ export default function BookerDashboard() {
               <div className="space-y-4">
                 <h1 className="text-2xl font-black" style={{ color: textMain }}>Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
-                  <ChatPanel user={user} />
+                  <ChatPanel user={user} initialChatId={requestedChatId} />
                 </div>
               </div>
             )}

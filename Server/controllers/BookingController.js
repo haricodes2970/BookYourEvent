@@ -41,7 +41,9 @@ const createBooking = async (req, res) => {
         if (guestCount > venue.capacity)
             return res.status(400).json({ message: `Venue capacity is ${venue.capacity} guests maximum` });
 
-        // ── Check if this booker already has a pending bid for this slot ──
+        const isInstantBooking = venue.bookingType === 'instant';
+
+        // Check if this booker already has a pending request for this slot.
         const existingBid = await Booking.findOne({
             venue:     venueId,
             booker:    req.user.id,
@@ -49,19 +51,34 @@ const createBooking = async (req, res) => {
             status:    { $in: ['pending', 'payment_pending'] },
         });
         if (existingBid)
-            return res.status(400).json({ message: 'You already have a bid for this slot. Raise your bid instead.' });
+            return res.status(400).json({
+                message: isInstantBooking
+                    ? 'You already have a pending booking request for this slot.'
+                    : 'You already have a bid for this slot. Raise your bid instead.',
+            });
 
-        // ── Check for already confirmed booking on same slot ──
-        const confirmed = await Booking.findOne({
+        const overlapQuery = {
             venue:     venueId,
             eventDate: new Date(eventDate),
-            status:    'confirmed',
             $and: [{ startTime: { $lt: endTime } }, { endTime: { $gt: startTime } }],
-        });
-        if (confirmed)
-            return res.status(400).json({ message: 'This slot is already confirmed. Please choose another time.' });
+        };
 
-        // ── Calculate price ──
+        if (isInstantBooking) {
+            const lockedSlot = await Booking.findOne({
+                ...overlapQuery,
+                status: { $in: ['payment_pending', 'confirmed'] },
+            });
+            if (lockedSlot)
+                return res.status(400).json({ message: 'This slot is currently unavailable. Please choose another time.' });
+        } else {
+            const confirmed = await Booking.findOne({
+                ...overlapQuery,
+                status: 'confirmed',
+            });
+            if (confirmed)
+                return res.status(400).json({ message: 'This slot is already confirmed. Please choose another time.' });
+        }
+
         const parseTime = (timeStr = '') => {
             const [h, m] = timeStr.split(':').map(Number);
             if (
@@ -86,7 +103,12 @@ const createBooking = async (req, res) => {
 
         const hours      = (endMinutes - startMinutes) / 60;
         const totalPrice = hours * venue.pricePerHour;
-        const finalBid   = bidAmount && bidAmount > totalPrice ? bidAmount : totalPrice;
+        const numericBid = Number(bidAmount);
+        const finalBid   = !Number.isNaN(numericBid) && numericBid > totalPrice ? numericBid : totalPrice;
+        const bookingStatus = isInstantBooking ? 'payment_pending' : 'pending';
+        const paymentDeadline = isInstantBooking
+            ? new Date(Date.now() + 4 * 60 * 60 * 1000)
+            : null;
 
         const booking = await Booking.create({
             venue:      venueId,
@@ -97,7 +119,8 @@ const createBooking = async (req, res) => {
             guestCount,
             totalPrice,
             bidAmount:  finalBid,
-            status:     'pending',
+            status:     bookingStatus,
+            paymentDeadline,
             bids: [{
                 booker:    req.user.id,
                 bidAmount: finalBid,
@@ -114,7 +137,7 @@ const createBooking = async (req, res) => {
             { path: 'booker', select: 'name email' },
         ]);
 
-        if (booking.venue?.owner?.email) {
+        if (!isInstantBooking && booking.venue?.owner?.email) {
             try {
                 await sendOwnerNewBidEmail(
                     booking.venue.owner.email,
@@ -132,12 +155,14 @@ const createBooking = async (req, res) => {
             } catch (emailErr) {
                 console.error(`Owner new-bid email failed for booking ${booking._id}:`, emailErr.message);
             }
-        } else {
+        } else if (!isInstantBooking) {
             console.warn(`Owner email missing for booking ${booking._id}. New-bid email skipped.`);
         }
 
         res.status(201).json({
-            message: 'Bid placed! Waiting for owner to review all bids.',
+            message: isInstantBooking
+                ? 'Booking created. Complete payment to confirm your slot.'
+                : 'Bid placed! Waiting for owner to review all bids.',
             booking,
         });
     } catch (err) {

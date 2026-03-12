@@ -23,7 +23,12 @@ exports.openChat = async (req, res) => {
 
     // Support opening chat by username
     if (!targetUserId && username) {
-      const targetUser = await User.findOne({ name: new RegExp(`^${username}$`, 'i') });
+      const targetUser = await User.findOne({
+        $or: [
+          { username: new RegExp(`^${username}$`, 'i') },
+          { name: new RegExp(`^${username}$`, 'i') },
+        ],
+      });
       if (!targetUser) return res.status(404).json({ message: 'User not found' });
       targetUserId = targetUser._id;
     }
@@ -158,11 +163,12 @@ exports.searchUsers = async (req, res) => {
 
     const users = await User.find({
       $or: [
+        { username: new RegExp(q, 'i') },
         { name: new RegExp(q, 'i') },
         { email: new RegExp(q, 'i') },
       ],
       _id: { $ne: req.user._id },
-    }).select('name email avatar').limit(10);
+    }).select('name username email avatar').limit(10);
 
     res.json(users);
   } catch (err) {
