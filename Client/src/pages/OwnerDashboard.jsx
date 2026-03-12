@@ -389,6 +389,7 @@ function ChatPanel({ user, dark }) {
   const [text,     setText]     = useState("");
   const [sending,  setSending]  = useState(false);
   const bottomRef               = useRef(null);
+  const activeId                = active?._id || null;
 
   useEffect(() => {
     let mounted = true;
@@ -398,8 +399,8 @@ function ChatPanel({ user, dark }) {
         if (!mounted) return;
         const list = Array.isArray(r.data) ? r.data : r.data?.chats || [];
         setChats(list);
-        if (active) {
-          const refreshed = list.find((chat) => chat?._id === active._id);
+        if (activeId) {
+          const refreshed = list.find((chat) => chat?._id === activeId);
           if (refreshed) setActive(refreshed);
         }
       } catch {
@@ -413,16 +414,16 @@ function ChatPanel({ user, dark }) {
       mounted = false;
       clearInterval(id);
     };
-  }, [active?._id]);
+  }, [activeId]);
   useEffect(() => {
-    if (!active) return;
+    if (!activeId) return;
     let mounted = true;
     const loadMessages = async () => {
       try {
-        const r = await api.get(`/chats/${active._id}/messages`);
+        const r = await api.get(`/chats/${activeId}/messages`);
         if (!mounted) return;
         setMessages(r.data?.messages || r.data || []);
-        api.patch(`/chats/${active._id}/read`).catch(() => {});
+        api.patch(`/chats/${activeId}/read`).catch(() => {});
       } catch {
         // Ignore polling errors.
       }
@@ -434,7 +435,7 @@ function ChatPanel({ user, dark }) {
       mounted = false;
       clearInterval(id);
     };
-  }, [active?._id]);
+  }, [activeId]);
   useEffect(() => { scrollBottom(); }, [messages]);
   const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
