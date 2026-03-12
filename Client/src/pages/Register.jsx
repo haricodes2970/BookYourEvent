@@ -103,6 +103,8 @@ export default function Register() {
   const timerRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const normalizedUsername = (name) =>
+    name.trim().toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9._]/g, '').slice(0, 24);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -118,11 +120,24 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name || !form.email || !form.password) return setError("Name, email and password are required.");
-    if (form.password.length < 6) return setError("Password must be at least 6 characters.");
+    if (!form.name || !form.email || !form.password || !form.phone) {
+      return setError("Name, email, phone and password are required.");
+    }
+    if (form.password.length < 8) {
+      return setError("Password must be at least 8 characters.");
+    }
+    const strongPw = /[A-Z]/.test(form.password) && /[a-z]/.test(form.password) &&
+      /[0-9]/.test(form.password) && /[^A-Za-z0-9]/.test(form.password);
+    if (!strongPw) {
+      return setError("Password must include upper, lower, number and symbol.");
+    }
+
+    const username = normalizedUsername(form.name) || `user${Date.now().toString().slice(-6)}`;
+    const payload = { ...form, username };
+
     setLoading(true);
     try {
-      await registerUser(form);
+      await registerUser(payload);
       setStep("otp");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");
@@ -161,9 +176,9 @@ export default function Register() {
     try {
       await verifyOTP({ email: form.email, otp: code });
       const loginRes = await import("../services/authService").then((m) =>
-        m.loginUser({ email: form.email, password: form.password })
+        m.loginUser({ identifier: form.email, password: form.password })
       );
-      login(loginRes.data.token);
+      login(loginRes.user, loginRes.token);
       navigate(form.role === "venueOwner" ? "/owner/dashboard" : "/booker/dashboard");
     } catch (err) {
       setOtpError(err.response?.data?.message || "Invalid OTP. Please try again.");
@@ -186,7 +201,9 @@ export default function Register() {
       timerRef.current = setInterval(() => {
         setResendTimer((t) => { if (t <= 1) { clearInterval(timerRef.current); return 0; } return t - 1; });
       }, 1000);
-    } catch {}
+    } catch (err) {
+      setOtpError(err.response?.data?.message || "Failed to resend OTP.");
+    }
   };
 
   return (

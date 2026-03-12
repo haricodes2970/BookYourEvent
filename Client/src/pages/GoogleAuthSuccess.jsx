@@ -31,7 +31,7 @@ const GoogleAuthSuccess = () => {
         } else {
             navigate('/login?error=google_failed');
         }
-    }, []);
+    }, [login, navigate]);
 
     return (
         <div className="h-screen flex items-center justify-center"

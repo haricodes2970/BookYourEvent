@@ -88,20 +88,31 @@ const Reveal = ({ children, delay = 0, y = 40, x = 0 }) => {
 ══════════════════════════════════════ */
 const useCountUp = (target, active) => {
     const [count, setCount] = useState(0);
-    const ran = useRef(false);
-    if (active && !ran.current && target > 0) {
-        ran.current = true;
+
+    useEffect(() => {
+        if (!active || target <= 0) return;
+
+        let rafId;
         let start = null;
+        let cancelled = false;
+
         const step = (ts) => {
+            if (cancelled) return;
             if (!start) start = ts;
             const p = Math.min((ts - start) / 2000, 1);
             const eased = 1 - Math.pow(1 - p, 4);
             setCount(Math.floor(eased * target));
-            if (p < 1) requestAnimationFrame(step);
+            if (p < 1) rafId = requestAnimationFrame(step);
             else setCount(target);
         };
-        requestAnimationFrame(step);
-    }
+
+        rafId = requestAnimationFrame(step);
+        return () => {
+            cancelled = true;
+            if (rafId) cancelAnimationFrame(rafId);
+        };
+    }, [active, target]);
+
     return count;
 };
 

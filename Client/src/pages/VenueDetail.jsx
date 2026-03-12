@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
-import { formatINR, formatDateIN, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
+import { formatINR, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
 
 // ─── Google Fonts ─────────────────────────────────────────────────────────────
 const FONT_LINK = `https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap`;
@@ -292,7 +292,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
 
   useEffect(() => {
     if (showPayment && createdBooking) triggerRazorpay();
-  }, [showPayment]);
+  }, [showPayment, createdBooking, triggerRazorpay]);
 
   const endSlots = TIME_SLOTS.filter((t) => !form.startTime || t > form.startTime);
 
@@ -426,8 +426,10 @@ function ReviewsSection({ venueId, push }) {
     try {
       const res = await api.get(`/api/reviews/venue/${venueId}`);
       setReviews(res.data);
-    } catch {}
-  }, [venueId]);
+    } catch {
+      push("Failed to load reviews", "error");
+    }
+  }, [venueId, push]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
@@ -612,7 +614,7 @@ export default function VenueDetail() {
       })
       .catch(() => push("Failed to load venue", "error"))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, push]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);

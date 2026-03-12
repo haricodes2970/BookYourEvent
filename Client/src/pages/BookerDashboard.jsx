@@ -394,7 +394,7 @@ export default function BookerDashboard() {
       });
     } catch { push("Failed to load data", "error"); }
     finally { setLoading(false); }
-  }, []);
+  }, [push]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

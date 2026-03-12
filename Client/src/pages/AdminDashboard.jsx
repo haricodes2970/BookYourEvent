@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -162,6 +162,7 @@ const NotificationPanel = ({ pendingVenues, onApprove, onClose, onNavigate }) =>
   const { isDark } = useTheme();
   const t = isDark ? dark : light;
   const ref = useRef(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
@@ -169,9 +170,14 @@ const NotificationPanel = ({ pendingVenues, onApprove, onClose, onNavigate }) =>
     return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   const timeAgo = (date) => {
     if (!date) return 'recently';
-    const d = Math.floor((Date.now()-new Date(date))/60000);
+    const d = Math.floor((now - new Date(date)) / 60000);
     if (d<1) return 'just now';
     if (d<60) return `${d}m ago`;
     if (d<1440) return `${Math.floor(d/60)}h ago`;
@@ -620,9 +626,12 @@ const AdminDashboard = () => {
   const bellRef = useRef(null);
   const t = isDark ? dark : light;
 
-  useEffect(() => { fetchData(); }, []);
+  const showToast = useCallback((msg, type='success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast({ msg:'', type:'' }), 3000);
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [u,v,b] = await Promise.all([getAllUsers(), getAllVenuesAdmin(), getAllBookingsAdmin()]);
       setUsers(u.users??[]);
@@ -630,12 +639,9 @@ const AdminDashboard = () => {
       setBookings(b.bookings??[]);
     } catch { showToast('Failed to load data','error'); }
     finally { setLoading(false); }
-  };
+  }, [showToast]);
 
-  const showToast = (msg, type='success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast({ msg:'', type:'' }), 3000);
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleApproveVenue = async (id) => {
     try {

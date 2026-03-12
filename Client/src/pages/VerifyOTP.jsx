@@ -16,7 +16,7 @@ const VerifyOTP = () => {
     // If no email in URL, redirect to register
     useEffect(() => {
         if (!email) navigate('/register');
-    }, [email]);
+    }, [email, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

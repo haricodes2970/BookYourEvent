@@ -563,7 +563,7 @@ export default function OwnerDashboard() {
       setStats({ venues: v.length, pending, revenue, total: b.length });
     } catch { push("Failed to load data", "error"); }
     finally { setLoading(false); }
-  }, []);
+  }, [push]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
