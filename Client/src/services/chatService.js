@@ -1,38 +1,9 @@
 import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-export const openChat = async ({ otherUserId, bookingId }) => {
-    const response = await api.post(`${API}/chats/open`, { otherUserId, bookingId });
-    return response.data;
-};
-
-export const openChatByUsername = async (username) => {
-    const response = await api.post(`${API}/chats/open`, { username });
-    return response.data;
-};
-
-export const getMyChats = async () => {
-    const response = await api.get(`${API}/chats`);
-    return response.data;
-};
-
-export const getChatMessages = async (chatId) => {
-    const response = await api.get(`${API}/chats/${chatId}/messages`);
-    return response.data;
-};
-
-export const sendChatMessage = async (chatId, text) => {
-    const response = await api.post(`${API}/chats/${chatId}/messages`, { text });
-    return response.data;
-};
-
-export const markChatRead = async (chatId) => {
-    const response = await api.patch(`${API}/chats/${chatId}/read`, {});
-    return response.data;
-};
-
-export const searchUsersForChat = async (query) => {
-    const response = await api.get(`${API}/chats/users/search?q=${encodeURIComponent(query)}`);
-    return response.data;
-};
+export const getChats           = ()           => api.get("/chats");
+export const createChat         = (venueOwnerId, venueId) => api.post("/chats", { venueOwnerId, venueId });
+export const getChatMessages    = (chatId)     => api.get(`/chats/${chatId}/messages`);
+export const sendMessage        = (chatId, text) => api.post(`/chats/${chatId}/messages`, { text });
+export const markRead           = (chatId)     => api.patch(`/chats/${chatId}/read`);
+export const deleteChat         = (chatId)     => api.delete(`/chats/${chatId}`);
+export const getOrCreateChat    = (ownerId, venueId) => api.post("/chats/get-or-create", { ownerId, venueId });

@@ -1,23 +1,8 @@
 import api from "../utils/axiosInstance";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-export const createBooking = (data) =>
-    api.post(`${API}/bookings/create`, data).then(r => r.data);
-
-export const getVenueBookings = (id) =>
-    api.get(`${API}/bookings/venue/${id}`).then(r => r.data);
-
-export const getOwnerBookings = (venueId) =>
-    api
-        .get(`${API}/bookings/owner${venueId ? `?venueId=${venueId}` : ""}`)
-        .then(r => r.data);
-
-export const getMyBookings = () =>
-    api.get(`${API}/bookings/my-bookings`).then(r => r.data);
-
-export const updateBookingStatus = (id, status) =>
-    api.patch(`${API}/bookings/${id}/status`, { status }).then(r => r.data);
-
-export const raiseBid = (id, data) =>
-    api.patch(`${API}/bookings/${id}/raise-bid`, data).then(r => r.data);
+export const createBooking      = (data)       => api.post("/bookings", data);
+export const getMyBookings      = ()           => api.get("/bookings/my-bookings");
+export const getOwnerBookings   = ()           => api.get("/bookings/owner");
+export const updateBookingStatus= (id, status) => api.patch(`/bookings/${id}/status`, { status });
+export const raiseBid           = (id, amount) => api.patch(`/bookings/${id}/raise-bid`, { newBidAmount: amount });
+export const cancelBooking      = (id)         => api.delete(`/bookings/${id}`);

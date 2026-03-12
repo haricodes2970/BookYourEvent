@@ -31,28 +31,53 @@ const ICONS = {
   send:      "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
   zap:       "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
   toggle:    "M17 7h1a5 5 0 010 10h-1M7 7H6a5 5 0 000 10h1M8 12h8",
+  arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
-// Gradient constants — Gemini palette
-const G = {
-  hero:    "linear-gradient(135deg,#059669 0%,#0d9488 35%,#7c3aed 70%,#4f46e5 100%)",
-  violet:  "linear-gradient(135deg,#4f46e5,#7c3aed)",
-  amber:   "linear-gradient(135deg,#d97706,#f59e0b)",
-  emerald: "linear-gradient(135deg,#059669,#14b8a6)",
-  sky:     "linear-gradient(135deg,#0284c7,#06b6d4)",
-  red:     "linear-gradient(135deg,#dc2626,#e11d48)",
-};
+// ─────────────────────────────────────────────────────────────────────────────
+//  COLOR SYSTEM — extracted from Image 1
+//
+//  Hero gradient: deep forest green → teal → purple → indigo (BOTH modes)
+//  Light bg:  white #ffffff, cards white with light border
+//  Dark bg:   navy-purple #1a1a2e, sidebar #16213e
+//
+//  Stat cards — exactly as shown in Image 1:
+//   1) Teal/cyan   — Total Venues
+//   2) Blue/indigo — Upcoming Bookings
+//   3) Amber/gold  — Monthly Revenue
+//   4) Purple      — Pending Requests
+// ─────────────────────────────────────────────────────────────────────────────
+const C = {
+  // Hero — Image 1: forest green → teal → purple wave
+  heroLight: "linear-gradient(135deg, #1a5c3a 0%, #2d7a4f 25%, #6b3fa0 65%, #3d1c8a 100%)",
+  heroDark:  "linear-gradient(135deg, #0d3321 0%, #1a4a30 25%, #4a2070 65%, #251060 100%)",
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const AMENITIES = [
-  "AC", "Parking", "WiFi", "Stage", "Catering", "DJ Setup",
-  "Generator", "CCTV", "Security", "Elevator", "Wheelchair Access", "Swimming Pool",
-];
-const VENUE_TYPES = [
-  "Wedding Hall", "Banquet Hall", "Conference Room", "Rooftop",
-  "Farmhouse", "Resort", "Auditorium", "Lawn", "Club House",
-  "Convention Centre", "Terrace", "Studio", "Sports Ground", "Other",
-];
+  // Stat card colors — exactly Image 1 order
+  statTeal:   "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",   // teal — Total Venues
+  statBlue:   "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",   // blue — Upcoming Bookings
+  statAmber:  "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",   // amber — Monthly Revenue
+  statPurple: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",   // purple — Pending Requests
+
+  // Primary action — Image 1 "View All" button uses teal/green
+  primary:     "#0d9488",
+  primaryHover:"#0f766e",
+  primaryGrad: "linear-gradient(135deg, #0d9488, #059669)",
+
+  // Secondary — purple for active/approve
+  purple:     "#7c3aed",
+  purpleGrad: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+
+  // Status
+  amber:      "linear-gradient(135deg, #f59e0b, #d97706)",
+  amberSolid: "#d97706",
+  green:      "linear-gradient(135deg, #16a34a, #15803d)",
+  greenSolid: "#16a34a",
+  red:        "linear-gradient(135deg, #dc2626, #b91c1c)",
+  redSolid:   "#dc2626",
+
+  // Sidebar active — teal pill (matches Image 1 primary teal)
+  sidebarActive: "#0d9488",
+};
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
@@ -63,7 +88,7 @@ function Toast({ toasts }) {
           <motion.div key={t.id}
             initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
             className="px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto text-white"
-            style={{ background: t.type === "success" ? G.emerald : G.red }}>
+            style={{ background: t.type === "success" ? C.green : C.red }}>
             {t.msg}
           </motion.div>
         ))}
@@ -85,21 +110,22 @@ function useToast() {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function Badge({ status }) {
   const map = {
-    pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    approved:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    rejected:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    paid:       "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
-    bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    expired:    "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
+    pending:         "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    payment_pending: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    approved:        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    confirmed:       "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    rejected:        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    paid:            "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    expired:         "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] || map.expired}`}>
-      {status?.replace("_", " ")}
+      {status?.replace(/_/g, " ")}
     </span>
   );
 }
 
-// ─── Stat Card — full Gemini gradient ─────────────────────────────────────────
+// ─── Stat Card — Image 1 style ────────────────────────────────────────────────
 function StatCard({ label, value, sub, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -115,23 +141,54 @@ function StatCard({ label, value, sub, grad }) {
   );
 }
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
-function HeroBanner({ name }) {
+// ─── Hero Banner — Image 1 exact style ───────────────────────────────────────
+function HeroBanner({ name, dark }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden p-7" style={{ background: G.hero }}>
-      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-white/5" />
-      <div className="absolute right-8 -bottom-20 w-40 h-40 rounded-full bg-white/5" />
+    <div className="relative rounded-2xl overflow-hidden p-8"
+      style={{ background: dark ? C.heroDark : C.heroLight }}>
+      {/* Image 1: blobs — teal left-bottom, purple top-right, gold sparkle */}
+      <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full"
+        style={{ background: "rgba(139,92,246,0.35)" }} />
+      <div className="absolute right-32 bottom-0 w-32 h-32 rounded-full"
+        style={{ background: "rgba(13,148,136,0.3)" }} />
+      <div className="absolute left-1/3 top-4 w-4 h-4 rounded-full"
+        style={{ background: "rgba(245,158,11,0.8)" }} />
+      {/* Sparkle star like Image 1 */}
+      <div className="absolute right-16 top-6 text-amber-300 text-2xl select-none">✦</div>
       <div className="relative z-10">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Owner Dashboard</p>
-        <h1 className="text-3xl font-black text-white mb-1">Welcome back, {name?.split(" ")[0] || "there"} 👋</h1>
-        <p className="text-white/65 text-sm">Oversee your venues & bookings</p>
+        <p className="text-xs font-bold uppercase tracking-widest mb-2"
+          style={{ color: "rgba(255,255,255,0.6)" }}>Owner Dashboard</p>
+        <h1 className="text-4xl font-black text-white mb-2"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "-0.02em" }}>
+          Owner Dashboard
+        </h1>
+        <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm">
+          Oversee Venues &amp; Bookings — Welcome back, {name?.split(" ")[0] || "there"} 👋
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Venue Modal (Add / Edit) ─────────────────────────────────────────────────
-function VenueModal({ mode, venue, onClose, onSave, push }) {
+// ─── Constants ────────────────────────────────────────────────────────────────
+const AMENITIES = [
+  "AC", "Parking", "WiFi", "Stage", "Catering", "DJ Setup",
+  "Generator", "CCTV", "Security", "Elevator", "Wheelchair Access", "Swimming Pool",
+];
+const VENUE_TYPES = [
+  "Wedding Hall", "Banquet Hall", "Conference Room", "Rooftop",
+  "Farmhouse", "Resort", "Auditorium", "Lawn", "Club House",
+  "Convention Centre", "Terrace", "Studio", "Sports Ground", "Other",
+];
+
+// ─── Venue Modal ──────────────────────────────────────────────────────────────
+function VenueModal({ mode, venue, onClose, onSave, push, dark }) {
+  const cardBg     = dark ? "#1e1e2e" : "#ffffff";
+  const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const textMain   = dark ? "#e2e8f0" : "#1a1a2e";
+  const textMuted  = dark ? "rgba(226,232,240,0.5)" : "rgba(26,26,46,0.45)";
+  const inputBg    = dark ? "#2a2a3e" : "#f8f9ff";
+
   const [form, setForm] = useState({
     name:         venue?.name         || "",
     description:  venue?.description  || "",
@@ -169,7 +226,7 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
           else fd.append(k, v);
         });
         await api.post("/venues", fd, { headers: { "Content-Type": "multipart/form-data" } });
-        push("Venue added!");
+        push("Venue added! Pending admin approval.");
       } else {
         await api.patch(`/venues/${venue._id}`, {
           name: form.name, description: form.description,
@@ -186,105 +243,124 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}>
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+          style={{ background: cardBg }}>
 
-          {/* Modal header with gradient */}
-          <div className="sticky top-0 rounded-t-2xl px-6 pt-6 pb-4 border-b border-zinc-100 dark:border-zinc-800
-            flex items-center justify-between bg-white dark:bg-zinc-900">
+          <div className="sticky top-0 rounded-t-2xl px-6 pt-6 pb-4 flex items-center justify-between"
+            style={{ background: cardBg, borderBottom: `1px solid ${cardBorder}` }}>
             <div>
-              <h2 className="text-lg font-black text-zinc-900 dark:text-white">
+              <h2 className="text-lg font-black" style={{ color: textMain }}>
                 {mode === "add" ? "Add New Venue" : "Edit Venue"}
               </h2>
-              {mode === "add" && <p className="text-xs text-zinc-400 mt-0.5">Fill in the details to list your venue</p>}
+              <p className="text-xs mt-0.5" style={{ color: textMuted }}>
+                {mode === "add" ? "Fill details below. Admin will review before publishing." : "Update venue info below."}
+              </p>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800">
-              <Icon d={ICONS.x} size={18} className="text-zinc-500" />
+            <button onClick={onClose} className="p-2 rounded-xl hover:opacity-70 transition-opacity"
+              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", color: textMuted }}>
+              <Icon d={ICONS.x} size={18} />
             </button>
           </div>
 
-          <div className="p-6 grid grid-cols-2 gap-4">
-            {[
-              ["name",         "Venue Name",          "col-span-2"],
-              ["description",  "Description",         "col-span-2"],
-              ["pricePerHour", "Price per Hour (₹)",  "col-span-1"],
-              ["capacity",     "Capacity (people)",   "col-span-1"],
-              ["city",         "City",                "col-span-1"],
-              ["pincode",      "Pincode",             "col-span-1"],
-              ["address",      "Address",             "col-span-2"],
-            ].map(([k, label, span]) => (
-              <div key={k} className={span}>
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block uppercase tracking-wide">{label}</label>
-                {k === "description" ? (
-                  <textarea rows={3} value={form[k]} onChange={(e) => set(k, e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700
-                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                      focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" />
-                ) : (
-                  <input value={form[k]} onChange={(e) => set(k, e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700
-                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                      focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                )}
-              </div>
-            ))}
+          <div className="p-6 space-y-5">
+            {/* Basic info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                ["name", "Venue Name *", "text", "e.g. The Grand Ballroom"],
+                ["pricePerHour", "Price / Hour (₹) *", "number", "e.g. 5000"],
+                ["capacity", "Capacity (guests)", "number", "e.g. 200"],
+                ["city", "City", "text", "e.g. Bangalore"],
+                ["pincode", "Pincode", "text", "e.g. 560001"],
+              ].map(([k, label, type, placeholder]) => (
+                <div key={k}>
+                  <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>{label}</label>
+                  <input type={type} value={form[k]} onChange={(e) => set(k, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                    style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
+                </div>
+              ))}
 
-            {mode === "add" && (
-              <div className="col-span-2">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block uppercase tracking-wide">Venue Type</label>
+              <div>
+                <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>Venue Type</label>
                 <select value={form.venueType} onChange={(e) => set("venueType", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700
-                    bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                    focus:outline-none focus:ring-2 focus:ring-violet-500">
+                  className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none appearance-none"
+                  style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }}>
                   <option value="">Select type…</option>
                   {VENUE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-            )}
+            </div>
 
-            <div className="col-span-2">
-              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 block uppercase tracking-wide">Amenities</label>
+            {/* Address */}
+            <div>
+              <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>Full Address</label>
+              <input type="text" value={form.address} onChange={(e) => set("address", e.target.value)}
+                placeholder="Street address…"
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>Description</label>
+              <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
+                rows={3} placeholder="Describe your venue…"
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none resize-none"
+                style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
+            </div>
+
+            {/* Amenities */}
+            <div>
+              <label className="text-xs font-bold mb-2 block" style={{ color: textMuted }}>Amenities</label>
               <div className="flex flex-wrap gap-2">
                 {AMENITIES.map((a) => (
                   <button key={a} type="button" onClick={() => toggleAmenity(a)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
-                      ${form.amenities.includes(a) ? "text-white border-transparent" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400"}`}
-                    style={form.amenities.includes(a) ? { background: G.violet } : {}}>
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                    style={form.amenities.includes(a)
+                      ? { background: C.primaryGrad, color: "#fff", border: "1px solid transparent" }
+                      : { background: "transparent", color: textMuted, border: `1px solid ${cardBorder}` }}>
                     {a}
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Images — only for add */}
             {mode === "add" && (
-              <div className="col-span-2">
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block uppercase tracking-wide">Images (up to 5)</label>
-                <label className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 cursor-pointer hover:border-violet-400 transition-colors">
-                  <Icon d={ICONS.upload} size={18} className="text-zinc-400" />
-                  <span className="text-sm text-zinc-500">Click to upload images</span>
+              <div>
+                <label className="text-xs font-bold mb-2 block" style={{ color: textMuted }}>Images (up to 5)</label>
+                <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ borderColor: C.primary, color: C.primary }}>
+                  <Icon d={ICONS.upload} size={18} />
+                  <span className="text-sm font-semibold">Choose images</span>
                   <input type="file" multiple accept="image/*" onChange={handleImages} className="hidden" />
                 </label>
                 {previews.length > 0 && (
-                  <div className="mt-3 flex gap-2 flex-wrap">
-                    {previews.map((p, i) => <img key={i} src={p} alt="" className="w-16 h-16 rounded-lg object-cover" />)}
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {previews.map((p, i) => (
+                      <img key={i} src={p} alt="" className="w-20 h-20 object-cover rounded-xl" />
+                    ))}
                   </div>
                 )}
               </div>
             )}
-          </div>
 
-          <div className="px-6 pb-6 flex gap-3 justify-end">
-            <button onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              Cancel
-            </button>
-            <button onClick={submit} disabled={loading}
-              className="px-5 py-2 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
-              style={{ background: G.violet }}>
-              {loading ? "Saving…" : mode === "add" ? "Add Venue" : "Save Changes"}
-            </button>
+            <div className="flex gap-3 pt-2">
+              <button onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: `1px solid ${cardBorder}`, color: textMuted, background: "transparent" }}>
+                Cancel
+              </button>
+              <button onClick={submit} disabled={loading}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90"
+                style={{ background: C.primaryGrad }}>
+                {loading ? "Saving…" : mode === "add" ? "Add Venue" : "Save Changes"}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -293,19 +369,24 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
 }
 
 // ─── Chat Panel ───────────────────────────────────────────────────────────────
-function ChatPanel() {
-  const { user }                  = useAuth();
-  const [chats,    setChats]      = useState([]);
-  const [active,   setActive]     = useState(null);
-  const [messages, setMessages]   = useState([]);
-  const [text,     setText]       = useState("");
-  const [sending,  setSending]    = useState(false);
-  const bottomRef                 = useRef(null);
+function ChatPanel({ user, dark }) {
+  const cardBg     = dark ? "#1e1e2e" : "#ffffff";
+  const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const textMain   = dark ? "#e2e8f0" : "#1a1a2e";
+  const textMuted  = dark ? "rgba(226,232,240,0.5)" : "rgba(26,26,46,0.45)";
+  const inputBg    = dark ? "#2a2a3e" : "#f0f0f8";
 
-  useEffect(() => { api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {}); }, []);
+  const [chats,    setChats]    = useState([]);
+  const [active,   setActive]   = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text,     setText]     = useState("");
+  const [sending,  setSending]  = useState(false);
+  const bottomRef               = useRef(null);
+
+  useEffect(() => { api.get("/chats").then((r) => setChats(r.data?.chats || r.data || [])).catch(() => {}); }, []);
   useEffect(() => {
     if (!active) return;
-    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data || []); scrollBottom(); }).catch(() => {});
+    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data?.messages || r.data || []); scrollBottom(); }).catch(() => {});
     api.patch(`/chats/${active._id}/read`).catch(() => {});
   }, [active]);
   useEffect(() => { scrollBottom(); }, [messages]);
@@ -314,31 +395,32 @@ function ChatPanel() {
   const send = async () => {
     if (!text.trim() || !active || sending) return;
     const msg = text.trim(); setText(""); setSending(true);
-    try { const r = await api.post(`/chats/${active._id}/messages`, { text: msg }); setMessages((p) => [...p, r.data]); }
+    try { const r = await api.post(`/chats/${active._id}/messages`, { text: msg }); setMessages((p) => [...p, r.data?.message || r.data]); }
     catch { setText(msg); } finally { setSending(false); }
   };
 
   const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
-  const avatar   = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=059669&fontColor=ffffff`;
+  const avatar   = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
 
   return (
     <div className="flex h-full gap-4">
-      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
-        <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
-          <p className="font-bold text-zinc-900 dark:text-white text-sm">Messages</p>
+      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+        <div className="p-4" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+          <p className="font-bold text-sm" style={{ color: textMain }}>Messages</p>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {chats.length === 0 && <p className="text-center text-zinc-400 text-sm mt-8">No conversations yet</p>}
+          {chats.length === 0 && <p className="text-center text-sm mt-8" style={{ color: textMuted }}>No conversations yet</p>}
           {chats.map((c) => {
             const op = opponent(c);
             return (
               <button key={c._id} onClick={() => setActive(c)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                  ${active?._id === c._id ? "bg-emerald-50 dark:bg-emerald-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                style={active?._id === c._id ? { background: "rgba(13,148,136,0.12)" } : {}}>
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate">{c.lastMessage?.content?.slice(0, 28) || op?.email || "—"}</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: textMain }}>{op?.name || "User"}</p>
+                  <p className="text-xs truncate" style={{ color: textMuted }}>{c.lastMessage?.content?.slice(0, 28) || op?.email || "—"}</p>
                 </div>
               </button>
             );
@@ -346,17 +428,19 @@ function ChatPanel() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
+      <div className="flex-1 flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
         {!active ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-zinc-400 text-sm">Select a conversation to start chatting</p>
+            <p className="text-sm" style={{ color: textMuted }}>Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
-            <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-700 flex items-center gap-3">
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: `1px solid ${cardBorder}` }}>
               <img src={avatar(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
-              <p className="font-bold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
-              <button onClick={() => setActive(null)} className="ml-auto p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
+              <p className="font-bold text-sm" style={{ color: textMain }}>{opponent(active)?.name}</p>
+              <button onClick={() => setActive(null)} className="ml-auto p-1.5 rounded-lg hover:opacity-70 transition-opacity"
+                style={{ color: textMuted }}>
                 <Icon d={ICONS.x} size={16} />
               </button>
             </div>
@@ -366,9 +450,10 @@ function ChatPanel() {
                 const body = m.text || m.content || "";
                 return (
                   <div key={m._id || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
-                      ${mine ? "text-white rounded-br-sm" : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}
-                      style={mine ? { background: G.emerald } : {}}>
+                    <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm`}
+                      style={mine
+                        ? { background: C.primaryGrad, color: "#fff", borderRadius: "16px 16px 4px 16px" }
+                        : { background: inputBg, color: textMain, borderRadius: "16px 16px 16px 4px" }}>
                       {body}
                     </div>
                   </div>
@@ -376,15 +461,15 @@ function ChatPanel() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-700 flex gap-2">
+            <div className="px-4 py-3 flex gap-2" style={{ borderTop: `1px solid ${cardBorder}` }}>
               <input value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm
-                  focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-zinc-400" />
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: inputBg, color: textMain }} />
               <button onClick={send} disabled={sending || !text.trim()}
-                className="p-2.5 rounded-xl text-white disabled:opacity-50"
-                style={{ background: G.emerald }}>
+                className="p-2.5 rounded-xl text-white disabled:opacity-50 hover:opacity-90"
+                style={{ background: C.primaryGrad }}>
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -402,12 +487,17 @@ export default function OwnerDashboard() {
   const { toasts, push }        = useToast();
 
   const [tab,      setTab]      = useState("overview");
-  const [dark,     setDark]     = useState(() => localStorage.getItem("ownerTheme") === "dark");
+  const [dark,     setDark]     = useState(() => {
+    const s = localStorage.getItem("ownerTheme");
+    if (s === "dark") document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+    return s === "dark";
+  });
   const [venues,   setVenues]   = useState([]);
   const [bookings, setBookings] = useState([]);
   const [stats,    setStats]    = useState({ venues: 0, pending: 0, revenue: 0, total: 0 });
   const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState(null); // { type: "add"|"edit", venue? }
+  const [modal,    setModal]    = useState(null);
   const [unreadChats, setUnreadChats] = useState(false);
 
   const [editMode,       setEditMode]       = useState(false);
@@ -423,6 +513,18 @@ export default function OwnerDashboard() {
     { code: "kn", native: "ಕನ್ನಡ",    font: "Noto Sans Kannada" },
   ];
   const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
+
+  // Theme-computed values
+  // Light: pure white bg, white cards — Image 1 light mode
+  // Dark:  navy-purple bg #1a1a2e, dark sidebar #16213e — Image 1 dark mode
+  const pageBg     = dark ? "#1a1a2e" : "#f4f6fa";
+  const cardBg     = dark ? "#1e1e32" : "#ffffff";
+  const cardBorder = dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const textMain   = dark ? "#e2e8f0" : "#1a1a2e";
+  const textMuted  = dark ? "rgba(226,232,240,0.5)" : "rgba(26,26,46,0.45)";
+  const sidebarBg  = dark ? "#16213e" : "#ffffff";
+  const sidebarBorder = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.07)";
+  const inputBg    = dark ? "#2a2a3e" : "#f0f0f8";
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -456,8 +558,8 @@ export default function OwnerDashboard() {
       const v = Array.isArray(vRes.data) ? vRes.data : vRes.data?.venues   || [];
       const b = Array.isArray(bRes.data) ? bRes.data : bRes.data?.bookings || [];
       setVenues(v); setBookings(b);
-      const revenue = b.filter((x) => x.status === "paid").reduce((s, x) => s + (x.bidAmount || 0), 0);
-      const pending = b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length;
+      const revenue = b.filter((x) => x.status === "confirmed").reduce((s, x) => s + (x.bidAmount || 0), 0);
+      const pending = b.filter((x) => ["pending", "payment_pending"].includes(x.status)).length;
       setStats({ venues: v.length, pending, revenue, total: b.length });
     } catch { push("Failed to load data", "error"); }
     finally { setLoading(false); }
@@ -467,7 +569,7 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     api.get("/chats").then((r) => {
-      const list = Array.isArray(r.data) ? r.data : [];
+      const list = Array.isArray(r.data) ? r.data : r.data?.chats || [];
       setUnreadChats(list.some((c) => c.unreadCount > 0));
     }).catch(() => {});
   }, []);
@@ -475,7 +577,7 @@ export default function OwnerDashboard() {
   const updateBookingStatus = async (id, status) => {
     try {
       await api.patch(`/bookings/${id}/status`, { status });
-      push(status === "approved" ? "Booking approved!" : "Booking rejected");
+      push(status === "approved" ? "Booking approved! Booker has 4hrs to pay." : "Booking rejected");
       fetchData();
     } catch (err) { push(err.response?.data?.message || "Failed", "error"); }
   };
@@ -507,9 +609,9 @@ export default function OwnerDashboard() {
     } catch { push("Switch failed", "error"); }
   };
 
-  const pendingBookings = bookings.filter((b) => ["pending", "bid_raised"].includes(b.status));
+  const pendingBookings = bookings.filter((b) => ["pending", "payment_pending"].includes(b.status));
   const avatar = (name) =>
-    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=059669&fontColor=ffffff`;
+    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
 
   const TABS = [
     { key: "overview",  icon: ICONS.overview },
@@ -520,33 +622,33 @@ export default function OwnerDashboard() {
   ];
 
   return (
-    <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
-      className={`min-h-screen flex ${dark ? "dark" : ""} bg-stone-50 dark:bg-zinc-950`}>
+    <div style={{ fontFamily: `'${currentFont}', sans-serif`, background: pageBg, minHeight: "100vh" }}
+      className="flex">
 
       <Toast toasts={toasts} />
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
-        bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
+      {/* ── Sidebar — Image 1 style: dark navy in dark mode ──────── */}
+      <aside style={{ background: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
+        className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center z-40 py-4 gap-1">
+
+        {/* Logo — Image 1: small green BYE circle */}
         <button onClick={() => navigate("/")}
           className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
-          style={{ background: G.emerald }}>
-          <span className="text-white font-black text-sm">B</span>
+          style={{ background: C.primaryGrad }}>
+          <span style={{ color: "#fff", fontFamily: "Georgia, serif", fontWeight: 800, fontSize: 10 }}>BYE</span>
         </button>
 
         {TABS.map(({ key, icon, dot }) => (
           <button key={key} onClick={() => setTab(key)} title={key}
-            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
-              ${tab === key
-                ? "text-white"
-                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-            style={tab === key ? { background: G.emerald, boxShadow: "0 4px 15px rgba(5,150,105,0.4)" } : {}}>
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+            style={tab === key
+              ? { background: C.primaryGrad, color: "#fff", boxShadow: `0 4px 14px rgba(13,148,136,0.45)` }
+              : { color: dark ? "rgba(226,232,240,0.4)" : "rgba(26,26,46,0.35)" }}>
             <Icon d={icon} size={18} />
             {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            {/* Pending badge on overview */}
             {key === "overview" && stats.pending > 0 && tab !== key && (
               <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-white text-[9px] flex items-center justify-center font-bold"
-                style={{ background: G.amber }}>{stats.pending}</span>
+                style={{ background: C.statAmber }}>{stats.pending}</span>
             )}
           </button>
         ))}
@@ -554,77 +656,88 @@ export default function OwnerDashboard() {
         <div className="flex-1" />
 
         <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+          style={{ color: dark ? "rgba(226,232,240,0.4)" : "rgba(26,26,46,0.35)" }}>
           <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
         </button>
 
         <button onClick={() => setTab("profile")} className="mt-1">
           <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover ring-2 ring-emerald-400/40" />
+            className="w-9 h-9 rounded-full object-cover" />
         </button>
 
         <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors mt-1 mb-1">
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors mt-1 mb-1"
+          style={{ color: C.redSolid }}>
           <Icon d={ICONS.logout} size={18} />
         </button>
       </aside>
 
-      {/* ── Main ────────────────────────────────────────────────── */}
+      {/* ── Main ─────────────────────────────────────────────────── */}
       <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
             className="max-w-6xl mx-auto">
 
-            {/* ── Overview ──────────────────────────────────────── */}
+            {/* ── Overview — matches Image 1 layout exactly ─────────── */}
             {tab === "overview" && (
               <div className="space-y-6">
-                <HeroBanner name={user?.name} />
+                <HeroBanner name={user?.name} dark={dark} />
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Venues"  value={stats.venues}           grad={G.violet}  />
-                  <StatCard label="Pending Bids"  value={stats.pending}           grad={G.amber}   />
-                  <StatCard label="Total Revenue" value={formatINR(stats.revenue)} grad={G.emerald} />
-                  <StatCard label="Total Bookings" value={stats.total}            grad={G.sky}     />
+                {/* Image 1: 4 stat cards in exact order — teal, blue, amber, purple */}
+                <div>
+                  <p className="text-sm font-bold mb-3" style={{ color: textMuted }}>Statistics Overview Section</p>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard label="Total Venues"      value={stats.venues}            grad={C.statTeal}   />
+                    <StatCard label="Upcoming Bookings" value={stats.pending}            grad={C.statBlue}   />
+                    <StatCard label="Monthly Revenue"   value={formatINR(stats.revenue)} grad={C.statAmber}  />
+                    <StatCard label="Pending Requests"  value={`0/${stats.total}`}       grad={C.statPurple} />
+                  </div>
                 </div>
 
                 {/* Pending Bids */}
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                    <Icon d={ICONS.zap} size={16} className="text-amber-500" />
-                    <h2 className="font-bold text-zinc-900 dark:text-white">Pending Bids</h2>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <div className="px-6 py-4 flex items-center gap-3"
+                    style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                    <Icon d={ICONS.zap} size={16} style={{ color: C.amberSolid }} />
+                    <h2 className="font-bold" style={{ color: textMain }}>Pending Bids</h2>
                     {pendingBookings.length > 0 && (
                       <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                        style={{ background: G.amber }}>{pendingBookings.length}</span>
+                        style={{ background: C.statAmber }}>{pendingBookings.length}</span>
                     )}
                   </div>
                   {loading ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>Loading…</p>
                   ) : pendingBookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">No pending bids</p>
+                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>No pending bids</p>
                   ) : (
-                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                    <div>
                       {pendingBookings.map((b) => (
-                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 flex-wrap hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 flex-wrap transition-colors"
+                          style={{ borderBottom: `1px solid ${cardBorder}` }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = dark ? "#252540" : "#f8f9ff"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-zinc-900 dark:text-white text-sm">{b.venue?.name || "Venue"}</p>
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                              {b.booker?.name || "Booker"} · {b.guests} guests · {formatDateIN(b.eventDate)}
+                            <p className="font-bold text-sm" style={{ color: textMain }}>{b.venue?.name || "Venue"}</p>
+                            <p className="text-xs mt-0.5" style={{ color: textMuted }}>
+                              {b.booker?.name || "Booker"} · {b.guestCount} guests · {formatDateIN(b.eventDate)}
                             </p>
                           </div>
                           <div className="text-center">
-                            <p className="text-xs text-zinc-400">Bid Amount</p>
-                            <p className="font-black text-lg text-amber-500">{formatINR(b.bidAmount)}</p>
+                            <p className="text-xs" style={{ color: textMuted }}>Bid Amount</p>
+                            <p className="font-black text-lg" style={{ color: C.amberSolid }}>{formatINR(b.bidAmount)}</p>
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => updateBookingStatus(b._id, "approved")}
-                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                              style={{ background: G.emerald }}>
+                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90"
+                              style={{ background: C.primaryGrad }}>
                               ✓ Approve
                             </button>
                             <button onClick={() => updateBookingStatus(b._id, "rejected")}
-                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                              style={{ background: G.red }}>
+                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90"
+                              style={{ background: C.red }}>
                               ✕ Reject
                             </button>
                           </div>
@@ -636,72 +749,110 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── My Venues ─────────────────────────────────────── */}
+            {/* ── My Venues — Image 1: grid with status badges ──────── */}
             {tab === "venues" && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <h1 className="text-2xl font-black text-zinc-900 dark:text-white">My Venues</h1>
-                  <button onClick={() => setModal({ type: "add" })}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold hover:opacity-90 transition-opacity"
-                    style={{ background: G.emerald }}>
-                    <Icon d={ICONS.plus} size={16} /> Add Venue
-                  </button>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: textMuted }}>My Venues</p>
+                    <p className="text-xs" style={{ color: textMuted }}>Responsive grid of choose venues</p>
+                  </div>
+                  <div className="flex gap-3 items-center flex-wrap">
+                    {/* Image 1: "View All" button with dropdown arrow */}
+                    <button onClick={() => setModal({ type: "add" })}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold hover:opacity-90"
+                      style={{ background: C.primaryGrad }}>
+                      <Icon d={ICONS.plus} size={16} /> Add Venue
+                    </button>
+                  </div>
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading…</p>
                 ) : venues.length === 0 ? (
-                  <div className="py-20 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
-                    <p className="text-zinc-400 mb-4">No venues yet. Add your first!</p>
+                  <div className="py-20 text-center rounded-2xl border-2 border-dashed"
+                    style={{ borderColor: cardBorder }}>
+                    <p className="mb-4" style={{ color: textMuted }}>No venues yet. Add your first!</p>
                     <button onClick={() => setModal({ type: "add" })}
-                      className="px-6 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                      style={{ background: G.emerald }}>
+                      className="px-6 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90"
+                      style={{ background: C.primaryGrad }}>
                       + Add Venue
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  /* Image 1: 4-column grid (lg), each card with image + status badge + edit/view buttons */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {venues.map((v) => {
                       const img = v.images?.[0];
-                      const statusLabel = !v.isApproved ? "Pending" : v.isActive ? "Active" : "Inactive";
-                      const statusStyle = !v.isApproved
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                        : v.isActive
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                          : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400";
+                      const isActive  = v.isActive !== false;
+                      const isPending = !v.isApproved;
+                      // Image 1 status labels: Active (green), Pending (amber), Unavailable (red)
+                      const statusLabel = isPending ? "Pending" : isActive ? "Active" : "Unavailable";
+                      const statusStyle = isPending
+                        ? { background: C.statAmber, color: "#fff" }
+                        : isActive
+                          ? { background: C.greenSolid, color: "#fff" }
+                          : { background: C.redSolid, color: "#fff" };
+
                       return (
                         <motion.div key={v._id} layout whileHover={{ y: -4 }}
-                          className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden group
-                            shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-shadow">
-                          <div className="relative h-40 bg-zinc-100 dark:bg-zinc-800">
+                          className="rounded-2xl overflow-hidden group"
+                          style={{
+                            background: cardBg,
+                            border: `1px solid ${cardBorder}`,
+                            boxShadow: dark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 2px 12px rgba(0,0,0,0.06)",
+                          }}>
+                          <div className="relative h-36 overflow-hidden"
+                            style={{ background: dark ? "#2a2a3e" : "#e8eaf6" }}>
                             {img ? (
-                              <img src={img} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <img src={img} alt={v.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                                <Icon d={ICONS.venues} size={36} style={{ color: textMuted }} />
                               </div>
                             )}
-                            <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold ${statusStyle}`}>
+                            {/* Image 1: status badge top-left */}
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-xs font-bold"
+                              style={statusStyle}>
                               {statusLabel}
                             </span>
                           </div>
-                          <div className="p-4">
-                            <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                            <p className="text-sm text-zinc-400 mt-0.5">
-                              📍 {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
+                          <div className="p-3">
+                            <p className="font-bold text-sm truncate" style={{ color: textMain }}>{v.name}</p>
+                            <p className="text-xs mt-0.5 truncate" style={{ color: textMuted }}>
+                              📍 {v.location?.city || v.city || "—"}
                             </p>
-                            <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-xs font-semibold" style={{ color: C.primary }}>
+                                {formatINR(v.pricePerHour)}/hr
+                              </span>
+                              {v.rating && (
+                                <span className="text-xs" style={{ color: C.amberSolid }}>★ {v.rating}</span>
+                              )}
+                            </div>
+                            {/* Image 1: "Edit Venue" + "View Bookings" buttons */}
+                            <div className="grid grid-cols-2 gap-1.5 mt-3">
                               <button onClick={() => setModal({ type: "edit", venue: v })}
-                                className="py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-400
-                                  hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                                ✏ Edit
+                                className="py-1.5 rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                                style={{ border: `1px solid ${cardBorder}`, color: textMuted, background: "transparent" }}>
+                                Edit Venue
                               </button>
-                              <button onClick={() => toggleVenueActive(v)}
-                                className="py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                                style={{ background: v.isActive ? G.amber : G.emerald }}>
-                                {v.isActive ? "Deactivate" : "Activate"}
+                              <button onClick={() => navigate(`/owner/venues/${v._id}`)}
+                                className="py-1.5 rounded-lg text-xs font-bold text-white hover:opacity-90 transition-opacity"
+                                style={{ background: C.primaryGrad }}>
+                                View Bookings
                               </button>
                             </div>
+                            {/* Toggle active */}
+                            <button onClick={() => toggleVenueActive(v)}
+                              className="mt-1.5 w-full py-1.5 rounded-lg text-xs font-bold hover:opacity-80 transition-opacity"
+                              style={{
+                                background: isActive ? "rgba(220,38,38,0.1)" : "rgba(13,148,136,0.1)",
+                                color: isActive ? C.redSolid : C.primary,
+                              }}>
+                              {isActive ? "Deactivate" : "Activate"}
+                            </button>
                           </div>
                         </motion.div>
                       );
@@ -711,50 +862,55 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── All Bookings ──────────────────────────────────── */}
+            {/* ── All Bookings ──────────────────────────────────────── */}
             {tab === "bookings" && (
               <div className="space-y-5">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">All Bookings</h1>
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>All Bookings</h1>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
                   {loading ? (
-                    <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                    <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading…</p>
                   ) : bookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-16 text-sm">No bookings found</p>
+                    <p className="text-center py-16 text-sm" style={{ color: textMuted }}>No bookings found</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                          <tr style={{ borderBottom: `1px solid ${cardBorder}` }}>
                             {["Venue", "Booker", "Date", "Bid", "Status", "Action"].map((h) => (
-                              <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                              <th key={h} className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap"
+                                style={{ color: textMuted }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                        <tbody>
                           {bookings.map((b) => (
-                            <tr key={b._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                              <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                            <tr key={b._id} style={{ borderBottom: `1px solid ${cardBorder}` }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = dark ? "#252540" : "#f8f9ff"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                              <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: textMain }}>
                                 {truncate(b.venue?.name || "—", 20)}
                               </td>
-                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{b.booker?.name || "—"}</td>
-                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{formatDateIN(b.eventDate)}</td>
-                              <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatINR(b.bidAmount)}</td>
+                              <td className="px-5 py-4 whitespace-nowrap" style={{ color: textMuted }}>{b.booker?.name || "—"}</td>
+                              <td className="px-5 py-4 whitespace-nowrap" style={{ color: textMuted }}>{formatDateIN(b.eventDate)}</td>
+                              <td className="px-5 py-4 font-bold whitespace-nowrap" style={{ color: C.primary }}>{formatINR(b.bidAmount)}</td>
                               <td className="px-5 py-4"><Badge status={b.status} /></td>
                               <td className="px-5 py-4">
-                                {["pending", "bid_raised"].includes(b.status) ? (
+                                {["pending", "payment_pending"].includes(b.status) ? (
                                   <div className="flex gap-2">
                                     <button onClick={() => updateBookingStatus(b._id, "approved")}
-                                      className="px-2.5 py-1 rounded-lg text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                                      style={{ background: G.emerald }}>
+                                      className="px-2.5 py-1 rounded-lg text-white text-xs font-bold hover:opacity-90"
+                                      style={{ background: C.primaryGrad }}>
                                       Approve
                                     </button>
                                     <button onClick={() => updateBookingStatus(b._id, "rejected")}
-                                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 transition-colors">
+                                      className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                                      style={{ background: "rgba(220,38,38,0.1)", color: C.redSolid }}>
                                       Reject
                                     </button>
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-zinc-400">{timeAgo(b.createdAt)}</span>
+                                  <span className="text-xs" style={{ color: textMuted }}>{timeAgo(b.createdAt)}</span>
                                 )}
                               </td>
                             </tr>
@@ -767,35 +923,38 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ──────────────────────────────────────────── */}
+            {/* ── Chat ─────────────────────────────────────────────── */}
             {tab === "chat" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Messages</h1>
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
-                  <ChatPanel />
+                  <ChatPanel user={user} dark={dark} />
                 </div>
               </div>
             )}
 
-            {/* ── Profile ───────────────────────────────────────── */}
+            {/* ── Profile ──────────────────────────────────────────── */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Profile</h1>
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Profile</h1>
 
-                {/* Gradient profile card */}
                 <div className="rounded-2xl overflow-hidden shadow-lg">
-                  <div className="p-6 relative" style={{ background: G.hero }}>
+                  <div className="p-6 relative" style={{ background: dark ? C.heroDark : C.heroLight }}>
                     <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
                     <div className="relative flex items-center gap-4">
                       <img src={user?.avatar || avatar(user?.name)} alt=""
-                        className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white/30" />
+                        className="w-16 h-16 rounded-2xl object-cover"
+                        style={{ border: "3px solid rgba(255,255,255,0.3)" }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xl font-black text-white truncate">{user?.name}</p>
-                        <p className="text-sm text-white/70 truncate">{user?.email}</p>
-                        <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">Venue Owner</span>
+                        <p className="text-sm truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{user?.email}</p>
+                        <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold"
+                          style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>Venue Owner</span>
                       </div>
                       {!editMode && (
-                        <button onClick={() => setEditMode(true)} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
+                        <button onClick={() => setEditMode(true)}
+                          className="p-2 rounded-xl hover:opacity-80"
+                          style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
                           <Icon d={ICONS.edit} size={16} />
                         </button>
                       )}
@@ -806,27 +965,26 @@ export default function OwnerDashboard() {
                     {editMode && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="bg-white dark:bg-zinc-900 border-x border-b border-zinc-200 dark:border-zinc-700
-                          rounded-b-2xl p-5 space-y-3 overflow-hidden">
+                        className="p-5 space-y-3 overflow-hidden"
+                        style={{ background: cardBg, borderTop: `1px solid ${cardBorder}` }}>
                         {[["name", "Full Name", "text"], ["username", "Username", "text"], ["phone", "Phone Number", "tel"]].map(([k, label, type]) => (
                           <div key={k}>
-                            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
+                            <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>{label}</label>
                             <input type={type} value={profileForm[k]}
                               onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
-                              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                                bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                                focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                              className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                              style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
                           </div>
                         ))}
                         <div className="flex gap-3 pt-1">
                           <button onClick={() => setEditMode(false)}
-                            className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                              text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                            style={{ border: `1px solid ${cardBorder}`, color: textMuted, background: "transparent" }}>
                             Cancel
                           </button>
                           <button onClick={handleSaveProfile} disabled={profileLoading}
-                            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
-                            style={{ background: G.emerald }}>
+                            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90"
+                            style={{ background: C.primaryGrad }}>
                             {profileLoading ? "Saving…" : "Save Changes"}
                           </button>
                         </div>
@@ -835,22 +993,24 @@ export default function OwnerDashboard() {
                   </AnimatePresence>
                 </div>
 
-                {/* Mini stats */}
+                {/* Mini stats — Image 1 style */}
                 <div className="grid grid-cols-3 gap-3">
-                  <StatCard label="Venues"   value={stats.venues}            grad={G.violet}  />
-                  <StatCard label="Bookings" value={stats.total}             grad={G.sky}     />
-                  <StatCard label="Revenue"  value={formatINR(stats.revenue)} grad={G.emerald} />
+                  <StatCard label="Venues"   value={stats.venues}            grad={C.statTeal}   />
+                  <StatCard label="Bookings" value={stats.total}             grad={C.statBlue}   />
+                  <StatCard label="Revenue"  value={formatINR(stats.revenue)} grad={C.statAmber}  />
                 </div>
 
                 {/* Language */}
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-                  <p className="text-sm font-bold text-zinc-900 dark:text-white mb-3">Language</p>
+                <div className="rounded-2xl p-5"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <p className="text-sm font-bold mb-3" style={{ color: textMain }}>Language</p>
                   <div className="flex flex-wrap gap-2">
                     {LANGS.map((l) => (
                       <button key={l.code} onClick={() => setLang(l.code)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all
-                          ${lang === l.code ? "text-white border-transparent" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-emerald-400"}`}
-                        style={lang === l.code ? { background: G.emerald } : {}}>
+                        className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all"
+                        style={lang === l.code
+                          ? { background: C.primaryGrad, color: "#fff", border: "1px solid transparent" }
+                          : { background: "transparent", color: textMuted, border: `1px solid ${cardBorder}` }}>
                         {l.native}
                       </button>
                     ))}
@@ -859,13 +1019,13 @@ export default function OwnerDashboard() {
 
                 <div className="flex flex-col gap-3">
                   <button onClick={handleSwitchRole}
-                    className="w-full py-3 rounded-xl border border-zinc-200 dark:border-zinc-700
-                      text-zinc-700 dark:text-zinc-300 font-semibold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                    className="w-full py-3 rounded-xl font-semibold text-sm hover:opacity-80"
+                    style={{ border: `1px solid ${cardBorder}`, color: textMain, background: "transparent" }}>
                     Switch to Booker
                   </button>
                   <button onClick={() => { logout(); navigate("/login"); }}
-                    className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                    style={{ background: G.red }}>
+                    className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90"
+                    style={{ background: C.red }}>
                     Sign Out
                   </button>
                 </div>
@@ -876,7 +1036,7 @@ export default function OwnerDashboard() {
         </AnimatePresence>
       </main>
 
-      {/* ── Venue Modal ─────────────────────────────────────────── */}
+      {/* ── Venue Modal ──────────────────────────────────────────── */}
       {modal && (
         <VenueModal
           mode={modal.type}
@@ -884,6 +1044,7 @@ export default function OwnerDashboard() {
           onClose={() => setModal(null)}
           onSave={() => { setModal(null); fetchData(); }}
           push={push}
+          dark={dark}
         />
       )}
     </div>

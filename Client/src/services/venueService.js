@@ -1,51 +1,12 @@
-import api from '../utils/axiosInstance';
+import api from "../utils/axiosInstance";
 
-export const getAllVenues = async () => {
-    const response = await api.get('/venues');
-    return response.data;
-};
-
-export const getOwnerVenues = async () => {
-    const response = await api.get('/venues/owner/mine');
-    return response.data;
-};
-
-export const getVenueById = async (id) => {
-    const response = await api.get(`/venues/${id}`);
-    return response.data;
-};
-
-export const createVenueWithImages = async (formData) => {
-    const response = await api.post('/venues', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return response.data;
-};
-
-export const deleteVenue = async (id) => {
-    const response = await api.delete(`/venues/${id}`);
-    return response.data;
-};
-
-export const updateVenue = async (id, payload) => {
-    const response = await api.patch(`/venues/${id}`, payload);
-    return response.data;
-};
-
-export const toggleVenueActive = async (id, isActive) => {
-    const response = await api.patch(
-        `/venues/${id}/toggle-active`,
-        typeof isActive === 'boolean' ? { isActive } : {}
-    );
-    return response.data;
-};
-
-export const blockDates = async (venueId, dates) => {
-    const response = await api.patch(`/venues/${venueId}/block-dates`, { dates });
-    return response.data;
-};
-
-export const unblockDate = async (venueId, date) => {
-    const response = await api.patch(`/venues/${venueId}/unblock-date`, { date });
-    return response.data;
-};
+export const getAllVenues      = (params)  => api.get("/venues", { params });
+export const getVenueById     = (id)      => api.get(`/venues/${id}`);
+export const getOwnerVenues   = ()        => api.get("/venues/owner/mine");
+export const createVenue      = (fd)      => api.post("/venues", fd, { headers: { "Content-Type": "multipart/form-data" } });
+export const updateVenue      = (id, d)   => api.patch(`/venues/${id}`, d);
+export const toggleVenueActive= (id)      => api.patch(`/venues/${id}/toggle-active`);
+export const deleteVenue      = (id)      => api.delete(`/venues/${id}`);
+export const getVenueBookings = (id)      => api.get(`/venues/${id}/bookings`);
+export const blockDates       = (id, d)   => api.post(`/venues/${id}/block-dates`, d);
+export const unblockDate      = (id, d)   => api.delete(`/venues/${id}/block-dates`, { data: d });

@@ -33,14 +33,34 @@ const ICONS = {
   arrowRight: "M5 12h14M12 5l7 7-7 7",
 };
 
-// Gradient constants — Gemini palette
-const G = {
-  hero:    "linear-gradient(135deg,#4f46e5 0%,#7c3aed 45%,#a855f7 75%,#0891b2 100%)",
-  violet:  "linear-gradient(135deg,#4f46e5,#7c3aed)",
-  amber:   "linear-gradient(135deg,#d97706,#f59e0b)",
-  sky:     "linear-gradient(135deg,#0284c7,#06b6d4)",
-  emerald: "linear-gradient(135deg,#059669,#14b8a6)",
-  red:     "linear-gradient(135deg,#dc2626,#e11d48)",
+// ─────────────────────────────────────────────────────────────────────────────
+//  COLOR SYSTEM — extracted from Image 2
+//  Light:  warm ivory bg #f5f0e8, cream cards #fffdf7, gold CTA #C8973A
+//  Dark:   true black bg #0a0a0a, charcoal cards #161616, same gold CTA
+// ─────────────────────────────────────────────────────────────────────────────
+const C = {
+  // Primary gold — the signature CTA color from Image 2
+  gold:        "#C8973A",
+  goldHover:   "#B5862F",
+  goldLight:   "rgba(200,151,58,0.12)",
+  goldDark:    "rgba(200,151,58,0.18)",
+
+  // Hero gradient — warm champagne-to-ivory in light, dark charcoal-to-black in dark
+  heroLight:   "linear-gradient(135deg, #2d6a4f 0%, #1b4332 40%, #6b3fa0 80%, #3d1c8a 100%)",
+  heroDark:    "linear-gradient(135deg, #1a3a2a 0%, #0d2218 40%, #3d2060 80%, #1e0e4a 100%)",
+
+  // Stat card gradients — kept from original but shifted to match image palette
+  teal:        "linear-gradient(135deg, #0d9488 0%, #0f766e 100%)",      // teal stat (Total Venues)
+  amber:       "linear-gradient(135deg, #d97706 0%, #b45309 100%)",      // amber stat (Upcoming)
+  green:       "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",      // green stat (Revenue)
+  purple:      "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",      // purple stat (Pending)
+
+  // Error/danger
+  red:         "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+  redSolid:    "#dc2626",
+
+  // Sidebar active — gold pill in both modes
+  sidebarActive: "#C8973A",
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -52,7 +72,7 @@ function Toast({ toasts }) {
           <motion.div key={t.id}
             initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
             className="px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto text-white"
-            style={{ background: t.type === "success" ? G.emerald : G.red }}>
+            style={{ background: t.type === "success" ? C.green : C.red }}>
             {t.msg}
           </motion.div>
         ))}
@@ -74,22 +94,22 @@ function useToast() {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function Badge({ status }) {
   const map = {
-    pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    approved:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    rejected:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    paid:       "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
-    bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    expired:    "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
-    confirmed:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    pending:         "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    payment_pending: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    approved:        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    confirmed:       "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    rejected:        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    paid:            "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    expired:         "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${map[status] || map.expired}`}>
-      {status?.replace("_", " ")}
+      {status?.replace(/_/g, " ")}
     </span>
   );
 }
 
-// ─── Stat Card — full Gemini gradient ─────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -104,16 +124,29 @@ function StatCard({ label, value, grad }) {
   );
 }
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
-function HeroBanner({ name }) {
+// ─── Hero Banner — Image 2 style: large serif title, warm gradient ────────────
+function HeroBanner({ name, dark }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden p-7" style={{ background: G.hero }}>
-      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-white/5" />
-      <div className="absolute right-8 -bottom-20 w-40 h-40 rounded-full bg-white/5" />
+    <div className="relative rounded-2xl overflow-hidden p-8"
+      style={{ background: dark ? C.heroDark : C.heroLight }}>
+      {/* Decorative blobs matching Image 1 owner dashboard style */}
+      <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full"
+        style={{ background: "rgba(107,63,160,0.3)" }} />
+      <div className="absolute right-24 -bottom-12 w-40 h-40 rounded-full"
+        style={{ background: "rgba(13,148,136,0.25)" }} />
+      <div className="absolute right-8 top-8 w-20 h-20 rounded-full"
+        style={{ background: "rgba(200,151,58,0.2)" }} />
       <div className="relative z-10">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Booker Dashboard</p>
-        <h1 className="text-3xl font-black text-white mb-1">Hey, {name?.split(" ")[0] || "there"} 👋</h1>
-        <p className="text-white/65 text-sm">Here's your booking summary</p>
+        <p className="text-xs font-bold uppercase tracking-widest mb-2"
+          style={{ color: "rgba(255,255,255,0.6)" }}>Booker Dashboard</p>
+        {/* Image 2: large serif-style title */}
+        <h1 className="text-4xl font-black text-white mb-2"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif", letterSpacing: "-0.02em" }}>
+          Booker Dashboard
+        </h1>
+        <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm">
+          Hey, {name?.split(" ")[0] || "there"} 👋  — here's your booking summary
+        </p>
       </div>
     </div>
   );
@@ -132,8 +165,9 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
       <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
         className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm shadow-2xl p-6">
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-            <Icon d={ICONS.alert} size={18} className="text-amber-600 dark:text-amber-400" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: C.goldLight }}>
+            <Icon d={ICONS.alert} size={18} style={{ color: C.gold }} />
           </div>
           <div>
             <p className="font-bold text-zinc-900 dark:text-white">Complete your profile</p>
@@ -150,7 +184,7 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
           </button>
           <button onClick={onUpdateNow}
             className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-90"
-            style={{ background: G.violet }}>
+            style={{ background: C.gold }}>
             Update Now
           </button>
         </div>
@@ -168,10 +202,10 @@ function ChatPanel({ user }) {
   const [sending,  setSending]  = useState(false);
   const bottomRef               = useRef(null);
 
-  useEffect(() => { api.get("/chats").then((r) => setChats(r.data || [])).catch(() => {}); }, []);
+  useEffect(() => { api.get("/chats").then((r) => setChats(r.data?.chats || r.data || [])).catch(() => {}); }, []);
   useEffect(() => {
     if (!active) return;
-    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data || []); scrollBottom(); }).catch(() => {});
+    api.get(`/chats/${active._id}/messages`).then((r) => { setMessages(r.data?.messages || r.data || []); scrollBottom(); }).catch(() => {});
     api.patch(`/chats/${active._id}/read`).catch(() => {});
   }, [active]);
   useEffect(() => { scrollBottom(); }, [messages]);
@@ -180,17 +214,19 @@ function ChatPanel({ user }) {
   const send = async () => {
     if (!text.trim() || !active || sending) return;
     const msg = text.trim(); setText(""); setSending(true);
-    try { const r = await api.post(`/chats/${active._id}/messages`, { text: msg }); setMessages((p) => [...p, r.data]); }
+    try { const r = await api.post(`/chats/${active._id}/messages`, { text: msg }); setMessages((p) => [...p, r.data?.message || r.data]); }
     catch { setText(msg); } finally { setSending(false); }
   };
 
   const opponent = (chat) => chat.participants?.find((p) => p._id !== user?._id);
-  const avatar   = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+  const avatar   = (name) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=c8973a&fontColor=ffffff`;
 
   return (
     <div className="flex h-full gap-4">
-      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
-        <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
+      {/* Sidebar */}
+      <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl overflow-hidden
+        border border-stone-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900">
+        <div className="p-4 border-b border-stone-200 dark:border-zinc-800">
           <p className="font-bold text-zinc-900 dark:text-white text-sm">Messages</p>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -199,8 +235,8 @@ function ChatPanel({ user }) {
             const op = opponent(c);
             return (
               <button key={c._id} onClick={() => setActive(c)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                  ${active?._id === c._id ? "bg-violet-50 dark:bg-violet-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                style={active?._id === c._id ? { background: C.goldLight } : {}}>
                 <img src={avatar(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
@@ -208,7 +244,7 @@ function ChatPanel({ user }) {
                 </div>
                 {c.unreadCount > 0 && (
                   <span className="ml-auto w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
-                    style={{ background: G.violet }}>{c.unreadCount}</span>
+                    style={{ background: C.gold }}>{c.unreadCount}</span>
                 )}
               </button>
             );
@@ -216,19 +252,21 @@ function ChatPanel({ user }) {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col rounded-2xl overflow-hidden
+        border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         {!active ? (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-zinc-400 text-sm">Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
-            <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-700 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img src={avatar(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
                 <p className="font-bold text-zinc-900 dark:text-white text-sm">{opponent(active)?.name}</p>
               </div>
-              <button onClick={() => setActive(null)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
+              <button onClick={() => setActive(null)} className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 text-zinc-400">
                 <Icon d={ICONS.x} size={16} />
               </button>
             </div>
@@ -239,8 +277,8 @@ function ChatPanel({ user }) {
                 return (
                   <div key={m._id || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm
-                      ${mine ? "text-white rounded-br-sm" : "bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-bl-sm"}`}
-                      style={mine ? { background: G.violet } : {}}>
+                      ${mine ? "text-white rounded-br-sm" : "bg-stone-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm"}`}
+                      style={mine ? { background: C.gold } : {}}>
                       {body}
                     </div>
                   </div>
@@ -248,15 +286,18 @@ function ChatPanel({ user }) {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-700 flex gap-2">
+            <div className="px-4 py-3 border-t border-stone-100 dark:border-zinc-800 flex gap-2">
               <input value={text} onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm
-                  focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400" />
+                className="flex-1 px-4 py-2.5 rounded-xl bg-stone-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
+                  focus:outline-none placeholder:text-zinc-400"
+                style={{ outline: "none" }}
+                onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${C.gold}40`}
+                onBlur={(e) => e.target.style.boxShadow = "none"} />
               <button onClick={send} disabled={sending || !text.trim()}
-                className="p-2.5 rounded-xl text-white disabled:opacity-50"
-                style={{ background: G.violet }}>
+                className="p-2.5 rounded-xl text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                style={{ background: C.gold }}>
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -273,10 +314,9 @@ export default function BookerDashboard() {
   const navigate                = useNavigate();
   const { toasts, push }        = useToast();
 
-  const [tab,  setTab]  = useState("overview");
+  const [tab,  setTab]  = useState("venues"); // Image 2 shows venue grid as main view
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("bookerTheme");
-    // Apply immediately on init so dark: classes work before first render
     if (saved === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
     return saved === "dark";
@@ -289,6 +329,7 @@ export default function BookerDashboard() {
   const [loading,   setLoading]   = useState(true);
 
   const [venueSearch,      setVenueSearch]      = useState("");
+  const [venueTypeFilter,  setVenueTypeFilter]  = useState("All");
   const [bookingFilter,    setBookingFilter]    = useState("all");
   const [raiseBidId,       setRaiseBidId]       = useState(null);
   const [raiseBidAmount,   setRaiseBidAmount]   = useState("");
@@ -347,7 +388,7 @@ export default function BookerDashboard() {
       setBookings(b); setVenues(v); setPayments(p);
       setStats({
         total:     b.length,
-        pending:   b.filter((x) => ["pending", "bid_raised"].includes(x.status)).length,
+        pending:   b.filter((x) => ["pending", "payment_pending"].includes(x.status)).length,
         confirmed: b.filter((x) => ["approved", "confirmed"].includes(x.status)).length,
         paid:      b.filter((x) => x.status === "paid").length,
       });
@@ -359,7 +400,7 @@ export default function BookerDashboard() {
 
   useEffect(() => {
     api.get("/chats").then((r) => {
-      const list = Array.isArray(r.data) ? r.data : [];
+      const list = Array.isArray(r.data) ? r.data : r.data?.chats || [];
       setUnreadChats(list.some((c) => c.unreadCount > 0));
     }).catch(() => {});
   }, []);
@@ -395,18 +436,22 @@ export default function BookerDashboard() {
     } catch { push("Switch failed", "error"); }
   };
 
-  const filteredVenues = venues.filter((v) =>
-    v.isActive !== false && (
-      !venueSearch ||
+  // Venue type filters — Image 2 shows pill buttons: All, Marriage Hall, Rooftop, Resort, Farmhouse, Studio
+  const venueTypes = ["All", ...new Set(venues.map((v) => v.venueType || v.type).filter(Boolean))];
+
+  const filteredVenues = venues.filter((v) => {
+    const matchActive = v.isActive !== false && v.isApproved;
+    const matchSearch = !venueSearch ||
       v.name?.toLowerCase().includes(venueSearch.toLowerCase()) ||
       v.location?.city?.toLowerCase().includes(venueSearch.toLowerCase()) ||
-      v.city?.toLowerCase().includes(venueSearch.toLowerCase())
-    )
-  );
+      v.city?.toLowerCase().includes(venueSearch.toLowerCase());
+    const matchType = venueTypeFilter === "All" || (v.venueType || v.type) === venueTypeFilter;
+    return matchActive && matchSearch && matchType;
+  });
 
   const filteredBookings = bookings.filter((b) => {
     if (bookingFilter === "all") return true;
-    if (bookingFilter === "pending") return ["pending", "bid_raised"].includes(b.status);
+    if (bookingFilter === "pending") return ["pending", "payment_pending"].includes(b.status);
     return b.status === bookingFilter;
   });
 
@@ -415,7 +460,7 @@ export default function BookerDashboard() {
     .slice(0, 5);
 
   const avatar = (name) =>
-    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
+    `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=c8973a&fontColor=ffffff`;
 
   const TABS = [
     { key: "overview",  icon: ICONS.overview },
@@ -426,11 +471,23 @@ export default function BookerDashboard() {
     { key: "profile",   icon: ICONS.profile },
   ];
 
-  const BOOKING_FILTERS = ["all", "pending", "approved", "paid", "rejected", "expired"];
+  const BOOKING_FILTERS = ["all", "pending", "approved", "confirmed", "paid", "rejected", "expired"];
+
+  // ── Page background and card colors based on dark mode ─────────────────────
+  // Light: warm ivory #f5f0e8 bg, cream white cards
+  // Dark:  true black #0a0a0a bg, #161616 cards
+  const pageBg    = dark ? "#0a0a0a" : "#f5f0e8";
+  const cardBg    = dark ? "#161616" : "#fffdf7";
+  const cardBorder = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
+  const textMain  = dark ? "#f5f0e8" : "#1a1209";
+  const textMuted = dark ? "rgba(245,240,232,0.5)" : "rgba(26,18,9,0.45)";
+  const sidebarBg = dark ? "#111111" : "#fffff8";
+  const sidebarBorder = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)";
+  const inputBg   = dark ? "#1e1e1e" : "#f0ebe0";
 
   return (
-    <div style={{ fontFamily: `'${currentFont}', sans-serif` }}
-      className="min-h-screen flex bg-stone-50 dark:bg-zinc-950">
+    <div style={{ fontFamily: `'${currentFont}', sans-serif`, background: pageBg, minHeight: "100vh" }}
+      className="flex">
 
       <Toast toasts={toasts} />
 
@@ -440,22 +497,23 @@ export default function BookerDashboard() {
           onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }} />
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
-        bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
+      {/* ── Sidebar — Image 2 style: clean, top-nav feel but sidebar ─── */}
+      <aside style={{ background: sidebarBg, borderRight: `1px solid ${sidebarBorder}` }}
+        className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center z-40 py-4 gap-1">
+
+        {/* Logo — Image 2: circular B.Y monogram */}
         <button onClick={() => navigate("/")}
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
-          style={{ background: G.violet }}>
-          <span className="text-white font-black text-sm">B</span>
+          className="w-11 h-11 rounded-full flex items-center justify-center mb-4 flex-shrink-0"
+          style={{ background: "transparent", border: `2px solid ${C.gold}` }}>
+          <span style={{ color: C.gold, fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 11, letterSpacing: "-0.02em" }}>B.Y</span>
         </button>
 
         {TABS.map(({ key, icon, dot }) => (
           <button key={key} onClick={() => setTab(key)} title={key}
-            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
-              ${tab === key
-                ? "text-white"
-                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-            style={tab === key ? { background: G.violet, boxShadow: "0 4px 15px rgba(109,40,217,0.4)" } : {}}>
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center transition-all"
+            style={tab === key
+              ? { background: C.gold, color: "#fff", boxShadow: `0 4px 14px ${C.gold}50` }
+              : { color: dark ? "rgba(245,240,232,0.4)" : "rgba(26,18,9,0.35)" }}>
             <Icon d={icon} size={18} />
             {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
           </button>
@@ -464,58 +522,67 @@ export default function BookerDashboard() {
         <div className="flex-1" />
 
         <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+          style={{ color: dark ? "rgba(245,240,232,0.4)" : "rgba(26,18,9,0.35)" }}>
           <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
         </button>
 
         <button onClick={() => setTab("profile")} className="mt-1">
           <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover ring-2 ring-violet-400/40" />
+            className="w-9 h-9 rounded-full object-cover"
+            style={{ ring: `2px solid ${C.gold}60` }} />
         </button>
 
         <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors mt-1 mb-1">
+          className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors mt-1 mb-1"
+          style={{ color: "#dc2626" }}>
           <Icon d={ICONS.logout} size={18} />
         </button>
       </aside>
 
-      {/* ── Main ────────────────────────────────────────────────── */}
+      {/* ── Main Content ─────────────────────────────────────────── */}
       <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
             className="max-w-6xl mx-auto">
 
-            {/* ── Overview ──────────────────────────────────────── */}
+            {/* ── Overview ──────────────────────────────────────────── */}
             {tab === "overview" && (
               <div className="space-y-6">
-                <HeroBanner name={user?.name} />
+                <HeroBanner name={user?.name} dark={dark} />
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Bookings" value={stats.total}     grad={G.violet}  />
-                  <StatCard label="Pending"         value={stats.pending}   grad={G.amber}   />
-                  <StatCard label="Confirmed"       value={stats.confirmed} grad={G.sky}     />
-                  <StatCard label="Paid"            value={stats.paid}      grad={G.emerald} />
+                  <StatCard label="Total Bookings" value={stats.total}     grad={C.teal}   />
+                  <StatCard label="Pending"         value={stats.pending}   grad={C.amber}  />
+                  <StatCard label="Confirmed"       value={stats.confirmed} grad={C.purple} />
+                  <StatCard label="Paid"            value={stats.paid}      grad={C.green}  />
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <h2 className="font-bold text-zinc-900 dark:text-white">Recent Bookings</h2>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <div className="px-6 py-4 flex items-center justify-between"
+                    style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                    <h2 className="font-bold text-sm" style={{ color: textMain }}>Recent Bookings</h2>
                     <button onClick={() => setTab("bookings")}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
+                      className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80"
+                      style={{ color: C.gold }}>
                       View all <Icon d={ICONS.arrowRight} size={13} />
                     </button>
                   </div>
                   {loading ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>Loading…</p>
                   ) : recentBookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
+                    <p className="text-center py-12 text-sm" style={{ color: textMuted }}>No bookings yet</p>
                   ) : (
-                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                    <div>
                       {recentBookings.map((b) => (
-                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 transition-colors"
+                          style={{ borderBottom: `1px solid ${cardBorder}` }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = dark ? "#1e1e1e" : "#f8f4ec"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{b.venue?.name || "Venue"}</p>
-                            <p className="text-xs text-zinc-400 mt-0.5">
+                            <p className="font-semibold text-sm truncate" style={{ color: textMain }}>{b.venue?.name || "Venue"}</p>
+                            <p className="text-xs mt-0.5" style={{ color: textMuted }}>
                               {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
                             </p>
                           </div>
@@ -528,61 +595,120 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Venues ────────────────────────────────────────── */}
+            {/* ── Venues — Image 2 exact layout: pill filters + 2-col card grid ── */}
             {tab === "venues" && (
               <div className="space-y-5">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Browse Venues</h1>
-                  <div className="relative max-w-sm w-full">
-                    <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
-                      placeholder="Search by name or city…"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                        bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                        focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400" />
-                  </div>
+                {/* Image 2: large serif title */}
+                <h1 className="text-4xl font-black" style={{
+                  color: textMain,
+                  fontFamily: "'Georgia', 'Times New Roman', serif",
+                  letterSpacing: "-0.02em",
+                }}>
+                  Booker Dashboard
+                </h1>
+
+                {/* Image 2: horizontal pill-style type filters */}
+                <div className="flex gap-2 flex-wrap">
+                  {venueTypes.map((t) => (
+                    <button key={t} onClick={() => setVenueTypeFilter(t)}
+                      className="px-4 py-2 rounded-full text-sm font-semibold transition-all border"
+                      style={venueTypeFilter === t
+                        ? { background: C.gold, color: "#fff", border: `1px solid ${C.gold}` }
+                        : {
+                            background: "transparent",
+                            color: textMain,
+                            border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.18)"}`,
+                          }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search */}
+                <div className="relative max-w-sm">
+                  <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: textMuted }} />
+                  <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
+                    placeholder="Search venues…"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none"
+                    style={{
+                      background: inputBg,
+                      color: textMain,
+                      border: `1px solid ${cardBorder}`,
+                    }} />
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading venues…</p>
+                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading venues…</p>
                 ) : filteredVenues.length === 0 ? (
-                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
-                    <p className="text-zinc-400">No venues found</p>
-                    {venueSearch && (
-                      <button onClick={() => setVenueSearch("")} className="mt-2 text-sm text-violet-600 dark:text-violet-400 hover:underline">
-                        Clear search
-                      </button>
-                    )}
+                  <div className="py-16 text-center rounded-2xl border-2 border-dashed"
+                    style={{ borderColor: cardBorder }}>
+                    <p style={{ color: textMuted }}>No venues found</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  /* Image 2: 2-column grid on desktop, full card with large image */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {filteredVenues.map((v) => (
                       <motion.div key={v._id} layout whileHover={{ y: -4 }}
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden group
-                          shadow-sm hover:shadow-xl hover:shadow-violet-500/10 transition-shadow">
-                        <div className="relative h-44 bg-zinc-100 dark:bg-zinc-800">
+                        className="rounded-2xl overflow-hidden group"
+                        style={{
+                          background: cardBg,
+                          border: `1px solid ${cardBorder}`,
+                          boxShadow: dark ? "0 4px 24px rgba(0,0,0,0.4)" : "0 2px 16px rgba(0,0,0,0.06)",
+                        }}>
+                        {/* Image 2: tall image, type badge top-right */}
+                        <div className="relative h-48 overflow-hidden"
+                          style={{ background: dark ? "#222" : "#e8e2d5" }}>
                           {v.images?.[0] ? (
-                            <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={v.images[0]} alt={v.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                              <Icon d={ICONS.venues} size={40} style={{ color: textMuted }} />
                             </div>
                           )}
+                          {/* Image 2: type badge top-right, dark pill */}
                           {(v.venueType || v.type) && (
-                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold bg-black/50 text-white backdrop-blur-sm">
+                            <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold"
+                              style={{ background: "rgba(0,0,0,0.65)", color: "#fff", backdropFilter: "blur(4px)" }}>
                               {v.venueType || v.type}
                             </span>
                           )}
                         </div>
-                        <div className="p-4">
-                          <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                          <p className="text-sm text-zinc-400 mt-0.5">
-                            📍 {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
+
+                        {/* Image 2: card body — name large, location small, price+rating row, full-width button */}
+                        <div className="p-5">
+                          {/* Image 2: serif-style venue name */}
+                          <p className="text-xl font-black mb-1"
+                            style={{ color: textMain, fontFamily: "'Georgia', serif" }}>
+                            {v.name}
                           </p>
+                          <p className="text-xs mb-1" style={{ color: textMuted }}>Location</p>
+                          <p className="text-sm mb-3" style={{ color: dark ? "rgba(245,240,232,0.6)" : "rgba(26,18,9,0.5)" }}>
+                            {[v.location?.city || v.city, v.location?.address || v.address].filter(Boolean).join(" | ") || "—"}
+                          </p>
+
+                          {/* Image 2: price + rating inline */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <p className="text-xs" style={{ color: textMuted }}>Price per Hour</p>
+                              <p className="font-bold text-sm" style={{ color: textMain }}>{formatINR(v.pricePerHour)} / hr</p>
+                            </div>
+                            {v.rating && (
+                              <div>
+                                <p className="text-xs" style={{ color: textMuted }}>Rating</p>
+                                <p className="font-bold text-sm flex items-center gap-1" style={{ color: C.gold }}>
+                                  ★ {v.rating} Stars
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Image 2: full-width gold "View Details" button */}
                           <button onClick={() => navigate(`/venue/${v._id}`)}
-                            className="mt-3 w-full py-2 rounded-xl text-white text-sm font-bold hover:opacity-90 transition-opacity"
-                            style={{ background: G.violet }}>
-                            Book Now
+                            className="w-full py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+                            style={{ background: C.gold, color: "#fff" }}>
+                            View Details
                           </button>
                         </div>
                       </motion.div>
@@ -592,71 +718,78 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── My Bookings ───────────────────────────────────── */}
+            {/* ── My Bookings ─────────────────────────────────────────── */}
             {tab === "bookings" && (
               <div className="space-y-5">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">My Bookings</h1>
-                <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl w-fit flex-wrap">
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>My Bookings</h1>
+                <div className="flex gap-1 p-1 rounded-xl w-fit flex-wrap"
+                  style={{ background: dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
                   {BOOKING_FILTERS.map((f) => (
                     <button key={f} onClick={() => setBookingFilter(f)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all
-                        ${bookingFilter === f
-                          ? "text-white shadow-sm"
-                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-                      style={bookingFilter === f ? { background: G.violet } : {}}>
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all"
+                      style={bookingFilter === f
+                        ? { background: C.gold, color: "#fff" }
+                        : { color: textMuted }}>
                       {f}
                     </button>
                   ))}
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                  <p className="text-center py-16 text-sm" style={{ color: textMuted }}>Loading…</p>
                 ) : filteredBookings.length === 0 ? (
-                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
-                    <p className="text-zinc-400">No bookings in this category</p>
+                  <div className="py-16 text-center rounded-2xl border-2 border-dashed"
+                    style={{ borderColor: cardBorder }}>
+                    <p style={{ color: textMuted }}>No bookings in this category</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {filteredBookings.map((b) => (
                       <motion.div key={b._id} layout
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5 hover:shadow-md transition-shadow">
+                        className="rounded-2xl p-5 transition-shadow hover:shadow-md"
+                        style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
                         <div className="flex items-start gap-4 flex-wrap">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 flex-wrap">
-                              <p className="font-bold text-zinc-900 dark:text-white">{b.venue?.name || "Venue"}</p>
+                              <p className="font-bold" style={{ color: textMain }}>{b.venue?.name || "Venue"}</p>
                               <Badge status={b.status} />
                             </div>
-                            <p className="text-sm text-zinc-400 mt-1">
+                            <p className="text-sm mt-1" style={{ color: textMuted }}>
                               {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-wrap justify-end">
-                            {["pending", "bid_raised"].includes(b.status) && (
+                            {["pending", "payment_pending"].includes(b.status) && (
                               raiseBidId === b._id ? (
                                 <div className="flex items-center gap-2">
                                   <input type="number" value={raiseBidAmount}
                                     onChange={(e) => setRaiseBidAmount(e.target.value)}
                                     placeholder="New amount (₹)"
-                                    className="w-32 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700
-                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
-                                  <button onClick={() => handleRaiseBid(b._id)} className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    className="w-32 px-3 py-1.5 rounded-lg text-sm focus:outline-none"
+                                    style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
+                                  <button onClick={() => handleRaiseBid(b._id)}
+                                    className="p-1.5 rounded-lg text-white"
+                                    style={{ background: C.green }}>
                                     <Icon d={ICONS.check} size={14} />
                                   </button>
-                                  <button onClick={() => { setRaiseBidId(null); setRaiseBidAmount(""); }} className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                                  <button onClick={() => { setRaiseBidId(null); setRaiseBidAmount(""); }}
+                                    className="p-1.5 rounded-lg"
+                                    style={{ background: inputBg, color: textMuted }}>
                                     <Icon d={ICONS.x} size={14} />
                                   </button>
                                 </div>
                               ) : (
                                 <button onClick={() => setRaiseBidId(b._id)}
-                                  className="px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold hover:bg-blue-200 transition-colors">
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                                  style={{ background: dark ? "rgba(200,151,58,0.15)" : "rgba(200,151,58,0.12)", color: C.gold }}>
                                   Raise Bid
                                 </button>
                               )
                             )}
-                            {b.status === "approved" && (
+                            {b.status === "payment_pending" && (
                               <button onClick={() => navigate(`/venue/${b.venue?._id}`)}
-                                className="px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                                style={{ background: G.violet }}>
+                                className="px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90"
+                                style={{ background: C.gold }}>
                                 Pay Now
                               </button>
                             )}
@@ -669,33 +802,37 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Payments ──────────────────────────────────────── */}
+            {/* ── Payments ─────────────────────────────────────────────── */}
             {tab === "payments" && (
               <div className="space-y-5">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Payments</h1>
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Payments</h1>
+                <div className="rounded-2xl overflow-hidden"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
                   {payments.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-16 text-sm">No payments yet</p>
+                    <p className="text-center py-16 text-sm" style={{ color: textMuted }}>No payments yet</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                          <tr style={{ borderBottom: `1px solid ${cardBorder}` }}>
                             {["Venue", "Date", "Amount", "Status", "Transaction ID"].map((h) => (
-                              <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                              <th key={h} className="text-left px-5 py-3.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap"
+                                style={{ color: textMuted }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                        <tbody>
                           {payments.map((p) => (
-                            <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                              <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                            <tr key={p._id} style={{ borderBottom: `1px solid ${cardBorder}` }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = dark ? "#1e1e1e" : "#f8f4ec"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                              <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: textMain }}>
                                 {truncate(p.booking?.venue?.name || p.venue?.name || "—", 22)}
                               </td>
-                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{formatDateIN(p.createdAt)}</td>
-                              <td className="px-5 py-4 font-bold text-violet-600 dark:text-violet-400 whitespace-nowrap">{formatINR(p.amount)}</td>
+                              <td className="px-5 py-4 whitespace-nowrap" style={{ color: textMuted }}>{formatDateIN(p.createdAt)}</td>
+                              <td className="px-5 py-4 font-bold whitespace-nowrap" style={{ color: C.gold }}>{formatINR(p.amount)}</td>
                               <td className="px-5 py-4"><Badge status={p.status || "paid"} /></td>
-                              <td className="px-5 py-4 font-mono text-xs text-zinc-400">{p.razorpayPaymentId || "—"}</td>
+                              <td className="px-5 py-4 font-mono text-xs" style={{ color: textMuted }}>{p.razorpayPaymentId || "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -706,35 +843,39 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ──────────────────────────────────────────── */}
+            {/* ── Chat ─────────────────────────────────────────────────── */}
             {tab === "chat" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Messages</h1>
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
                   <ChatPanel user={user} />
                 </div>
               </div>
             )}
 
-            {/* ── Profile ───────────────────────────────────────── */}
+            {/* ── Profile ──────────────────────────────────────────────── */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
-                <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Profile</h1>
+                <h1 className="text-2xl font-black" style={{ color: textMain }}>Profile</h1>
 
-                {/* Gradient header card */}
+                {/* Profile card with hero gradient */}
                 <div className="rounded-2xl overflow-hidden shadow-lg">
-                  <div className="p-6 relative" style={{ background: G.hero }}>
+                  <div className="p-6 relative" style={{ background: dark ? C.heroDark : C.heroLight }}>
                     <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
                     <div className="relative flex items-center gap-4">
                       <img src={user?.avatar || avatar(user?.name)} alt=""
-                        className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white/30" />
+                        className="w-16 h-16 rounded-2xl object-cover"
+                        style={{ border: "3px solid rgba(255,255,255,0.3)" }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xl font-black text-white truncate">{user?.name}</p>
-                        <p className="text-sm text-white/70 truncate">{user?.email}</p>
-                        <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">Booker</span>
+                        <p className="text-sm truncate" style={{ color: "rgba(255,255,255,0.65)" }}>{user?.email}</p>
+                        <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-bold"
+                          style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>Booker</span>
                       </div>
                       {!editMode && (
-                        <button onClick={() => setEditMode(true)} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
+                        <button onClick={() => setEditMode(true)}
+                          className="p-2 rounded-xl hover:opacity-80 transition-opacity"
+                          style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}>
                           <Icon d={ICONS.edit} size={16} />
                         </button>
                       )}
@@ -745,27 +886,26 @@ export default function BookerDashboard() {
                     {editMode && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="bg-white dark:bg-zinc-900 border-x border-b border-zinc-200 dark:border-zinc-700
-                          rounded-b-2xl p-5 space-y-3 overflow-hidden">
+                        className="p-5 space-y-3 overflow-hidden"
+                        style={{ background: cardBg, borderTop: `1px solid ${cardBorder}` }}>
                         {[["name", "Full Name", "text"], ["username", "Username", "text"], ["phone", "Phone Number", "tel"]].map(([k, label, type]) => (
                           <div key={k}>
-                            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1.5 block">{label}</label>
+                            <label className="text-xs font-bold mb-1.5 block" style={{ color: textMuted }}>{label}</label>
                             <input type={type} value={profileForm[k]}
                               onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
-                              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                                bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                                focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                              className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                              style={{ background: inputBg, color: textMain, border: `1px solid ${cardBorder}` }} />
                           </div>
                         ))}
                         <div className="flex gap-3 pt-1">
                           <button onClick={() => setEditMode(false)}
-                            className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                              text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                            style={{ border: `1px solid ${cardBorder}`, color: textMuted, background: "transparent" }}>
                             Cancel
                           </button>
                           <button onClick={handleSaveProfile} disabled={profileLoading}
-                            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
-                            style={{ background: G.violet }}>
+                            className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90"
+                            style={{ background: C.gold }}>
                             {profileLoading ? "Saving…" : "Save Changes"}
                           </button>
                         </div>
@@ -775,14 +915,16 @@ export default function BookerDashboard() {
                 </div>
 
                 {/* Language */}
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-                  <p className="text-sm font-bold text-zinc-900 dark:text-white mb-3">Language</p>
+                <div className="rounded-2xl p-5"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+                  <p className="text-sm font-bold mb-3" style={{ color: textMain }}>Language</p>
                   <div className="flex flex-wrap gap-2">
                     {LANGS.map((l) => (
                       <button key={l.code} onClick={() => setLang(l.code)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all
-                          ${lang === l.code ? "text-white border-transparent" : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-violet-400"}`}
-                        style={lang === l.code ? { background: G.violet } : {}}>
+                        className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all"
+                        style={lang === l.code
+                          ? { background: C.gold, color: "#fff", border: `1px solid ${C.gold}` }
+                          : { background: "transparent", color: textMuted, border: `1px solid ${cardBorder}` }}>
                         {l.native}
                       </button>
                     ))}
@@ -791,13 +933,13 @@ export default function BookerDashboard() {
 
                 <div className="flex flex-col gap-3">
                   <button onClick={handleSwitchRole}
-                    className="w-full py-3 rounded-xl border border-zinc-200 dark:border-zinc-700
-                      text-zinc-700 dark:text-zinc-300 font-semibold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                    className="w-full py-3 rounded-xl font-semibold text-sm hover:opacity-80 transition-opacity"
+                    style={{ border: `1px solid ${cardBorder}`, color: textMain, background: "transparent" }}>
                     Switch to Venue Owner
                   </button>
                   <button onClick={() => { logout(); navigate("/login"); }}
-                    className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                    style={{ background: G.red }}>
+                    className="w-full py-3 rounded-xl text-white font-bold text-sm hover:opacity-90"
+                    style={{ background: C.red }}>
                     Sign Out
                   </button>
                 </div>
