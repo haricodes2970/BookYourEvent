@@ -3,13 +3,14 @@ const Booking = require('../models/Booking');
 
 const addReview = async (req, res) => {
     try {
-        const { venueId, rating, comment } = req.body;
+        const { venueId, rating, comment, text } = req.body;
+        const reviewText = (typeof comment === 'string' ? comment : typeof text === 'string' ? text : '').trim();
 
         // Check if user has a completed/approved booking for this venue
         const booking = await Booking.findOne({
             venue: venueId,
             booker: req.user.id,
-            status: 'approved'
+            status: { $in: ['approved', 'confirmed'] },
         });
         if (!booking) return res.status(403).json({ message: 'You can only review venues you have booked' });
 
@@ -21,7 +22,7 @@ const addReview = async (req, res) => {
             venue: venueId,
             reviewer: req.user.id,
             rating,
-            comment
+            comment: reviewText,
         });
 
         await review.populate('reviewer', 'name');

@@ -550,8 +550,9 @@ function ReviewsSection({ venueId, push }) {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const res = await api.get(`/api/reviews/venue/${venueId}`);
-      setReviews(res.data);
+      const res = await api.get(`/reviews/${venueId}`);
+      const list = Array.isArray(res?.data?.reviews) ? res.data.reviews : Array.isArray(res?.data) ? res.data : [];
+      setReviews(list);
     } catch {
       push("Failed to load reviews", "error");
     }
@@ -563,7 +564,7 @@ function ReviewsSection({ venueId, push }) {
     if (!user) return;
     api.get(`/api/bookings/my-bookings`).then((res) => {
       const bookings = Array.isArray(res.data) ? res.data : res.data?.bookings || [];
-      const hasPaid = bookings.some((b) => b.venue?._id === venueId && b.status === "confirmed");
+      const hasPaid = bookings.some((b) => b.venue?._id === venueId && ["approved", "confirmed"].includes(b.status));
       setCanReview(hasPaid);
     }).catch(() => {});
   }, [user, venueId]);
@@ -576,7 +577,7 @@ function ReviewsSection({ venueId, push }) {
     if (!form.text.trim()) return push("Write a review first", "error");
     setSubmitting(true);
     try {
-      await api.post("/api/reviews", { venueId, rating: form.rating, text: form.text });
+      await api.post("/reviews", { venueId, rating: form.rating, comment: form.text });
       push("Review submitted!");
       setShowForm(false);
       setForm({ rating: 5, text: "" });
@@ -682,7 +683,7 @@ function ReviewsSection({ venueId, push }) {
                   <span className="text-xs text-zinc-400 ml-auto">{timeAgo(r.createdAt)}</span>
                 </div>
                 <Stars rating={r.rating} size={13} />
-                <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{r.text}</p>
+                <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{r.text || r.comment || ""}</p>
               </div>
             </motion.div>
           ))}
