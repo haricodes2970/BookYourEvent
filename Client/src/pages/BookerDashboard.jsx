@@ -416,33 +416,10 @@ export default function BookerDashboard() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
-  const LANGS = [
-    { code: "en", native: "English",  font: "DM Sans" },
-    { code: "hi", native: "हिंदी",   font: "Noto Sans Devanagari" },
-    { code: "te", native: "తెలుగు", font: "Noto Sans Telugu" },
-    { code: "ta", native: "தமிழ்",  font: "Noto Sans Tamil" },
-    { code: "kn", native: "ಕನ್ನಡ",  font: "Noto Sans Kannada" },
-  ];
-  const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("bookerTheme", dark ? "dark" : "light");
   }, [dark]);
-
-  useEffect(() => {
-    if (lang !== "en") {
-      const id = "lang-font";
-      if (!document.getElementById(id)) {
-        const link = document.createElement("link");
-        link.id = id; link.rel = "stylesheet";
-        link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
-        document.head.appendChild(link);
-      }
-    }
-    localStorage.setItem("appLang", lang);
-  }, [lang, currentFont]);
 
   useEffect(() => {
     if (!user) return;
@@ -1159,23 +1136,6 @@ export default function BookerDashboard() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
-
-                {/* Language */}
-                <div className="rounded-2xl p-5"
-                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <p className="text-sm font-bold mb-3" style={{ color: textMain }}>Language</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LANGS.map((l) => (
-                      <button key={l.code} onClick={() => setLang(l.code)}
-                        className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all"
-                        style={lang === l.code
-                          ? { background: C.gold, color: "#fff", border: `1px solid ${C.gold}` }
-                          : { background: "transparent", color: textMuted, border: `1px solid ${cardBorder}` }}>
-                        {l.native}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3">

@@ -555,16 +555,6 @@ export default function OwnerDashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
 
-  const [lang, setLang] = useState(() => localStorage.getItem("appLang") || "en");
-  const LANGS = [
-    { code: "en", native: "English",  font: "DM Sans" },
-    { code: "hi", native: "हिंदी",   font: "Noto Sans Devanagari" },
-    { code: "te", native: "తెలుగు", font: "Noto Sans Telugu" },
-    { code: "ta", native: "தமிழ்",  font: "Noto Sans Tamil" },
-    { code: "kn", native: "ಕನ್ನಡ",  font: "Noto Sans Kannada" },
-  ];
-  const currentFont = LANGS.find((l) => l.code === lang)?.font || "DM Sans";
-
   const pageBg     = dark ? "#0B1020" : "#F8FAFC";
   const cardBg     = dark ? "rgba(17,24,39,0.85)" : "rgba(255,255,255,0.82)";
   const cardBorder = dark ? "rgba(99,102,241,0.32)" : "rgba(79,70,229,0.18)";
@@ -586,19 +576,6 @@ export default function OwnerDashboard() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-
-  useEffect(() => {
-    if (lang !== "en") {
-      const id = "lang-font";
-      if (!document.getElementById(id)) {
-        const link = document.createElement("link");
-        link.id = id; link.rel = "stylesheet";
-        link.href = `https://fonts.googleapis.com/css2?family=${currentFont.replace(/ /g, "+")}&display=swap`;
-        document.head.appendChild(link);
-      }
-    }
-    localStorage.setItem("appLang", lang);
-  }, [lang, currentFont]);
 
   useEffect(() => {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
@@ -1211,23 +1188,6 @@ export default function OwnerDashboard() {
                   <StatCard label="Venues"   value={stats.venues}            grad={C.statTeal}   />
                   <StatCard label="Bookings" value={stats.total}             grad={C.statBlue}   />
                   <StatCard label="Revenue"  value={formatINR(stats.revenue)} grad={C.statAmber}  />
-                </div>
-
-                {/* Language */}
-                <div className="rounded-2xl p-5"
-                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
-                  <p className="text-sm font-bold mb-3" style={{ color: textMain }}>Language</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LANGS.map((l) => (
-                      <button key={l.code} onClick={() => setLang(l.code)}
-                        className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all"
-                        style={lang === l.code
-                          ? { background: C.primaryGrad, color: "#fff", border: "1px solid transparent" }
-                          : { background: "transparent", color: textMuted, border: `1px solid ${cardBorder}` }}>
-                        {l.native}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3">

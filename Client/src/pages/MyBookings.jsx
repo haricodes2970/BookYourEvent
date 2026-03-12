@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { getMyBookings, raiseBid } from '../services/bookingService';
 import PaymentModal from '../components/PaymentModal';
 import ChatModal from '../components/ChatModal';
-import { useLanguage } from '../context/LanguageContext';
 
 /* ── Countdown hook ── */
 const useCountdown = (deadline) => {
@@ -67,7 +66,6 @@ const FILTERS = ['all', 'pending', 'payment_pending', 'confirmed', 'rejected', '
 const MyBookings = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const { t } = useLanguage();
 
     const [bookings, setBookings]         = useState([]);
     const [loading, setLoading]           = useState(true);
@@ -210,7 +208,7 @@ const MyBookings = () => {
                         border: '1px solid #e8e8e8', background: '#fff',
                         fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer',
                     }}>
-                    {t('common.logout')}
+                    Logout
                 </button>
             </nav>
 
@@ -527,7 +525,7 @@ const MyBookings = () => {
                                                         cursor: 'pointer',
                                                     }}
                                                 >
-                                                    {t('chat.withOwner')}
+                                                    Chat with Owner
                                                 </button>
                                             )}
                                         </div>

@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { LanguageProvider } from "./context/LanguageContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // Pages
@@ -86,11 +85,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <LanguageProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </LanguageProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>
   );
