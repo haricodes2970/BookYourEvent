@@ -1,0 +1,233 @@
+﻿BookYourEvent - Project Structure and API Snapshot
+Generated on: 2026-03-11
+
+============================================================
+1) Current Folder Structure (Project Root)
+============================================================
+BookYourEvent/
+|- Client/
+|  |- public/
+|  |  |- _redirects
+|  |  |- logo.png
+|  |  `- vite.svg
+|  |- src/
+|  |  |- assets/
+|  |  |- components/
+|  |  |- context/
+|  |  |- features/
+|  |  |- i18n/
+|  |  |- pages/
+|  |  |- services/
+|  |  |- utils/
+|  |  |- App.css
+|  |  |- App.jsx
+|  |  |- index.css
+|  |  `- main.jsx
+|  |- .env
+|  |- .gitignore
+|  |- _redirects
+|  |- eslint.config.js
+|  |- index.html
+|  |- package-lock.json
+|  |- package.json
+|  |- README.md
+|  `- vite.config.js
+|- Server/
+|  |- config/
+|  |  |- cloudinary.js
+|  |  |- db.js
+|  |  `- passport.js
+|  |- controllers/
+|  |  |- AuthController.js
+|  |  |- BookingController.js
+|  |  |- ChatController.js
+|  |  |- PaymentController.js
+|  |  |- ReviewController.js
+|  |  |- StatsController.js
+|  |  `- VenueController.js
+|  |- middleware/
+|  |  |- authMiddleware.js
+|  |  |- rateLimiters.js
+|  |  `- roleMiddleware.js
+|  |- models/
+|  |  |- Booking.js
+|  |  |- Chat.js
+|  |  |- Message.js
+|  |  |- Review.js
+|  |  |- User.js
+|  |  `- Venue.js
+|  |- routes/
+|  |  |- AuthRouter.js
+|  |  |- BookingRouter.js
+|  |  |- ChatRouter.js
+|  |  |- PaymentRouter.js
+|  |  |- ReviewRouter.js
+|  |  |- StatsRouter.js
+|  |  `- VenueRouter.js
+|  |- utils/
+|  |  `- emailService.js
+|  |- .env
+|  |- .gitignore
+|  |- package-lock.json
+|  |- package.json
+|  `- Server.js
+|- .gitignore
+|- package-lock.json
+`- package.json
+
+============================================================
+2) Backend API Routes Exposed
+============================================================
+Base API prefix: /api
+
+A) Auth (login/register + related)
+- POST   /api/auth/register
+- POST   /api/auth/verify-otp
+- POST   /api/auth/login
+- POST   /api/auth/forgot-password
+- POST   /api/auth/reset-password
+- GET    /api/auth/me
+- PATCH  /api/auth/payment-details
+- GET    /api/auth/users
+- DELETE /api/auth/users/:id
+- PATCH  /api/auth/users/:id/role
+- PATCH  /api/auth/switch-role
+- PATCH  /api/auth/update-profile
+- GET    /api/auth/google
+- GET    /api/auth/google/callback
+
+B) Venues (CRUD + admin/owner actions)
+- POST   /api/venues/                     (create venue)
+- GET    /api/venues/                     (list venues)
+- GET    /api/venues/:id                  (get one)
+- PATCH  /api/venues/:id                  (update)
+- DELETE /api/venues/:id                  (delete)
+- GET    /api/venues/owner/mine
+- GET    /api/venues/admin/all
+- PATCH  /api/venues/:id/toggle-active
+- DELETE /api/venues/:id/admin
+- PATCH  /api/venues/:id/approve
+- PATCH  /api/venues/:id/block-dates
+- PATCH  /api/venues/:id/unblock-date
+
+C) Bookings
+- POST   /api/bookings/create
+- PATCH  /api/bookings/:id/raise-bid
+- GET    /api/bookings/owner
+- GET    /api/bookings/venue/:venueId
+- GET    /api/bookings/my-bookings
+- PATCH  /api/bookings/:id/status
+- GET    /api/bookings/admin/all
+
+D) Payments
+- POST   /api/payments/create-order
+- POST   /api/payments/verify
+- GET    /api/payments/my-payments
+- GET    /api/payments/admin-stats
+
+E) Chats / Messages
+- POST   /api/chats/open
+- GET    /api/chats/
+- GET    /api/chats/users/search
+- GET    /api/chats/:chatId/messages
+- POST   /api/chats/:chatId/messages
+- PATCH  /api/chats/:chatId/read
+
+F) Profile Update
+- PATCH  /api/auth/update-profile
+(Also related profile/account endpoints: PATCH /api/auth/switch-role and PATCH /api/auth/payment-details)
+
+============================================================
+3) How Auth Is Handled
+============================================================
+Auth strategy in this codebase:
+- JWT-based auth.
+- Frontend stores JWT and user object in localStorage keys: token, user.
+- Axios request interceptor reads localStorage token and sends:
+  Authorization: Bearer <token>
+- Backend protect middleware reads token only from Authorization header and verifies with JWT_SECRET.
+- 401 response interceptor clears localStorage token/user and redirects to /login?expired=1.
+- Cookie-based session/JWT auth is NOT implemented in middleware.
+
+Google OAuth path:
+- Backend Google callback issues JWT and redirects to frontend with token + user in query params.
+- Frontend GoogleAuthSuccess page reads params and calls AuthContext login(), which persists to localStorage.
+
+============================================================
+4) Current Client/src Folder and API/Axios Config
+============================================================
+Client/src/
+|- assets/
+|  `- react.svg
+|- components/
+|  |- AvailabilityCalendar.jsx
+|  |- ChatModal.jsx
+|  |- ErrorBoundary.jsx
+|  |- LanguageSwitcher.jsx
+|  |- PaymentDetailsForm.jsx
+|  `- PaymentModal.jsx
+|- context/
+|  |- AuthContext.jsx
+|  `- LanguageContext.jsx
+|- features/
+|  `- ownerDashboard/
+|     |- components/
+|     |  |- AnalyticsStrip.jsx
+|     |  |- EditVenueModal.jsx
+|     |  |- OwnerFloatingChat.jsx
+|     |  `- VenueCard.jsx
+|     |- OwnerDashboardScreen.jsx
+|     `- OwnerVenueDetails.jsx
+|- i18n/
+|  `- translations.js
+|- pages/
+|  |- About.jsx
+|  |- AdminDashboard.jsx
+|  |- BookerDashboard.jsx
+|  |- Booking.jsx
+|  |- ForgotPassword.jsx
+|  |- GoogleAuthSuccess.jsx
+|  |- HelpContact.jsx
+|  |- Home.jsx
+|  |- Login.jsx
+|  |- MyBookings.jsx
+|  |- NotFound.jsx
+|  |- OwnerDashboard.jsx
+|  |- Register.jsx
+|  |- VenueDetail.jsx
+|  `- VerifyOTP.jsx
+|- services/
+|  |- adminService.js
+|  |- authService.js
+|  |- bookingService.js
+|  |- chatService.js
+|  |- paymentService.js
+|  |- reviewService.js
+|  `- venueService.js
+|- utils/
+|  |- axiosInstance.js
+|  `- helpers.js
+|- App.css
+|- App.jsx
+|- index.css
+`- main.jsx
+
+Do you already have api.js or axios config?
+- api.js: No file named api.js found under Client/src.
+- Axios config: Yes, existing central axios setup at Client/src/utils/axiosInstance.js.
+
+============================================================
+5) Source Files Used For This Snapshot
+============================================================
+- Server/Server.js
+- Server/routes/AuthRouter.js
+- Server/routes/VenueRouter.js
+- Server/routes/BookingRouter.js
+- Server/routes/PaymentRouter.js
+- Server/routes/ChatRouter.js
+- Server/middleware/authMiddleware.js
+- Server/controllers/AuthController.js
+- Client/src/context/AuthContext.jsx
+- Client/src/utils/axiosInstance.js
+- Client/src/pages/GoogleAuthSuccess.jsx
+- Client/src/services/authService.js
