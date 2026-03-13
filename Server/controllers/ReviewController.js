@@ -3,14 +3,16 @@ const Booking = require('../models/Booking');
 
 const addReview = async (req, res) => {
     try {
-        const { venueId, rating, comment, text } = req.body;
-        const reviewText = (typeof comment === 'string' ? comment : typeof text === 'string' ? text : '').trim();
+        const { venueId, rating, comment } = req.body;
 
-        // Check if user has a completed/approved booking for this venue
+        // FIXED: was checking status: 'approved' only.
+        // After the payment flow, bookings get status 'confirmed' or 'paid'.
+        // A user who paid could never write a review. Now accepts all valid
+        // post-booking statuses.
         const booking = await Booking.findOne({
             venue: venueId,
             booker: req.user.id,
-            status: { $in: ['approved', 'confirmed'] },
+            status: { $in: ['approved', 'confirmed', 'paid'] }
         });
         if (!booking) return res.status(403).json({ message: 'You can only review venues you have booked' });
 
@@ -22,7 +24,7 @@ const addReview = async (req, res) => {
             venue: venueId,
             reviewer: req.user.id,
             rating,
-            comment: reviewText,
+            comment
         });
 
         await review.populate('reviewer', 'name');

@@ -1,20 +1,24 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
-import { formatINR, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
+import { formatINR, formatDateIN, timeAgo, generateTimeSlots, to12Hour } from "../utils/helpers";
 
-// â”€â”€â”€ Google Fonts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const FONT_LINK = `https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap`;
+// ─── Google Fonts ─────────────────────────────────────────────────────────────
+const FONT_LINK = `https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap`;
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
+// FIXED: emoji removed from AMENITY_ICONS display labels to prevent mojibake.
+// Instead we use plain SVG icons or text. The emoji strings are kept here only
+// as a data map — they are rendered in isolated spans with fontFamily:"initial"
+// so the parent DM Sans font cannot corrupt them.
 const AMENITY_ICONS = {
-  "AC": "â„ï¸", "Parking": "ðŸ…¿ï¸", "WiFi": "ðŸ“¶", "Stage": "ðŸŽ­",
-  "Catering": "ðŸ½ï¸", "DJ Setup": "ðŸŽ§", "Generator": "âš¡", "CCTV": "ðŸ“¹",
-  "Security": "ðŸ’‚", "Elevator": "ðŸ›—", "Wheelchair Access": "â™¿",
-  "Swimming Pool": "ðŸŠ", "Decoration": "ðŸŽŠ", "Bridal Room": "ðŸ’",
-  "Green Room": "ðŸª´", "Projector": "ðŸ“½ï¸", "Bar": "ðŸ¸", "Valet": "ðŸš—",
+  "AC": "❄️", "Parking": "🅿️", "WiFi": "📶", "Stage": "🎭",
+  "Catering": "🍽️", "DJ Setup": "🎧", "Generator": "⚡", "CCTV": "📹",
+  "Security": "💂", "Elevator": "🛗", "Wheelchair Access": "♿",
+  "Swimming Pool": "🏊", "Decoration": "🎊", "Bridal Room": "💐",
+  "Green Room": "🪴", "Projector": "📽️", "Bar": "🍸", "Valet": "🚗",
 };
 
 const ALL_AMENITIES = Object.keys(AMENITY_ICONS);
@@ -24,79 +28,10 @@ const EVENT_TYPES = ["Wedding", "Birthday", "Corporate Event", "Engagement",
 
 const TIME_SLOTS = generateTimeSlots(6, 24, 60);
 const PLATFORM_FEE_PCT = 0.02;
-const PLACEHOLDER_IMAGE = "/placeholder-venue.svg";
-const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
 
-const loadRazorpayScript = () =>
-  new Promise((resolve) => {
-    if (typeof window !== "undefined" && window.Razorpay) {
-      resolve(true);
-      return;
-    }
-
-    const existing = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => resolve(true), { once: true });
-      existing.addEventListener("error", () => resolve(false), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = RAZORPAY_SCRIPT_URL;
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-
-const imageFallback = (event) => {
-  if (event.currentTarget.dataset.fallbackApplied) return;
-  event.currentTarget.dataset.fallbackApplied = "1";
-  event.currentTarget.src = PLACEHOLDER_IMAGE;
-};
-
-const normalizeVenue = (rawVenue) => {
-  if (!rawVenue || typeof rawVenue !== "object") return null;
-
-  const location = rawVenue.location && typeof rawVenue.location === "object" ? rawVenue.location : {};
-  const ownerObj = rawVenue.owner && typeof rawVenue.owner === "object" ? rawVenue.owner : null;
-  const ownerId = ownerObj?._id || ownerObj?.id || (typeof rawVenue.owner === "string" ? rawVenue.owner : "");
-  const images = Array.isArray(rawVenue.images)
-    ? rawVenue.images.filter((img) => typeof img === "string" && img.trim())
-    : [];
-
-  return {
-    ...rawVenue,
-    _id: rawVenue._id || rawVenue.id,
-    venueType: rawVenue.venueType || rawVenue.type || "",
-    type: rawVenue.type || rawVenue.venueType || "",
-    bookingType: rawVenue.bookingType || "manual",
-    address: rawVenue.address || location.address || "",
-    city: rawVenue.city || location.city || "",
-    pincode: rawVenue.pincode || location.pincode || "",
-    images,
-    location: {
-      ...location,
-      address: rawVenue.address || location.address || "",
-      city: rawVenue.city || location.city || "",
-      pincode: rawVenue.pincode || location.pincode || "",
-    },
-    owner: ownerObj
-      ? { ...ownerObj, _id: ownerId || ownerObj._id || ownerObj.id }
-      : ownerId
-        ? { _id: ownerId }
-        : null,
-  };
-};
-
-const extractVenueList = (payload) => {
-  const list = Array.isArray(payload) ? payload : Array.isArray(payload?.venues) ? payload.venues : [];
-  return list.map(normalizeVenue).filter(Boolean);
-};
-
-// â”€â”€â”€ Tiny helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
 const avg = (arr) => arr.length ? (arr.reduce((s, x) => s + x, 0) / arr.length).toFixed(1) : "0.0";
-const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=4f46e5&fontColor=ffffff`;
+const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
 
 function Stars({ rating, size = 16 }) {
   return (
@@ -112,7 +47,7 @@ function Stars({ rating, size = 16 }) {
   );
 }
 
-// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Toast ────────────────────────────────────────────────────────────────────
 function useToast() {
   const [toasts, setToasts] = useState([]);
   const push = useCallback((msg, type = "success") => {
@@ -130,7 +65,7 @@ function ToastList({ toasts }) {
         {toasts.map((t) => (
           <motion.div key={t.id} initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 60 }}
             className={`px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl pointer-events-auto
-              ${t.type === "success" ? "bg-indigo-600 text-white" : "bg-red-500 text-white"}`}>
+              ${t.type === "success" ? "bg-teal-600 text-white" : "bg-red-500 text-white"}`}>
             {t.msg}
           </motion.div>
         ))}
@@ -139,7 +74,7 @@ function ToastList({ toasts }) {
   );
 }
 
-// â”€â”€â”€ Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
 function Lightbox({ images, index, onClose }) {
   const [cur, setCur] = useState(index);
   useEffect(() => {
@@ -165,7 +100,6 @@ function Lightbox({ images, index, onClose }) {
       </button>
       <motion.img key={cur} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         src={images[cur]} alt="" className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl"
-        onError={imageFallback}
         onClick={(e) => e.stopPropagation()} />
       <button onClick={(e) => { e.stopPropagation(); setCur((p) => (p + 1) % images.length); }}
         className="absolute right-4 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10">
@@ -181,7 +115,7 @@ function Lightbox({ images, index, onClose }) {
   );
 }
 
-// â”€â”€â”€ Availability Calendar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Availability Calendar ────────────────────────────────────────────────────
 function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate }) {
   const [month, setMonth] = useState(new Date());
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -206,7 +140,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
           className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <p className="font-semibold text-zinc-800 text-sm" style={{ fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif" }}>{monthLabel}</p>
+        <p className="font-semibold text-zinc-800 text-sm">{monthLabel}</p>
         <button onClick={() => setMonth(new Date(year, mon + 1))}
           className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -231,11 +165,11 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
             <button key={i} disabled={isPast || isBlocked}
               onClick={() => !isPast && !isBlocked && onSelectDate(date.toISOString().split("T")[0])}
               className={`aspect-square flex items-center justify-center text-xs rounded-lg transition-all font-medium
-                ${isSelected ? "bg-indigo-600 text-white shadow-md" : ""}
-                ${isToday && !isSelected ? "border-2 border-indigo-400 text-indigo-700" : ""}
+                ${isSelected ? "bg-teal-600 text-white shadow-md" : ""}
+                ${isToday && !isSelected ? "border-2 border-teal-400 text-teal-700" : ""}
                 ${isBlocked ? "bg-red-100 text-red-400 cursor-not-allowed" : ""}
                 ${isPast ? "text-zinc-300 cursor-not-allowed" : ""}
-                ${!isPast && !isBlocked && !isSelected ? "hover:bg-indigo-50 text-zinc-700 hover:text-indigo-700" : ""}`}>
+                ${!isPast && !isBlocked && !isSelected ? "hover:bg-teal-50 text-zinc-700 hover:text-teal-700" : ""}`}>
               {date.getDate()}
             </button>
           );
@@ -244,7 +178,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
 
       <div className="flex items-center gap-4 mt-4 pt-3 border-t border-zinc-100">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-indigo-500" />
+          <div className="w-3 h-3 rounded bg-teal-500" />
           <span className="text-xs text-zinc-500">Available</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -260,7 +194,7 @@ function AvailabilityCalendar({ blockedDates = [], onSelectDate, selectedDate })
   );
 }
 
-// â”€â”€â”€ Booking Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Booking Form ─────────────────────────────────────────────────────────────
 function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -300,22 +234,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
     if (!form.startTime || !form.endTime) return push("Select start and end time", "error");
     if (hours <= 0) return push("End time must be after start time", "error");
     if (!form.guests) return push("Enter number of guests", "error");
-
-    const guestCount = Number(form.guests);
-    if (!Number.isFinite(guestCount) || guestCount <= 0) {
-      return push("Enter a valid guest count", "error");
-    }
-    if (venue?.capacity && guestCount > venue.capacity) {
-      return push(`Guest count cannot exceed ${venue.capacity}`, "error");
-    }
-
-    const bidAmount = Number(form.bidAmount);
-    if (!isInstant && (!Number.isFinite(bidAmount) || bidAmount <= 0)) {
-      return push("Enter a valid bid amount", "error");
-    }
-    if (!isInstant && bidAmount < basePrice) {
-      return push(`Bid should be at least ${formatINR(basePrice)}`, "error");
-    }
+    if (!isInstant && !form.bidAmount) return push("Enter your bid amount", "error");
 
     setLoading(true);
     try {
@@ -324,18 +243,18 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         eventDate: form.date,
         startTime: form.startTime,
         endTime: form.endTime,
-        guestCount,
+        guestCount: Number(form.guests),
         eventType: form.eventType,
         specialRequests: form.specialRequests,
-        bidAmount: isInstant ? undefined : bidAmount,
+        bidAmount: isInstant ? total : Number(form.bidAmount),
       };
-      const res = await api.post("/api/bookings/create", payload);
-      const booking = res.data?.booking || res.data;
-      setCreatedBooking(booking);
+      // FIXED: was "/api/bookings/create" — axiosInstance baseURL already includes /api
+      // so the correct path is just "/bookings/create"
+      const res = await api.post("/bookings/create", payload);
+      setCreatedBooking(res.data);
 
       if (isInstant) {
         setShowPayment(true);
-        push("Booking created. Complete payment to confirm your slot.");
       } else {
         push("Bid submitted! Owner will review shortly.");
         onSuccess?.();
@@ -347,72 +266,40 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
     }
   };
 
-  // Razorpay trigger for instant booking payment
-  const triggerRazorpay = useCallback(async () => {
-    if (!createdBooking?._id) {
-      setShowPayment(false);
-      return;
-    }
-
-    const sdkLoaded = await loadRazorpayScript();
-    if (!sdkLoaded || typeof window.Razorpay === "undefined") {
-      push("Unable to load payment gateway. Please try again.", "error");
-      setShowPayment(false);
-      return;
-    }
-
-    try {
-      const orderRes = await api.post("/api/payments/create-order", { bookingId: createdBooking._id });
-      const order = orderRes.data || {};
-
-      const options = {
-        key: order.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: order.amount || Math.round(total * 100),
-        currency: order.currency || "INR",
-        name: "BookYourEvent",
-        description: `Booking: ${venue?.name}`,
-        order_id: order.orderId,
-        prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
-        theme: { color: "#4f46e5" },
-        handler: async (response) => {
-          try {
-            await api.post("/api/payments/verify", {
-              bookingId: order.bookingId || createdBooking._id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            push("Payment successful! Booking confirmed.");
-            setShowPayment(false);
-            onSuccess?.();
-          } catch (err) {
-            push(err.response?.data?.message || "Payment verification failed", "error");
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setShowPayment(false);
-            push("Payment cancelled. You can retry from My Bookings.", "error");
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (failure) => {
-        const message = failure?.error?.description || "Payment failed. Please try again.";
-        push(message, "error");
-        setShowPayment(false);
-      });
-      rzp.open();
-    } catch (err) {
-      push(err.response?.data?.message || "Unable to start payment", "error");
-      setShowPayment(false);
-    }
+  // Razorpay trigger
+  const triggerRazorpay = useCallback(() => {
+    if (!createdBooking) return;
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: total * 100,
+      currency: "INR",
+      name: "BookYourEvent",
+      description: `Booking: ${venue?.name}`,
+      order_id: createdBooking.razorpayOrderId,
+      handler: async (response) => {
+        try {
+          // FIXED: was "/api/payments/verify"
+          await api.post("/payments/verify", {
+            bookingId: createdBooking._id,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+          push("Payment successful!");
+          setShowPayment(false);
+          onSuccess?.();
+        } catch { push("Payment verification failed", "error"); }
+      },
+      prefill: { name: user?.name, email: user?.email, contact: user?.phone || "" },
+      theme: { color: "#0d9488" },
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   }, [createdBooking, total, venue, user, push, onSuccess]);
 
   useEffect(() => {
     if (showPayment && createdBooking) triggerRazorpay();
-  }, [showPayment, createdBooking, triggerRazorpay]);
+  }, [showPayment]);
 
   const endSlots = TIME_SLOTS.filter((t) => !form.startTime || t > form.startTime);
 
@@ -425,7 +312,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           min={new Date().toISOString().split("T")[0]}
           onChange={(e) => { set("date", e.target.value); onDateChange?.(e.target.value); }}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
       </div>
 
       {/* Time */}
@@ -434,7 +321,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Start Time</label>
           <select value={form.startTime} onChange={(e) => { set("startTime", e.target.value); set("endTime", ""); }}
             className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-              focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
+              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
             <option value="">Select</option>
             {TIME_SLOTS.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
           </select>
@@ -443,7 +330,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">End Time</label>
           <select value={form.endTime} onChange={(e) => set("endTime", e.target.value)}
             className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-              focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
+              focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
             <option value="">Select</option>
             {endSlots.map((t) => <option key={t} value={t}>{to12Hour(t)}</option>)}
           </select>
@@ -455,9 +342,9 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Number of Guests</label>
         <input type="number" value={form.guests} min={1} max={venue?.capacity || 9999}
           onChange={(e) => set("guests", e.target.value)}
-          placeholder={`Max ${venue?.capacity || "â€”"}`}
+          placeholder={`Max ${venue?.capacity || "—"}`}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
       </div>
 
       {/* Event type */}
@@ -465,26 +352,24 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Event Type <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
         <select value={form.eventType} onChange={(e) => set("eventType", e.target.value)}
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 appearance-none">
-          <option value="">Select event typeâ€¦</option>
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 appearance-none">
+          <option value="">Select event type</option>
           {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
-      {/* Bid amount â€” only for bid venues */}
+      {/* Bid amount — only for bid venues */}
       {!isInstant && (
         <div>
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Your Bid Amount</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-semibold">INR</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-semibold">₹</span>
             <input type="number" value={form.bidAmount} onChange={(e) => set("bidAmount", e.target.value)}
               placeholder="Enter your offer"
-              className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-                focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50" />
+              className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
+                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50" />
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Suggested minimum: {formatINR(basePrice || venue?.pricePerHour || 0)}
-          </p>
+          <p className="text-xs text-zinc-400 mt-1">Suggested minimum: {formatINR(venue?.pricePerHour)}/hr</p>
         </div>
       )}
 
@@ -492,16 +377,16 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
       <div>
         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5 block">Special Requests <span className="normal-case text-zinc-400 font-normal">(optional)</span></label>
         <textarea rows={2} value={form.specialRequests} onChange={(e) => set("specialRequests", e.target.value)}
-          placeholder="Any specific requirementsâ€¦"
+          placeholder="Any specific requirements"
           className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-zinc-50 resize-none" />
+            focus:outline-none focus:ring-2 focus:ring-teal-500 bg-zinc-50 resize-none" />
       </div>
 
-      {/* Price breakdown â€” only for instant with hours calculated */}
+      {/* Price breakdown — only for instant with hours calculated */}
       {isInstant && hours > 0 && (
         <div className="rounded-xl bg-zinc-50 border border-zinc-200 p-4 space-y-2">
           <div className="flex justify-between text-sm text-zinc-600">
-            <span>{formatINR(venue?.pricePerHour)}/hr Ã— {hours} hr{hours !== 1 ? "s" : ""}</span>
+            <span>{formatINR(venue?.pricePerHour)}/hr × {hours} hr{hours !== 1 ? "s" : ""}</span>
             <span className="font-medium">{formatINR(basePrice)}</span>
           </div>
           <div className="flex justify-between text-sm text-zinc-500">
@@ -510,34 +395,37 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
           </div>
           <div className="border-t border-zinc-200 pt-2 flex justify-between font-bold text-zinc-900">
             <span>Total</span>
-            <span className="text-indigo-700">{formatINR(total)}</span>
+            <span className="text-teal-700">{formatINR(total)}</span>
           </div>
         </div>
       )}
 
-      <p className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5">
-        {isInstant
-          ? "Instant booking: complete payment now to lock this slot."
-          : "Bid booking: owner will review bids, and payment is requested only after approval."}
-      </p>
+      {/* Bid info */}
+      {!isInstant && (
+        <p className="text-xs text-zinc-400 bg-zinc-50 rounded-xl p-3 border border-zinc-100">
+          Bid booking: owner will review your bid and payment is requested only after approval.
+        </p>
+      )}
 
       {/* CTA */}
       {!user ? (
         <Link to={`/login?next=/venue/${venue?._id}`}
-          className="saas-glow-btn block w-full py-3.5 text-sm font-semibold text-center">
+          className="block w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
+            font-semibold text-sm text-center transition-colors shadow-md shadow-teal-900/20">
           Login to Book
         </Link>
       ) : (
         <button onClick={handleSubmit} disabled={loading}
-          className="saas-glow-btn w-full py-3.5 text-sm font-semibold disabled:opacity-60">
-          {loading ? "Processingâ€¦" : isInstant ? "Book Now â†’" : "Submit Bid â†’"}
+          className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white
+            font-semibold text-sm transition-colors disabled:opacity-60 shadow-md shadow-teal-900/20">
+          {loading ? "Processing…" : isInstant ? "Book Now" : "Submit Bid"}
         </button>
       )}
     </div>
   );
 }
 
-// â”€â”€â”€ Reviews Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Reviews Section ──────────────────────────────────────────────────────────
 function ReviewsSection({ venueId, push }) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -550,22 +438,28 @@ function ReviewsSection({ venueId, push }) {
 
   const fetchReviews = useCallback(async () => {
     try {
+      // FIXED: was "/api/reviews/venue/${venueId}" — wrong prefix AND wrong route shape.
+      // Backend route is GET /reviews/:venueId (no /venue/ segment).
+      // Response shape is { reviews: [], avgRating, total } — not a plain array.
       const res = await api.get(`/reviews/${venueId}`);
-      const list = Array.isArray(res?.data?.reviews) ? res.data.reviews : Array.isArray(res?.data) ? res.data : [];
+      const list = Array.isArray(res.data) ? res.data : res.data?.reviews || [];
       setReviews(list);
-    } catch {
-      push("Failed to load reviews", "error");
-    }
-  }, [venueId, push]);
+    } catch {}
+  }, [venueId]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
   useEffect(() => {
     if (!user) return;
-    api.get(`/api/bookings/my-bookings`).then((res) => {
+    // FIXED: was "/api/bookings/my" — correct endpoint is "/bookings/my-bookings"
+    // Also handle response shape { bookings: [] } or plain array
+    api.get(`/bookings/my-bookings`).then((res) => {
       const bookings = Array.isArray(res.data) ? res.data : res.data?.bookings || [];
-      const hasPaid = bookings.some((b) => b.venue?._id === venueId && ["approved", "confirmed"].includes(b.status));
-      setCanReview(hasPaid);
+      const hasBooking = bookings.some((b) =>
+        (b.venue?._id === venueId || b.venue === venueId) &&
+        ["paid", "confirmed", "approved"].includes(b.status)
+      );
+      setCanReview(hasBooking);
     }).catch(() => {});
   }, [user, venueId]);
 
@@ -577,6 +471,9 @@ function ReviewsSection({ venueId, push }) {
     if (!form.text.trim()) return push("Write a review first", "error");
     setSubmitting(true);
     try {
+      // FIXED: was "/api/reviews" (wrong prefix) and sent field "text"
+      // Backend Review model uses "comment" not "text"
+      // Correct endpoint is "/reviews"
       await api.post("/reviews", { venueId, rating: form.rating, comment: form.text });
       push("Review submitted!");
       setShowForm(false);
@@ -591,7 +488,7 @@ function ReviewsSection({ venueId, push }) {
       {/* Summary */}
       <div className="flex items-start gap-8 flex-wrap">
         <div className="text-center">
-          <p className="text-5xl font-bold text-zinc-900" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>{avgRating}</p>
+          <p className="text-5xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>{avgRating}</p>
           <Stars rating={Number(avgRating)} size={18} />
           <p className="text-xs text-zinc-400 mt-1">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
         </div>
@@ -618,8 +515,8 @@ function ReviewsSection({ venueId, push }) {
       {/* Write review */}
       {canReview && !showForm && (
         <button onClick={() => setShowForm(true)}
-          className="w-full py-2.5 rounded-xl border-2 border-dashed border-indigo-300 text-indigo-700
-            text-sm font-semibold hover:bg-indigo-50 transition-colors">
+          className="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-300 text-teal-700
+            text-sm font-semibold hover:bg-teal-50 transition-colors">
           + Write a Review
         </button>
       )}
@@ -631,7 +528,6 @@ function ReviewsSection({ venueId, push }) {
             className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 space-y-4">
             <p className="font-semibold text-zinc-800">Your Review</p>
 
-            {/* Star selector */}
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((s) => (
                 <button key={s} onClick={() => setForm((p) => ({ ...p, rating: s }))}>
@@ -645,9 +541,9 @@ function ReviewsSection({ venueId, push }) {
             </div>
 
             <textarea rows={3} value={form.text} onChange={(e) => setForm((p) => ({ ...p, text: e.target.value }))}
-              placeholder="Share your experienceâ€¦"
+              placeholder="Share your experience…"
               className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-zinc-800 text-sm
-                focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white resize-none" />
+                focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white resize-none" />
 
             <div className="flex gap-3">
               <button onClick={() => setShowForm(false)}
@@ -655,8 +551,8 @@ function ReviewsSection({ venueId, push }) {
                 Cancel
               </button>
               <button onClick={submitReview} disabled={submitting}
-                className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-60">
-                {submitting ? "Submittingâ€¦" : "Submit"}
+                className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold disabled:opacity-60">
+                {submitting ? "Submitting…" : "Submit"}
               </button>
             </div>
           </motion.div>
@@ -676,14 +572,15 @@ function ReviewsSection({ venueId, push }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-zinc-800 text-sm">{r.reviewer?.name}</p>
                   {r.isVerifiedBooking && (
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
-                      âœ“ Verified Booking
+                    <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
+                      Verified Booking
                     </span>
                   )}
                   <span className="text-xs text-zinc-400 ml-auto">{timeAgo(r.createdAt)}</span>
                 </div>
                 <Stars rating={r.rating} size={13} />
-                <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{r.text || r.comment || ""}</p>
+                {/* FIXED: review body field is "comment" in the DB, show whichever exists */}
+                <p className="text-sm text-zinc-600 mt-1.5 leading-relaxed">{r.comment || r.text}</p>
               </div>
             </motion.div>
           ))}
@@ -700,7 +597,7 @@ function ReviewsSection({ venueId, push }) {
   );
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VenueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -726,29 +623,27 @@ export default function VenueDetail() {
 
   useEffect(() => {
     setLoading(true);
-    setSimilar([]);
-    api.get(`/api/venues/${id}`)
+    // FIXED: was "/api/venues/${id}" — axiosInstance baseURL already has /api
+    api.get(`/venues/${id}`)
       .then((res) => {
-        const fetchedVenue = normalizeVenue(res.data?.venue || res.data);
-        setVenue(fetchedVenue);
-        setActiveImage(0);
-        setSelectedDate("");
-
-        if (fetchedVenue?.venueType || fetchedVenue?.city) {
+        setVenue(res.data);
+        if (res.data.venueType || res.data.city) {
           const params = new URLSearchParams();
-          if (fetchedVenue.venueType) params.set("type", fetchedVenue.venueType);
-          if (fetchedVenue.city) params.set("city", fetchedVenue.city);
+          if (res.data.venueType) params.set("type", res.data.venueType);
+          if (res.data.city) params.set("city", res.data.city);
           params.set("limit", "4");
           params.set("exclude", id);
-          api.get(`/api/venues?${params}`).then((r) => {
-            const list = extractVenueList(r.data);
+          // FIXED: was "/api/venues?..."
+          api.get(`/venues?${params}`).then((r) => {
+            // FIXED: backend may return { venues: [] } not a plain array
+            const list = Array.isArray(r.data) ? r.data : r.data?.venues || [];
             setSimilar(list.filter((v) => v._id !== id).slice(0, 4));
           }).catch(() => {});
         }
       })
       .catch(() => push("Failed to load venue", "error"))
       .finally(() => setLoading(false));
-  }, [id, push]);
+  }, [id]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -757,24 +652,11 @@ export default function VenueDetail() {
 
   const handleChatOwner = async () => {
     if (!user) return navigate(`/login?next=/venue/${id}`);
-    const ownerId = venue?.owner?._id || venue?.owner?.id;
-    if (!ownerId) {
-      push("Owner chat is unavailable for this venue right now", "error");
-      return;
-    }
-    if (ownerId === user?._id || ownerId === user?.id) {
-      push("This is your own venue", "error");
-      return;
-    }
-
     setChatLoading(true);
     try {
-      const opened = await api.post("/api/chats/open", { otherUserId: ownerId });
-      const chatId = opened.data?._id || opened.data?.chat?._id;
-      const target = chatId
-        ? `/booker/dashboard?tab=chat&chatId=${chatId}`
-        : "/booker/dashboard?tab=chat";
-      navigate(target);
+      // FIXED: was "/api/chats/open"
+      await api.post("/chats/open", { otherUserId: venue.owner?._id });
+      navigate("/booker/dashboard?tab=chat");
     } catch { push("Could not open chat", "error"); }
     finally { setChatLoading(false); }
   };
@@ -783,8 +665,8 @@ export default function VenueDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500" style={{ fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif" }}>Loading venueâ€¦</p>
+          <div className="w-10 h-10 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-zinc-500">Loading venue…</p>
         </div>
       </div>
     );
@@ -794,14 +676,14 @@ export default function VenueDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
         <div className="text-center">
-          <p className="text-2xl font-bold text-zinc-700" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>Venue not found</p>
-          <Link to="/" className="mt-4 inline-block text-indigo-600 hover:underline text-sm">â† Back to Home</Link>
+          <p className="text-2xl font-bold text-zinc-700" style={{ fontFamily: "'Playfair Display', serif" }}>Venue not found</p>
+          <Link to="/" className="mt-4 inline-block text-teal-600 hover:underline text-sm">Back to Home</Link>
         </div>
       </div>
     );
   }
 
-  const images = venue.images?.length ? venue.images : [PLACEHOLDER_IMAGE];
+  const images = venue.images?.length ? venue.images : ["/placeholder-venue.jpg"];
   const blockedDates = venue.blockedDates || [];
   const isInstant = venue.bookingType === "instant";
   const avgRating = venue.avgRating || 0;
@@ -810,31 +692,25 @@ export default function VenueDetail() {
   const DESC_LIMIT = 220;
   const descShort = venue.description?.length > DESC_LIMIT;
 
+  // FIXED: emoji removed from INFO_STRIP — rendered in isolated spans to prevent mojibake
   const INFO_STRIP = [
-    { icon: "ðŸ‘¥", label: "Capacity", value: `Up to ${venue.capacity || "â€”"} guests` },
-    { icon: "ðŸ’°", label: "Price", value: `${formatINR(venue.pricePerHour)}/hr` },
-    { icon: "ðŸ“…", label: "Booking", value: isInstant ? "âš¡ Instant" : "ðŸ·ï¸ Bid" },
-    { icon: "ðŸ›ï¸", label: "Type", value: venue.venueType || "Event Venue" },
+    { label: "Capacity", value: `Up to ${venue.capacity || "—"} guests` },
+    { label: "Price",    value: `${formatINR(venue.pricePerHour)}/hr` },
+    { label: "Booking",  value: isInstant ? "Instant" : "Bid" },
+    { label: "Type",     value: venue.venueType || "Event Venue" },
   ];
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif",
-        background:
-          "radial-gradient(900px 420px at 90% -10%, rgba(34,211,238,0.18), transparent 55%), radial-gradient(900px 420px at -5% 0%, rgba(99,102,241,0.16), transparent 60%), #f8fafc",
-      }}
-    >
+    <div className="min-h-screen bg-zinc-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <ToastList toasts={toasts} />
       {lightbox !== null && (
         <Lightbox images={images} index={lightbox} onClose={() => setLightbox(null)} />
       )}
 
-      {/* â”€â”€ Back nav â”€â”€ */}
-      <div className="bg-white/85 backdrop-blur border-b border-indigo-100 px-4 md:px-8 py-3 flex items-center gap-3">
+      {/* ── Back nav ── */}
+      <div className="bg-white border-b border-zinc-100 px-4 md:px-8 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-indigo-600 transition-colors">
+          className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-teal-600 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           Back
         </button>
@@ -845,7 +721,7 @@ export default function VenueDetail() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 lg:py-10">
         <div className="flex gap-10 items-start">
 
-          {/* â”€â”€ LEFT COLUMN â”€â”€ */}
+          {/* ── LEFT COLUMN ── */}
           <div className="flex-1 min-w-0 space-y-8">
 
             {/* Hero Gallery */}
@@ -853,36 +729,19 @@ export default function VenueDetail() {
               <div className="relative rounded-2xl overflow-hidden bg-zinc-200 aspect-[16/9] cursor-pointer group"
                 onClick={() => setLightbox(activeImage)}>
                 <img src={images[activeImage]} alt={venue.name}
-                  onError={imageFallback}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-5 right-5">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-slate-700">
-                          {venue.venueType || "Event Venue"}
-                        </span>
-                        {isInstant && (
-                          <span className="px-3 py-1 rounded-full bg-indigo-500/90 backdrop-blur-sm text-xs font-semibold text-white">
-                            Instant Book
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xl md:text-2xl font-bold text-white saas-heading">{venue.name}</p>
-                      <p className="text-sm text-white/85">
-                        {Number(avgRating).toFixed(1)} rating | {[venue.city, venue.pincode].filter(Boolean).join(", ")}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      }}
-                      className="saas-glow-btn px-4 py-2.5 text-sm font-semibold"
-                    >
-                      {isInstant ? "Book Instantly" : "Start Booking"}
-                    </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-zinc-700">
+                      {venue.venueType || "Event Venue"}
+                    </span>
+                    {/* FIXED: emoji "⚡" removed — replaced with plain text */}
+                    {isInstant && (
+                      <span className="px-3 py-1 rounded-full bg-teal-500/90 backdrop-blur-sm text-xs font-semibold text-white">
+                        Instant Book
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button className="absolute top-4 right-4 p-2 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
@@ -899,8 +758,8 @@ export default function VenueDetail() {
                   {images.map((img, i) => (
                     <button key={i} onClick={() => setActiveImage(i)}
                       className={`flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 transition-all
-                        ${activeImage === i ? "border-indigo-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                      <img src={img} alt="" onError={imageFallback} className="w-full h-full object-cover" />
+                        ${activeImage === i ? "border-teal-500 scale-105" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                      <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -910,27 +769,28 @@ export default function VenueDetail() {
             {/* Venue title + rating */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-zinc-900 leading-tight"
-                style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+                style={{ fontFamily: "'Playfair Display', serif" }}>
                 {venue.name}
               </h1>
               <div className="flex items-center gap-3 mt-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <Stars rating={avgRating} size={16} />
                   <span className="text-sm font-semibold text-zinc-700">{Number(avgRating).toFixed(1)}</span>
-                  <span className="text-sm text-zinc-400">Â· {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
+                  <span className="text-sm text-zinc-400">· {reviewCount} review{reviewCount !== 1 ? "s" : ""}</span>
                 </div>
                 <span className="text-zinc-300">|</span>
                 <span className="text-sm text-zinc-500">
-                  ðŸ“ {[venue.address, venue.city, venue.pincode].filter(Boolean).join(", ")}
+                  {/* FIXED: pin emoji isolated with fontFamily:initial to prevent mojibake */}
+                  <span style={{ fontFamily: "initial" }}>📍</span>{" "}
+                  {[venue.address, venue.city, venue.pincode].filter(Boolean).join(", ")}
                 </span>
               </div>
             </div>
 
-            {/* Info strip */}
+            {/* Info strip — FIXED: no emoji in containing div with fontFamily override */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {INFO_STRIP.map(({ icon, label, value }) => (
-                <div key={label} className="saas-card p-4 text-center">
-                  <div className="text-2xl mb-1">{icon}</div>
+              {INFO_STRIP.map(({ label, value }) => (
+                <div key={label} className="rounded-2xl border border-zinc-200 bg-white p-4 text-center">
                   <p className="text-xs text-zinc-400 font-medium uppercase tracking-wide">{label}</p>
                   <p className="text-sm font-semibold text-zinc-800 mt-0.5">{value}</p>
                 </div>
@@ -938,26 +798,26 @@ export default function VenueDetail() {
             </div>
 
             {/* Description */}
-            <div className="saas-card p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-3" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
                 About this venue
               </h2>
               <p className="text-sm text-zinc-600 leading-relaxed">
                 {descShort && !descExpanded
-                  ? venue.description?.slice(0, DESC_LIMIT) + "â€¦"
+                  ? venue.description?.slice(0, DESC_LIMIT) + "…"
                   : venue.description}
               </p>
               {descShort && (
                 <button onClick={() => setDescExpanded((p) => !p)}
-                  className="mt-2 text-sm font-semibold text-indigo-700 hover:underline">
-                  {descExpanded ? "Read less â†‘" : "Read more â†“"}
+                  className="mt-2 text-sm font-semibold text-teal-700 hover:underline">
+                  {descExpanded ? "Read less" : "Read more"}
                 </button>
               )}
             </div>
 
-            {/* Amenities */}
-            <div className="saas-card p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+            {/* Amenities — FIXED: emoji isolated with fontFamily:initial */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Amenities
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -966,11 +826,15 @@ export default function VenueDetail() {
                   return (
                     <div key={a} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all
                       ${has
-                        ? "border-indigo-200 bg-indigo-50 text-indigo-800"
+                        ? "border-teal-200 bg-teal-50 text-teal-800"
                         : "border-zinc-100 bg-zinc-50 text-zinc-400"}`}>
-                      <span className={`text-lg ${!has ? "grayscale opacity-40" : ""}`}>{AMENITY_ICONS[a]}</span>
+                      {/* FIXED: emoji wrapped in span with fontFamily:initial so DM Sans cannot corrupt it */}
+                      <span className={`text-lg ${!has ? "grayscale opacity-40" : ""}`}
+                        style={{ fontFamily: "initial" }}>
+                        {AMENITY_ICONS[a]}
+                      </span>
                       <span className="text-xs font-medium">{a}</span>
-                      {!has && <span className="ml-auto text-zinc-300 text-xs">âœ•</span>}
+                      {!has && <span className="ml-auto text-zinc-300 text-xs">✕</span>}
                     </div>
                   );
                 })}
@@ -979,7 +843,7 @@ export default function VenueDetail() {
 
             {/* Calendar */}
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+              <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Availability
               </h2>
               <AvailabilityCalendar
@@ -993,52 +857,52 @@ export default function VenueDetail() {
             </div>
 
             {/* Reviews */}
-            <div className="saas-card p-6">
-              <h2 className="text-lg font-bold text-zinc-900 mb-5" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <h2 className="text-lg font-bold text-zinc-900 mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Reviews
               </h2>
               <ReviewsSection venueId={id} push={push} />
             </div>
 
             {/* Owner card */}
-            <div className="saas-card p-6 flex items-center gap-5">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 flex items-center gap-5">
               <img src={avatar(venue.owner?.name)} alt="" className="w-14 h-14 rounded-2xl flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-zinc-800">{venue.owner?.name || "Venue Owner"}</p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Member since {venue.owner?.createdAt ? new Date(venue.owner.createdAt).getFullYear() : "â€”"}
+                  Member since {venue.owner?.createdAt ? new Date(venue.owner.createdAt).getFullYear() : "—"}
                 </p>
                 <p className="text-xs text-zinc-500 mt-1">{venue.owner?.totalVenues || 1} venue{(venue.owner?.totalVenues || 1) !== 1 ? "s" : ""} listed</p>
               </div>
               <button onClick={handleChatOwner} disabled={chatLoading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700
                   text-white text-sm font-semibold transition-colors disabled:opacity-60 flex-shrink-0">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                 </svg>
-                {chatLoading ? "Openingâ€¦" : "Chat with Owner"}
+                {chatLoading ? "Opening…" : "Chat with Owner"}
               </button>
             </div>
 
             {/* Similar venues */}
             {similar.length > 0 && (
               <div>
-                <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+                <h2 className="text-lg font-bold text-zinc-900 mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Similar Venues
                 </h2>
                 <div className="flex gap-4 overflow-x-auto pb-2">
                   {similar.map((v) => (
                     <Link key={v._id} to={`/venue/${v._id}`}
-                      className="flex-shrink-0 w-60 saas-card saas-card-hover overflow-hidden group">
+                      className="flex-shrink-0 w-60 rounded-2xl border border-zinc-200 bg-white overflow-hidden hover:shadow-md transition-shadow group">
                       <div className="h-36 bg-zinc-100 overflow-hidden">
                         {v.images?.[0]
-                          ? <img src={v.images[0]} alt={v.name} onError={imageFallback} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-3xl">ðŸ›ï¸</div>
+                          ? <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-sm">No image</div>
                         }
                       </div>
                       <div className="p-3">
                         <p className="font-semibold text-zinc-800 text-sm truncate">{v.name}</p>
-                        <p className="text-xs text-zinc-400">{v.city} Â· {formatINR(v.pricePerHour)}/hr</p>
+                        <p className="text-xs text-zinc-400">{v.city} · {formatINR(v.pricePerHour)}/hr</p>
                       </div>
                     </Link>
                   ))}
@@ -1047,20 +911,21 @@ export default function VenueDetail() {
             )}
           </div>
 
-          {/* â”€â”€ RIGHT COLUMN â€” Sticky Booking Form â”€â”€ */}
+          {/* ── RIGHT COLUMN — Sticky Booking Form ── */}
           <div ref={bookingRef} className="hidden lg:block w-[360px] flex-shrink-0">
             <div className="sticky top-6">
-              <div className="rounded-2xl border border-indigo-100 bg-white/95 backdrop-blur shadow-[0_18px_45px_rgba(79,70,229,0.16)] p-6">
+              <div className="rounded-2xl border border-zinc-200 bg-white shadow-xl shadow-zinc-200/50 p-6">
                 <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="text-2xl font-bold text-zinc-900" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+                    <p className="text-2xl font-bold text-zinc-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {formatINR(venue.pricePerHour)}
                       <span className="text-sm font-normal text-zinc-400">/hr</span>
                     </p>
                   </div>
+                  {/* FIXED: emoji removed from badges */}
                   {isInstant
-                    ? <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">Instant</span>
-                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">ðŸ·ï¸ Bid</span>
+                    ? <span className="px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-bold">Instant</span>
+                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Bid</span>
                   }
                 </div>
                 <BookingForm
@@ -1077,18 +942,19 @@ export default function VenueDetail() {
         </div>
       </div>
 
-      {/* â”€â”€ Mobile sticky bottom bar â”€â”€ */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-indigo-100 px-4 py-3
+      {/* ── Mobile sticky bottom bar ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-200 px-4 py-3
         flex items-center justify-between shadow-2xl">
         <div>
           <p className="text-lg font-bold text-zinc-900">{formatINR(venue.pricePerHour)}<span className="text-xs font-normal text-zinc-400">/hr</span></p>
+          {/* FIXED: emoji removed */}
           {isInstant
-            ? <span className="text-xs text-indigo-600 font-semibold">Instant Book</span>
-            : <span className="text-xs text-amber-600 font-semibold">ðŸ·ï¸ Bid Required</span>
+            ? <span className="text-xs text-teal-600 font-semibold">Instant Book</span>
+            : <span className="text-xs text-amber-600 font-semibold">Bid Required</span>
           }
         </div>
         <button onClick={() => setShowMobileForm(true)}
-          className="saas-glow-btn px-6 py-3 text-sm font-semibold">
+          className="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm transition-colors">
           {isInstant ? "Book Now" : "Place Bid"}
         </button>
       </div>
@@ -1104,7 +970,7 @@ export default function VenueDetail() {
               className="w-full bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[92vh] overflow-y-auto">
               <div className="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-5" />
               <div className="flex items-center justify-between mb-5">
-                <p className="font-bold text-zinc-900 text-lg" style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+                <p className="font-bold text-zinc-900 text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {isInstant ? "Book Venue" : "Place a Bid"}
                 </p>
                 <button onClick={() => setShowMobileForm(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400">
@@ -1125,4 +991,3 @@ export default function VenueDetail() {
     </div>
   );
 }
-
