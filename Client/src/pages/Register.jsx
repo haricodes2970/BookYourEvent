@@ -439,19 +439,6 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Language switcher — bottom right (same as Login) */}
-      <div className="fixed bottom-4 right-4 z-20 flex items-center gap-2 bg-white/80 backdrop-blur-sm
-        border border-zinc-200 rounded-full px-3 py-1.5 shadow-sm">
-        <span className="text-xs text-zinc-500" style={{ fontFamily: "'DM Sans', sans-serif" }}>Language</span>
-        <select className="text-xs text-zinc-700 bg-transparent outline-none font-medium"
-          style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          <option>English</option>
-          <option>हिन्दी</option>
-          <option>తెలుగు</option>
-          <option>தமிழ்</option>
-          <option>ಕನ್ನಡ</option>
-        </select>
-      </div>
     </div>
   );
 }

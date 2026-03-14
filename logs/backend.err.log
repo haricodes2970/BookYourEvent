@@ -1,0 +1,3 @@
+Expiry job error: getaddrinfo ENOTFOUND ac-c8aapxa-shard-00-00.jpszdnj.mongodb.net
+Expiry job error: connect EHOSTUNREACH 159.41.226.1:27017
+^C^C

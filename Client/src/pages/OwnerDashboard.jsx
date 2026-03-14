@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
 import { formatINR, formatDateIN, timeAgo, truncate } from "../utils/helpers";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Icon = ({ d, size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={2} strokeLinecap="round"
@@ -31,11 +31,12 @@ const ICONS = {
   send:      "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
   zap:       "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
   toggle:    "M17 7h1a5 5 0 010 10h-1M7 7H6a5 5 0 000 10h1M8 12h8",
+  alert:     "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
 };
 
 // Gradient constants
 const G = {
-  hero:    "linear-gradient(135deg,#059669 0%,#0d9488 35%,#7c3aed 70%,#4f46e5 100%)",
+  hero:    "linear-gradient(135deg,#3DAA6E 0%,#6B4FBB 100%)",
   violet:  "linear-gradient(135deg,#4f46e5,#7c3aed)",
   amber:   "linear-gradient(135deg,#d97706,#f59e0b)",
   emerald: "linear-gradient(135deg,#059669,#14b8a6)",
@@ -43,7 +44,7 @@ const G = {
   red:     "linear-gradient(135deg,#dc2626,#e11d48)",
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AMENITIES = [
   "AC", "Parking", "WiFi", "Stage", "Catering", "DJ Setup",
   "Generator", "CCTV", "Security", "Elevator", "Wheelchair Access", "Swimming Pool",
@@ -54,7 +55,7 @@ const VENUE_TYPES = [
   "Convention Centre", "Terrace", "Studio", "Sports Ground", "Other",
 ];
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Toast({ toasts }) {
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
@@ -82,12 +83,15 @@ function useToast() {
   return { toasts, push };
 }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Badge({ status }) {
   const map = {
     pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
     approved:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    confirmed:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     rejected:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    cancelled:  "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    canceled:   "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     paid:       "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
     bid_raised: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     expired:    "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400",
@@ -99,7 +103,7 @@ function Badge({ status }) {
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, sub, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -115,39 +119,41 @@ function StatCard({ label, value, sub, grad }) {
   );
 }
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
-function HeroBanner({ name }) {
+// â”€â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function KpiCard({ label, value, icon, tone }) {
+  const tones = {
+    teal:   "bg-emerald-100 text-emerald-600",
+    purple: "bg-purple-100 text-purple-600",
+    amber:  "bg-amber-100 text-amber-600",
+    cyan:   "bg-cyan-100 text-cyan-600",
+  };
   return (
-    <div className="relative rounded-2xl overflow-hidden p-7" style={{ background: G.hero }}>
-      <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-white/5" />
-      <div className="absolute right-8 -bottom-20 w-40 h-40 rounded-full bg-white/5" />
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5 relative">
+      <div className={`absolute right-4 top-4 w-9 h-9 rounded-full flex items-center justify-center ${tones[tone] || tones.teal}`}>
+        <Icon d={icon} size={16} />
+      </div>
+      <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 font-semibold">{label}</p>
+      <p className="text-2xl font-black text-zinc-900 dark:text-white mt-2">{value}</p>
+    </div>
+  );
+}
+
+// â”€â”€â”€ Hero Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function HeroBanner() {
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-8 h-[200px] flex items-center" style={{ background: G.hero }}>
+      <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10" />
+      <div className="absolute right-10 -bottom-16 w-40 h-40 rounded-full bg-white/10" />
+      <div className="absolute left-10 top-8 w-20 h-20 rotate-12 bg-white/10 rounded-2xl" />
       <div className="relative z-10">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Owner Dashboard</p>
-        <h1 className="text-3xl font-black text-white mb-1">Welcome back, {name?.split(" ")[0] || "there"} 👋</h1>
-        <p className="text-white/65 text-sm">Oversee your venues &amp; bookings</p>
+        <h1 className="text-3xl md:text-4xl font-black text-white">Owner Dashboard</h1>
+        <p className="text-white/80 text-sm md:text-base mt-2">Oversee Venues &amp; Bookings</p>
       </div>
     </div>
   );
 }
 
-// ─── Logo SVG ─────────────────────────────────────────────────────────────────
-function LogoBadge() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="6" y="10" width="28" height="24" rx="4" fill="white" opacity="0.9"/>
-      <rect x="6" y="10" width="28" height="8" rx="4" fill="white" opacity="0.3"/>
-      <rect x="11" y="24" width="5" height="2" rx="1" fill="#059669" opacity="0.8"/>
-      <rect x="18" y="24" width="5" height="2" rx="1" fill="#059669" opacity="0.8"/>
-      <rect x="25" y="24" width="5" height="2" rx="1" fill="#059669" opacity="0.8"/>
-      <rect x="11" y="29" width="5" height="2" rx="1" fill="#059669" opacity="0.5"/>
-      <rect x="18" y="29" width="5" height="2" rx="1" fill="#059669" opacity="0.5"/>
-      <rect x="14" y="7" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
-      <rect x="23" y="7" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
-    </svg>
-  );
-}
-
-// ─── Venue Modal (Add / Edit) ─────────────────────────────────────────────────
+// â”€â”€â”€ Venue Modal (Add / Edit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function VenueModal({ mode, venue, onClose, onSave, push }) {
   const [form, setForm] = useState({
     name:         venue?.name         || "",
@@ -225,7 +231,7 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
             {[
               ["name",         "Venue Name",          "col-span-2"],
               ["description",  "Description",         "col-span-2"],
-              ["pricePerHour", "Price per Hour (₹)",  "col-span-1"],
+              ["pricePerHour", "Price per Hour (â‚¹)",  "col-span-1"],
               ["capacity",     "Capacity (people)",   "col-span-1"],
               ["city",         "City",                "col-span-1"],
               ["pincode",      "Pincode",             "col-span-1"],
@@ -254,7 +260,7 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
                   className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700
                     bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
                     focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="">Select type…</option>
+                  <option value="">Select typeâ€¦</option>
                   {VENUE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -299,7 +305,7 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
             <button onClick={submit} disabled={loading}
               className="px-5 py-2 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
               style={{ background: G.emerald }}>
-              {loading ? "Saving…" : mode === "add" ? "Add Venue" : "Save Changes"}
+              {loading ? "Savingâ€¦" : mode === "add" ? "Add Venue" : "Save Changes"}
             </button>
           </div>
         </motion.div>
@@ -308,8 +314,8 @@ function VenueModal({ mode, venue, onClose, onSave, push }) {
   );
 }
 
-// ─── Chat Panel ───────────────────────────────────────────────────────────────
-function ChatPanel() {
+// â”€â”€â”€ Chat Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function ChatPanel({ dark }) {
   const { user }               = useAuth();
   const [chats,    setChats]   = useState([]);
   const [active,   setActive]  = useState(null);
@@ -318,6 +324,13 @@ function ChatPanel() {
   const [sending,  setSending] = useState(false);
   const [loading,  setLoading] = useState(false);
   const bottomRef              = useRef(null);
+  const isTyping               = false;
+
+  const typingStyles = `
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+    .dot { width:8px; height:8px; border-radius:50%; background:#9CA3AF; animation: bounce 1s infinite; display:inline-block; margin: 0 2px; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+  `;
 
   // FIX: handle both { chats: [] } and plain array
   useEffect(() => {
@@ -407,8 +420,9 @@ function ChatPanel() {
   });
 
   return (
-    <div className="flex h-full gap-4">
-      {/* ── Contact List ── */}
+    <div className="flex h-full gap-4" data-theme={dark ? "dark" : "light"}>
+      <style>{typingStyles}</style>
+      {/* â”€â”€ Contact List â”€â”€ */}
       <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
           <p className="font-bold text-zinc-900 dark:text-white text-sm">Messages</p>
@@ -423,12 +437,14 @@ function ChatPanel() {
             const lastMsg = c.lastMessage?.text || c.lastMessage?.content || "";
             return (
               <button key={c._id} onClick={() => setActive(c)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                  ${isActive ? "bg-emerald-50 dark:bg-emerald-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-l-[3px]
+                  ${isActive
+                    ? "bg-zinc-50 dark:bg-zinc-700/40 border-[#3DAA6E]"
+                    : "border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
                 <img src={avatarUrl(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate mt-0.5">{lastMsg || op?.email || "—"}</p>
+                  <p className="text-xs text-zinc-400 truncate mt-0.5">{lastMsg || op?.email || "â€”"}</p>
                 </div>
               </button>
             );
@@ -436,7 +452,7 @@ function ChatPanel() {
         </div>
       </div>
 
-      {/* ── Message Area ── */}
+      {/* â”€â”€ Message Area â”€â”€ */}
       <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         {!active ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -453,7 +469,10 @@ function ChatPanel() {
               <img src={avatarUrl(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-zinc-900 dark:text-white text-sm truncate">{opponent(active)?.name || "User"}</p>
-                <p className="text-xs text-zinc-400 truncate">{opponent(active)?.email || ""}</p>
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#3DAA6E]" />
+                  <span>Online</span>
+                </div>
               </div>
               <button onClick={() => { setActive(null); setMessages([]); }}
                 className="ml-auto p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
@@ -462,7 +481,7 @@ function ChatPanel() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-1">
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col justify-end gap-2">
               {loading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -500,27 +519,31 @@ function ChatPanel() {
                         <div className="px-4 py-2.5 text-sm leading-relaxed"
                           style={mine
                             ? {
-                                background: G.emerald,
+                                background: "#3DAA6E",
                                 color: "#fff",
                                 borderRadius: "18px 18px 4px 18px",
                                 opacity: m._temp ? 0.65 : 1,
                               }
                             : {
-                                background: "rgb(244 244 245)",
-                                color: "#18181b",
+                                background: dark ? "#2A2A2A" : "#F3F4F6",
+                                color: dark ? "#E5E7EB" : "#111827",
                                 borderRadius: "18px 18px 18px 4px",
                               }
                           }>
                           {body}
                         </div>
-                        <p className="text-[10px] mt-0.5 px-1 text-zinc-400">
-                          {fmtTime(m.createdAt)}
-                          {mine && <span className="ml-1">{m._temp ? "·" : "✓"}</span>}
-                        </p>
+                        <p className="text-[10px] mt-1 px-1 text-zinc-400">{fmtTime(m.createdAt)}</p>
                       </div>
                     </div>
                   );
                 })
+              )}
+              {isTyping && (
+                <div className="flex items-center ml-1">
+                  <span className="dot" />
+                  <span className="dot" />
+                  <span className="dot" />
+                </div>
               )}
               <div ref={bottomRef} />
             </div>
@@ -531,10 +554,10 @@ function ChatPanel() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Type a message… (Enter to send)"
+                placeholder="Type a message..."
                 rows={1}
                 className="flex-1 px-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm
-                  resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-zinc-400"
+                  resize-none focus:outline-none focus:ring-2 focus:ring-[#3DAA6E] placeholder:text-zinc-400"
                 style={{ maxHeight: "120px" }}
                 onInput={(e) => {
                   e.target.style.height = "auto";
@@ -543,7 +566,7 @@ function ChatPanel() {
               />
               <button onClick={send} disabled={sending || !text.trim()}
                 className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-                style={{ background: G.emerald }}>
+                style={{ background: "#3DAA6E" }}>
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -554,7 +577,7 @@ function ChatPanel() {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function OwnerDashboard() {
   const { user, logout, login } = useAuth();
   const navigate                = useNavigate();
@@ -568,12 +591,15 @@ export default function OwnerDashboard() {
   const [loading,  setLoading]  = useState(true);
   const [modal,    setModal]    = useState(null);
   const [unreadChats, setUnreadChats] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+  const userMenuRef = useRef(null);
 
   const [editMode,       setEditMode]       = useState(false);
   const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // REMOVED: lang, LANGS, currentFont — multi-language feature removed entirely
+  // REMOVED: lang, LANGS, currentFont â€” multi-language feature removed entirely
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -583,6 +609,15 @@ export default function OwnerDashboard() {
   useEffect(() => {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
   }, [user]);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -646,203 +681,316 @@ export default function OwnerDashboard() {
   };
 
   const pendingBookings = bookings.filter((b) => ["pending", "bid_raised"].includes(b.status));
+  const upcomingBookings = bookings.filter((b) => {
+    if (!b.eventDate) return false;
+    const dt = new Date(b.eventDate);
+    return dt >= new Date() && ["approved", "confirmed", "paid"].includes(b.status);
+  });
+  const activityBookings = [...bookings]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+  const showcaseVenues = venues.slice(0, 4);
   const avatar = (name) =>
     `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=059669&fontColor=ffffff`;
 
-  const TABS = [
-    { key: "overview",  icon: ICONS.overview },
-    { key: "venues",    icon: ICONS.venues },
-    { key: "bookings",  icon: ICONS.bookings },
-    { key: "chat",      icon: ICONS.chat,    dot: unreadChats },
-    { key: "profile",   icon: ICONS.profile },
-  ];
-
   return (
-    // FIXED: removed dynamic fontFamily — no more language-based font injection
+    // FIXED: removed dynamic fontFamily â€” no more language-based font injection
     <div style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
-      className={`min-h-screen flex ${dark ? "dark" : ""} bg-stone-50 dark:bg-zinc-950`}>
+      className="min-h-screen bg-[#F6F7F9] dark:bg-zinc-950">
 
       <Toast toasts={toasts} />
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
-        bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
-
-        {/* FIXED: Real logo instead of "B" text */}
-        <button onClick={() => navigate("/")}
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
-          style={{ background: G.emerald }}>
-          <LogoBadge />
-        </button>
-
-        {TABS.map(({ key, icon, dot }) => (
-          <button key={key} onClick={() => setTab(key)} title={key}
-            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
-              ${tab === key
-                ? "text-white"
-                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-            style={tab === key ? { background: G.emerald, boxShadow: "0 4px 15px rgba(5,150,105,0.4)" } : {}}>
-            <Icon d={icon} size={18} />
-            {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            {key === "overview" && stats.pending > 0 && tab !== key && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full text-white text-[9px] flex items-center justify-center font-bold"
-                style={{ background: G.amber }}>{stats.pending}</span>
-            )}
+      {/* Top Nav */}
+      <header className="sticky top-0 z-40 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+          <button onClick={() => navigate("/")} className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#3DAA6E] flex items-center justify-center overflow-hidden">
+              {logoError ? (
+                <span className="text-[13px] font-bold text-white leading-4 text-center">
+                  BookYour<br />Event
+                </span>
+              ) : (
+                <img src="/logo.png" alt="BookYourEvent"
+                  style={{ width: 40, height: 40, objectFit: "contain" }}
+                  onError={() => setLogoError(true)} />
+              )}
+            </div>
+            <span className="hidden sm:block font-serif text-lg font-bold text-zinc-900 dark:text-white">
+              BookYourEvent
+            </span>
           </button>
-        ))}
 
-        <div className="flex-1" />
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-zinc-600 dark:text-zinc-200">
+            <button onClick={() => setTab("venues")}
+              className={`transition-colors ${tab === "venues" ? "text-[#3DAA6E]" : "hover:text-[#3DAA6E]"}`}>
+              My Venues
+            </button>
+            <button onClick={() => setTab("bookings")}
+              className={`transition-colors ${tab === "bookings" ? "text-[#3DAA6E]" : "hover:text-[#3DAA6E]"}`}>
+              Bookings
+            </button>
+            <button onClick={() => setTab("overview")}
+              className={`transition-colors ${tab === "overview" ? "text-[#3DAA6E]" : "hover:text-[#3DAA6E]"}`}>
+              Availability
+            </button>
+            <Link to="/about" className="hover:text-[#3DAA6E] transition-colors">About</Link>
+            <Link to="/help" className="hover:text-[#3DAA6E] transition-colors">Contact</Link>
+          </nav>
 
-        <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
-          <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
-        </button>
+          <div className="ml-auto flex items-center gap-3">
+            <button onClick={() => setDark((p) => !p)}
+              className="w-9 h-9 rounded-full border border-zinc-200 dark:border-zinc-700
+                text-zinc-600 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center">
+              <Icon d={dark ? ICONS.sun : ICONS.moon} size={16} />
+            </button>
 
-        <button onClick={() => setTab("profile")} className="mt-1">
-          <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover ring-2 ring-emerald-400/40" />
-        </button>
+            <div ref={userMenuRef} className="relative">
+              <button onClick={() => setUserMenuOpen((p) => !p)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                <div className="relative">
+                  <img src={user?.avatar || avatar(user?.name)} alt=""
+                    className="w-8 h-8 rounded-full object-cover" />
+                  {unreadChats && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />}
+                </div>
+                <span className="hidden sm:block text-sm font-semibold text-zinc-900 dark:text-white">
+                  Hi, {user?.name?.split(" ")[0] || "Owner"}
+                </span>
+              </button>
 
-        <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors mt-1 mb-1">
-          <Icon d={ICONS.logout} size={18} />
-        </button>
-      </aside>
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 shadow-lg overflow-hidden">
+                  <button onClick={() => { setModal({ type: "add" }); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    Add Venue
+                  </button>
+                  <button onClick={() => { setTab("profile"); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    Account Settings
+                  </button>
+                  <button onClick={() => { logout(); navigate("/login"); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    Log Out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
 
-      {/* ── Main ────────────────────────────────────────────────── */}
-      <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
+      {/* Main */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
-            className="max-w-6xl mx-auto">
+            className="space-y-8">
 
-            {/* ── Overview ──────────────────────────────────────── */}
+            {/* â”€â”€ Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "overview" && (
               <div className="space-y-6">
-                <HeroBanner name={user?.name} />
+                <HeroBanner />
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard label="Total Venues"  value={stats.venues}           grad={G.violet}  />
-                  <StatCard label="Pending Bids"  value={stats.pending}           grad={G.amber}   />
-                  <StatCard label="Total Revenue" value={formatINR(stats.revenue)} grad={G.emerald} />
-                  <StatCard label="Total Bookings" value={stats.total}            grad={G.sky}     />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <KpiCard label="Total Venues" value={stats.venues} icon={ICONS.venues} tone="teal" />
+                  <KpiCard label="Upcoming Bookings" value={upcomingBookings.length} icon={ICONS.bookings} tone="purple" />
+                  <KpiCard label="Monthly Revenue" value={formatINR(stats.revenue)} icon={ICONS.zap} tone="amber" />
+                  <KpiCard label="Pending Requests" value={pendingBookings.length} icon={ICONS.alert} tone="cyan" />
                 </div>
 
-                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                    <Icon d={ICONS.zap} size={16} className="text-amber-500" />
-                    <h2 className="font-bold text-zinc-900 dark:text-white">Pending Bids</h2>
-                    {pendingBookings.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                        style={{ background: G.amber }}>{pendingBookings.length}</span>
-                    )}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">My Venues</h2>
+                  <button onClick={() => setTab("venues")}
+                    className="text-sm font-semibold text-[#3DAA6E] hover:underline">
+                    View all
+                  </button>
+                </div>
+
+                {showcaseVenues.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-8 text-center text-zinc-500">
+                    No venues yet
                   </div>
-                  {loading ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
-                  ) : pendingBookings.length === 0 ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">No pending bids</p>
-                  ) : (
-                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
-                      {pendingBookings.map((b) => (
-                        <div key={b._id} className="px-6 py-4 flex items-center gap-4 flex-wrap hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-zinc-900 dark:text-white text-sm">{b.venue?.name || "Venue"}</p>
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                              {b.booker?.name || "Booker"} · {b.guests} guests · {formatDateIN(b.eventDate)}
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {showcaseVenues.map((v) => {
+                      const ratingValue = Number(v.rating || v.avgRating || v.averageRating || 0);
+                      const starCount = Math.max(1, Math.min(5, Math.round(ratingValue || 4)));
+                      const status = !v.isApproved
+                        ? { label: "Pending", style: "bg-amber-100 text-amber-700" }
+                        : v.isActive
+                          ? { label: "Active", style: "bg-emerald-100 text-emerald-700" }
+                          : { label: "Unavailable", style: "bg-zinc-200 text-zinc-600" };
+                      const canToggle = !!v.isApproved;
+                      return (
+                        <div key={v._id} className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                          <div className="relative h-40 bg-zinc-100 dark:bg-zinc-800">
+                            {v.images?.[0] ? (
+                              <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon d={ICONS.venues} size={32} className="text-zinc-300 dark:text-zinc-600" />
+                              </div>
+                            )}
+                            <span
+                              onClick={canToggle ? () => toggleVenueActive(v) : undefined}
+                              title={canToggle ? "Toggle availability" : undefined}
+                              className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${status.style} ${canToggle ? "cursor-pointer" : ""}`}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <div className="p-4 space-y-1">
+                            <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {v.location?.city || v.city || "â€”"}
                             </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-zinc-400">Bid Amount</p>
-                            <p className="font-black text-lg text-amber-500">{formatINR(b.bidAmount)}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => updateBookingStatus(b._id, "approved")}
-                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                              style={{ background: G.emerald }}>
-                              Approve
-                            </button>
-                            <button onClick={() => updateBookingStatus(b._id, "rejected")}
-                              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold hover:opacity-90 transition-opacity"
-                              style={{ background: G.red }}>
-                              Reject
-                            </button>
+                            <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                              {formatINR(v.pricePerHour)}/hr
+                            </p>
+                            <div className="text-xs text-[#C4973A]">
+                              {"\u2605".repeat(starCount)}{"\u2606".repeat(5 - starCount)}
+                            </div>
+                            <div className="pt-2 grid grid-cols-2 gap-2">
+                              <button onClick={() => setModal({ type: "edit", venue: v })}
+                                className="py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                Edit Venue
+                              </button>
+                              <button onClick={() => setTab("bookings")}
+                                className="py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                View Bookings
+                              </button>
+                            </div>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                      <h3 className="font-bold text-zinc-900 dark:text-white">Recent Bookings</h3>
+                      <button onClick={() => setTab("bookings")}
+                        className="text-sm font-semibold text-[#3DAA6E] hover:underline">
+                        View all
+                      </button>
+                    </div>
+                    {loading ? (
+                      <p className="text-center text-zinc-400 py-12 text-sm">Loadingâ€¦</p>
+                    ) : activityBookings.length === 0 ? (
+                      <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                              {["Venue", "Guests", "Status"].map((h) => (
+                                <th key={h} className="text-left px-5 py-3 text-xs font-bold text-zinc-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+                            {activityBookings.map((b) => (
+                              <tr key={b._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                <td className="px-5 py-3 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
+                                  {truncate(b.venue?.name || "â€”", 20)}
+                                </td>
+                                <td className="px-5 py-3 text-zinc-500 dark:text-zinc-400">{b.guests || "â€”"}</td>
+                                <td className="px-5 py-3"><Badge status={b.status} /></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-zinc-900 dark:text-white">Availability</h3>
+                      <span className="text-xs text-zinc-400">This month</span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2 text-xs text-zinc-400">
+                      {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
+                        <div key={d} className="text-center">{d}</div>
+                      ))}
+                      {Array.from({ length: 28 }).map((_, i) => (
+                        <div key={i} className="h-7 rounded-md bg-zinc-100 dark:bg-zinc-800" />
                       ))}
                     </div>
-                  )}
+                    {venues.length === 0 && (
+                      <p className="mt-4 text-center text-sm text-zinc-400">No venues yet</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* ── My Venues ─────────────────────────────────────── */}
+            {/* â”€â”€ My Venues â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "venues" && (
               <div className="space-y-5">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <h1 className="text-2xl font-black text-zinc-900 dark:text-white">My Venues</h1>
-                  <button onClick={() => setModal({ type: "add" })}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold hover:opacity-90 transition-opacity"
-                    style={{ background: G.emerald }}>
-                    <Icon d={ICONS.plus} size={16} /> Add Venue
-                  </button>
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                  <p className="text-center text-zinc-400 py-16 text-sm">Loadingâ€¦</p>
                 ) : venues.length === 0 ? (
-                  <div className="py-20 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
-                    <p className="text-zinc-400 mb-4">No venues yet. Add your first!</p>
-                    <button onClick={() => setModal({ type: "add" })}
-                      className="px-6 py-2.5 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity"
-                      style={{ background: G.emerald }}>
-                      + Add Venue
-                    </button>
+                  <div className="py-20 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                    <p className="text-zinc-400">No venues yet</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {venues.map((v) => {
-                      const img = v.images?.[0];
-                      const statusLabel = !v.isApproved ? "Pending" : v.isActive ? "Active" : "Inactive";
-                      const statusStyle = !v.isApproved
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      const ratingValue = Number(v.rating || v.avgRating || v.averageRating || 0);
+                      const starCount = Math.max(1, Math.min(5, Math.round(ratingValue || 4)));
+                      const status = !v.isApproved
+                        ? { label: "Pending", style: "bg-amber-100 text-amber-700" }
                         : v.isActive
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                          : "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400";
+                          ? { label: "Active", style: "bg-emerald-100 text-emerald-700" }
+                          : { label: "Unavailable", style: "bg-zinc-200 text-zinc-600" };
+                      const canToggle = !!v.isApproved;
                       return (
-                        <motion.div key={v._id} layout whileHover={{ y: -4 }}
-                          className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden group
-                            shadow-sm hover:shadow-xl hover:shadow-emerald-500/10 transition-shadow">
+                        <div key={v._id} className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 overflow-hidden">
                           <div className="relative h-40 bg-zinc-100 dark:bg-zinc-800">
-                            {img ? (
-                              <img src={img} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            {v.images?.[0] ? (
+                              <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                                <Icon d={ICONS.venues} size={32} className="text-zinc-300 dark:text-zinc-600" />
                               </div>
                             )}
-                            <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold ${statusStyle}`}>
-                              {statusLabel}
+                            <span
+                              onClick={canToggle ? () => toggleVenueActive(v) : undefined}
+                              title={canToggle ? "Toggle availability" : undefined}
+                              className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold ${status.style} ${canToggle ? "cursor-pointer" : ""}`}>
+                              {status.label}
                             </span>
                           </div>
-                          <div className="p-4">
+                          <div className="p-4 space-y-1">
                             <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                            <p className="text-sm text-zinc-400 mt-0.5">
-                              {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {v.location?.city || v.city || "â€”"}
                             </p>
-                            <div className="mt-3 grid grid-cols-2 gap-2">
+                            <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                              {formatINR(v.pricePerHour)}/hr
+                            </p>
+                            <div className="text-xs text-[#C4973A]">
+                              {"\u2605".repeat(starCount)}{"\u2606".repeat(5 - starCount)}
+                            </div>
+                            <div className="pt-2 grid grid-cols-2 gap-2">
                               <button onClick={() => setModal({ type: "edit", venue: v })}
-                                className="py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-400
-                                  hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                                Edit
+                                className="py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                Edit Venue
                               </button>
-                              <button onClick={() => toggleVenueActive(v)}
-                                className="py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                                style={{ background: v.isActive ? G.amber : G.emerald }}>
-                                {v.isActive ? "Deactivate" : "Activate"}
+                              <button onClick={() => setTab("bookings")}
+                                className="py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                View Bookings
                               </button>
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>
@@ -850,13 +998,13 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── All Bookings ──────────────────────────────────── */}
+            {/* â”€â”€ All Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "bookings" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">All Bookings</h1>
                 <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
                   {loading ? (
-                    <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                    <p className="text-center text-zinc-400 py-16 text-sm">Loadingâ€¦</p>
                   ) : bookings.length === 0 ? (
                     <p className="text-center text-zinc-400 py-16 text-sm">No bookings found</p>
                   ) : (
@@ -873,9 +1021,9 @@ export default function OwnerDashboard() {
                           {bookings.map((b) => (
                             <tr key={b._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                               <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
-                                {truncate(b.venue?.name || "—", 20)}
+                                {truncate(b.venue?.name || "â€”", 20)}
                               </td>
-                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{b.booker?.name || "—"}</td>
+                              <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{b.booker?.name || "â€”"}</td>
                               <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{formatDateIN(b.eventDate)}</td>
                               <td className="px-5 py-4 font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatINR(b.bidAmount)}</td>
                               <td className="px-5 py-4"><Badge status={b.status} /></td>
@@ -906,17 +1054,17 @@ export default function OwnerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ──────────────────────────────────────────── */}
+            {/* â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "chat" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
-                  <ChatPanel />
+                  <ChatPanel dark={dark} />
                 </div>
               </div>
             )}
 
-            {/* ── Profile ───────────────────────────────────────── */}
+            {/* â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Profile</h1>
@@ -965,7 +1113,7 @@ export default function OwnerDashboard() {
                           <button onClick={handleSaveProfile} disabled={profileLoading}
                             className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
                             style={{ background: G.emerald }}>
-                            {profileLoading ? "Saving…" : "Save Changes"}
+                            {profileLoading ? "Savingâ€¦" : "Save Changes"}
                           </button>
                         </div>
                       </motion.div>
@@ -979,7 +1127,6 @@ export default function OwnerDashboard() {
                   <StatCard label="Revenue"  value={formatINR(stats.revenue)} grad={G.emerald} />
                 </div>
 
-                {/* REMOVED: Language section — multi-language feature removed */}
 
                 <div className="flex flex-col gap-3">
                   <button onClick={handleSwitchRole}
@@ -1000,7 +1147,7 @@ export default function OwnerDashboard() {
         </AnimatePresence>
       </main>
 
-      {/* ── Venue Modal ─────────────────────────────────────────── */}
+      {/* â”€â”€ Venue Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {modal && (
         <VenueModal
           mode={modal.type}
@@ -1013,3 +1160,5 @@ export default function OwnerDashboard() {
     </div>
   );
 }
+
+

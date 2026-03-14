@@ -42,7 +42,7 @@ exports.openChat = async (req, res) => {
     // ── KEY FIX: Find existing chat between these two users ──────────────
     const existingChat = await Chat.findOne({
       participants: { $all: [currentUserId, targetUserId], $size: 2 },
-    }).populate('participants', 'name email avatar');
+    }).populate('participants', 'name username email avatar');
 
     if (existingChat) {
       return res.json(existingChat);
@@ -55,7 +55,7 @@ exports.openChat = async (req, res) => {
     });
 
     const populated = await Chat.findById(newChat._id)
-      .populate('participants', 'name email avatar');
+      .populate('participants', 'name username email avatar');
 
     res.status(201).json(populated);
   } catch (err) {
@@ -67,7 +67,7 @@ exports.openChat = async (req, res) => {
 exports.getMyChats = async (req, res) => {
   try {
     const chats = await Chat.find({ participants: req.user._id })
-      .populate('participants', 'name email avatar')
+      .populate('participants', 'name username email avatar')
       .populate('lastMessage', 'text sender createdAt')
       .sort({ updatedAt: -1 });
 
@@ -125,7 +125,7 @@ exports.getChatMessages = async (req, res) => {
     if (!isParticipant) return res.status(403).json({ message: 'Not authorized' });
 
     const messages = await Message.find({ chat: req.params.chatId })
-      .populate('sender', 'name avatar')
+      .populate('sender', 'name username avatar')
       .sort({ createdAt: 1 });
 
     res.json(messages);
@@ -162,7 +162,7 @@ exports.sendMessage = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    const populated = await Message.findById(message._id).populate('sender', 'name avatar');
+    const populated = await Message.findById(message._id).populate('sender', 'name username avatar');
     res.status(201).json(populated);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

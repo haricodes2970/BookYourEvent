@@ -438,12 +438,8 @@ function ReviewsSection({ venueId, push }) {
 
   const fetchReviews = useCallback(async () => {
     try {
-      // FIXED: was "/api/reviews/venue/${venueId}" — wrong prefix AND wrong route shape.
-      // Backend route is GET /reviews/:venueId (no /venue/ segment).
-      // Response shape is { reviews: [], avgRating, total } — not a plain array.
       const res = await api.get(`/reviews/${venueId}`);
-      const list = Array.isArray(res.data) ? res.data : res.data?.reviews || [];
-      setReviews(list);
+      setReviews(Array.isArray(res.data) ? res.data : res.data?.reviews || []);
     } catch {}
   }, [venueId]);
 
@@ -455,11 +451,11 @@ function ReviewsSection({ venueId, push }) {
     // Also handle response shape { bookings: [] } or plain array
     api.get(`/bookings/my-bookings`).then((res) => {
       const bookings = Array.isArray(res.data) ? res.data : res.data?.bookings || [];
-      const hasBooking = bookings.some((b) =>
+      const hasPaid = bookings.some((b) =>
         (b.venue?._id === venueId || b.venue === venueId) &&
         ["paid", "confirmed", "approved"].includes(b.status)
       );
-      setCanReview(hasBooking);
+      setCanReview(hasPaid);
     }).catch(() => {});
   }, [user, venueId]);
 

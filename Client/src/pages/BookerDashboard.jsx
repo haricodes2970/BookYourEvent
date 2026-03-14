@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
 import { formatINR, formatDateIN, timeAgo, truncate } from "../utils/helpers";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Icon = ({ d, size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={2} strokeLinecap="round"
@@ -43,7 +43,7 @@ const G = {
   red:     "linear-gradient(135deg,#dc2626,#e11d48)",
 };
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Toast({ toasts }) {
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
@@ -71,7 +71,7 @@ function useToast() {
   return { toasts, push };
 }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Badge({ status }) {
   const map = {
     pending:    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
@@ -89,7 +89,7 @@ function Badge({ status }) {
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, grad }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -104,7 +104,7 @@ function StatCard({ label, value, grad }) {
   );
 }
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Hero Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function HeroBanner({ name }) {
   return (
     <div className="relative rounded-2xl overflow-hidden p-7" style={{ background: G.hero }}>
@@ -112,14 +112,14 @@ function HeroBanner({ name }) {
       <div className="absolute right-8 -bottom-20 w-40 h-40 rounded-full bg-white/5" />
       <div className="relative z-10">
         <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Booker Dashboard</p>
-        <h1 className="text-3xl font-black text-white mb-1">Hey, {name?.split(" ")[0] || "there"} 👋</h1>
+        <h1 className="text-3xl font-black text-white mb-1">Hey, {name?.split(" ")[0] || "there"} ðŸ‘‹</h1>
         <p className="text-white/65 text-sm">Here's your booking summary</p>
       </div>
     </div>
   );
 }
 
-// ─── Missing Credentials Popup ────────────────────────────────────────────────
+// â”€â”€â”€ Missing Credentials Popup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MissingCredentials({ user, onLater, onUpdateNow }) {
   const missing = [];
   if (!user?.phone) missing.push("phone number");
@@ -159,29 +159,8 @@ function MissingCredentials({ user, onLater, onUpdateNow }) {
   );
 }
 
-// ─── Logo SVG ─────────────────────────────────────────────────────────────────
-function LogoBadge({ gradient }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" rx="10" fill="none"/>
-      {/* Calendar base */}
-      <rect x="6" y="10" width="28" height="24" rx="4" fill="white" opacity="0.9"/>
-      <rect x="6" y="10" width="28" height="8" rx="4" fill="white" opacity="0.3"/>
-      {/* Calendar lines */}
-      <rect x="11" y="24" width="5" height="2" rx="1" fill="#4f46e5" opacity="0.7"/>
-      <rect x="18" y="24" width="5" height="2" rx="1" fill="#4f46e5" opacity="0.7"/>
-      <rect x="25" y="24" width="5" height="2" rx="1" fill="#4f46e5" opacity="0.7"/>
-      <rect x="11" y="29" width="5" height="2" rx="1" fill="#4f46e5" opacity="0.5"/>
-      <rect x="18" y="29" width="5" height="2" rx="1" fill="#4f46e5" opacity="0.5"/>
-      {/* Pin tops */}
-      <rect x="14" y="7" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
-      <rect x="23" y="7" width="3" height="6" rx="1.5" fill="white" opacity="0.9"/>
-    </svg>
-  );
-}
-
-// ─── Chat Panel ───────────────────────────────────────────────────────────────
-function ChatPanel({ user }) {
+// â”€â”€â”€ Chat Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function ChatPanel({ user, dark }) {
   const [chats,    setChats]    = useState([]);
   const [active,   setActive]   = useState(null);
   const [messages, setMessages] = useState([]);
@@ -189,6 +168,13 @@ function ChatPanel({ user }) {
   const [sending,  setSending]  = useState(false);
   const [loading,  setLoading]  = useState(false);
   const bottomRef               = useRef(null);
+  const isTyping                = false;
+
+  const typingStyles = `
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+    .dot { width:8px; height:8px; border-radius:50%; background:#9CA3AF; animation: bounce 1s infinite; display:inline-block; margin: 0 2px; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+  `;
 
   // FIX: handle both { chats: [] } and plain array responses
   useEffect(() => {
@@ -217,7 +203,7 @@ function ChatPanel({ user }) {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 40);
   }, [messages]);
 
-  // FIX: optimistic UI — show message instantly, replace with server response
+  // FIX: optimistic UI â€” show message instantly, replace with server response
   const send = async () => {
     if (!text.trim() || !active || sending) return;
     const draft = text.trim();
@@ -279,8 +265,9 @@ function ChatPanel({ user }) {
   });
 
   return (
-    <div className="flex h-full gap-4">
-      {/* ── Contact List ── */}
+    <div className="flex h-full gap-4" data-theme={dark ? "dark" : "light"}>
+      <style>{typingStyles}</style>
+      {/* â”€â”€ Contact List â”€â”€ */}
       <div className="w-72 flex-shrink-0 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-700">
           <p className="font-bold text-zinc-900 dark:text-white text-sm">Messages</p>
@@ -295,12 +282,14 @@ function ChatPanel({ user }) {
             const lastMsg = c.lastMessage?.text || c.lastMessage?.content || "";
             return (
               <button key={c._id} onClick={() => setActive(c)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
-                  ${isActive ? "bg-violet-50 dark:bg-violet-900/20" : "hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-l-[3px]
+                  ${isActive
+                    ? "bg-zinc-50 dark:bg-zinc-700/40 border-[#3DAA6E]"
+                    : "border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-700/50"}`}>
                 <img src={avatarUrl(op?.name)} alt="" className="w-9 h-9 rounded-full flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{op?.name || "User"}</p>
-                  <p className="text-xs text-zinc-400 truncate mt-0.5">{lastMsg || op?.email || "—"}</p>
+                  <p className="text-xs text-zinc-400 truncate mt-0.5">{lastMsg || op?.email || "â€”"}</p>
                 </div>
                 {c.unreadCount > 0 && (
                   <span className="ml-auto w-5 h-5 rounded-full text-white text-xs flex items-center justify-center flex-shrink-0 font-bold"
@@ -312,7 +301,7 @@ function ChatPanel({ user }) {
         </div>
       </div>
 
-      {/* ── Message Area ── */}
+      {/* â”€â”€ Message Area â”€â”€ */}
       <div className="flex-1 flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden">
         {!active ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -329,7 +318,10 @@ function ChatPanel({ user }) {
               <img src={avatarUrl(opponent(active)?.name)} alt="" className="w-8 h-8 rounded-full" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-zinc-900 dark:text-white text-sm truncate">{opponent(active)?.name || "User"}</p>
-                <p className="text-xs text-zinc-400 truncate">{opponent(active)?.email || ""}</p>
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#3DAA6E]" />
+                  <span>Online</span>
+                </div>
               </div>
               <button onClick={() => { setActive(null); setMessages([]); }}
                 className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400">
@@ -338,7 +330,7 @@ function ChatPanel({ user }) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-1">
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col justify-end gap-2">
               {loading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -379,29 +371,32 @@ function ChatPanel({ user }) {
                         <div className="px-4 py-2.5 text-sm leading-relaxed"
                           style={mine
                             ? {
-                                background: G.violet,
+                                background: "#3DAA6E",
                                 color: "#fff",
                                 borderRadius: "18px 18px 4px 18px",
                                 opacity: m._temp ? 0.65 : 1,
                               }
                             : {
-                                background: "rgb(244 244 245)",
-                                color: "#18181b",
+                                background: dark ? "#2A2A2A" : "#F3F4F6",
+                                color: dark ? "#E5E7EB" : "#111827",
                                 borderRadius: "18px 18px 18px 4px",
                               }
                           }
-                          // dark mode inline overrides
                         >
                           {body}
                         </div>
-                        <p className="text-[10px] mt-0.5 px-1 text-zinc-400">
-                          {fmtTime(m.createdAt)}
-                          {mine && <span className="ml-1">{m._temp ? "·" : "✓"}</span>}
-                        </p>
+                        <p className="text-[10px] mt-1 px-1 text-zinc-400">{fmtTime(m.createdAt)}</p>
                       </div>
                     </div>
                   );
                 })
+              )}
+              {isTyping && (
+                <div className="flex items-center ml-1">
+                  <span className="dot" />
+                  <span className="dot" />
+                  <span className="dot" />
+                </div>
               )}
               <div ref={bottomRef} />
             </div>
@@ -412,10 +407,10 @@ function ChatPanel({ user }) {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Type a message… (Enter to send)"
+                placeholder="Type a message..."
                 rows={1}
                 className="flex-1 px-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm
-                  resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400"
+                  resize-none focus:outline-none focus:ring-2 focus:ring-[#3DAA6E] placeholder:text-zinc-400"
                 style={{ maxHeight: "120px" }}
                 onInput={(e) => {
                   e.target.style.height = "auto";
@@ -424,7 +419,7 @@ function ChatPanel({ user }) {
               />
               <button onClick={send} disabled={sending || !text.trim()}
                 className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-                style={{ background: G.violet }}>
+                style={{ background: "#3DAA6E" }}>
                 <Icon d={ICONS.send} size={16} />
               </button>
             </div>
@@ -435,13 +430,13 @@ function ChatPanel({ user }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function BookerDashboard() {
   const { user, logout, login } = useAuth();
   const navigate                = useNavigate();
   const { toasts, push }        = useToast();
 
-  const [tab,  setTab]  = useState("overview");
+  const [tab,  setTab]  = useState("venues");
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("bookerTheme");
     if (saved === "dark") document.documentElement.classList.add("dark");
@@ -456,6 +451,10 @@ export default function BookerDashboard() {
   const [loading,   setLoading]   = useState(true);
 
   const [venueSearch,      setVenueSearch]      = useState("");
+  const [venueCategory,    setVenueCategory]    = useState("All");
+  const [userMenuOpen,     setUserMenuOpen]     = useState(false);
+  const [logoError,        setLogoError]        = useState(false);
+  const userMenuRef                              = useRef(null);
   const [bookingFilter,    setBookingFilter]    = useState("all");
   const [raiseBidId,       setRaiseBidId]       = useState(null);
   const [raiseBidAmount,   setRaiseBidAmount]   = useState("");
@@ -466,7 +465,7 @@ export default function BookerDashboard() {
   const [profileForm,    setProfileForm]    = useState({ name: "", username: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // REMOVED: lang, LANGS, currentFont — multi-language feature removed entirely
+  // REMOVED: lang, LANGS, currentFont â€” multi-language feature removed entirely
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -514,6 +513,15 @@ export default function BookerDashboard() {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
   }, [user]);
 
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   const handleRaiseBid = async (bookingId) => {
     if (!raiseBidAmount || isNaN(raiseBidAmount)) return push("Enter a valid amount", "error");
     try {
@@ -541,14 +549,23 @@ export default function BookerDashboard() {
     } catch { push("Switch failed", "error"); }
   };
 
-  const filteredVenues = venues.filter((v) =>
-    v.isActive !== false && (
-      !venueSearch ||
-      v.name?.toLowerCase().includes(venueSearch.toLowerCase()) ||
-      v.location?.city?.toLowerCase().includes(venueSearch.toLowerCase()) ||
-      v.city?.toLowerCase().includes(venueSearch.toLowerCase())
-    )
-  );
+  const filteredVenues = venues.filter((v) => {
+    if (v.isActive === false) return false;
+    const type = `${v.venueType || v.type || ""}`.toLowerCase();
+    const categoryMatch = venueCategory === "All"
+      ? true
+      : venueCategory === "Marriage Hall"
+        ? ["wedding", "marriage", "banquet", "hall"].some((k) => type.includes(k))
+        : type.includes(venueCategory.toLowerCase());
+    if (!categoryMatch) return false;
+    if (!venueSearch) return true;
+    const q = venueSearch.toLowerCase();
+    return (
+      v.name?.toLowerCase().includes(q) ||
+      v.location?.city?.toLowerCase().includes(q) ||
+      v.city?.toLowerCase().includes(q)
+    );
+  });
 
   const filteredBookings = bookings.filter((b) => {
     if (bookingFilter === "all") return true;
@@ -563,21 +580,13 @@ export default function BookerDashboard() {
   const avatar = (name) =>
     `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(name || "U")}&backgroundColor=6d28d9&fontColor=ffffff`;
 
-  const TABS = [
-    { key: "overview",  icon: ICONS.overview },
-    { key: "venues",    icon: ICONS.venues },
-    { key: "bookings",  icon: ICONS.bookings },
-    { key: "payments",  icon: ICONS.payments },
-    { key: "chat",      icon: ICONS.chat,    dot: unreadChats },
-    { key: "profile",   icon: ICONS.profile },
-  ];
-
   const BOOKING_FILTERS = ["all", "pending", "approved", "paid", "rejected", "expired"];
+  const CATEGORY_PILLS = ["All", "Marriage Hall", "Rooftop", "Resort", "Farmhouse", "Studio"];
 
   return (
-    // FIXED: removed dynamic fontFamily — no more language-based font injection
+    // FIXED: removed dynamic fontFamily â€” no more language-based font injection
     <div style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
-      className="min-h-screen flex bg-stone-50 dark:bg-zinc-950">
+      className="min-h-screen bg-[#F5F0E8] dark:bg-zinc-950">
 
       <Toast toasts={toasts} />
 
@@ -587,55 +596,110 @@ export default function BookerDashboard() {
           onUpdateNow={() => { setShowMissingPopup(false); setTab("profile"); setEditMode(true); }} />
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="fixed left-0 top-0 h-full w-[68px] flex flex-col items-center
-        bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 z-40 py-4 gap-1">
-
-        {/* FIXED: Real logo instead of "B" text */}
-        <button onClick={() => navigate("/")}
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
-          style={{ background: G.violet }}>
-          <LogoBadge />
-        </button>
-
-        {TABS.map(({ key, icon, dot }) => (
-          <button key={key} onClick={() => setTab(key)} title={key}
-            className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all
-              ${tab === key
-                ? "text-white"
-                : "text-zinc-400 dark:text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-            style={tab === key ? { background: G.violet, boxShadow: "0 4px 15px rgba(109,40,217,0.4)" } : {}}>
-            <Icon d={icon} size={18} />
-            {dot && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
+      {/* Top Nav */}
+      <header className="sticky top-0 z-40 border-b border-[#E6DDCF] dark:border-zinc-800 bg-[#F5F0E8]/90 dark:bg-zinc-950/90 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+          <button onClick={() => navigate("/")} className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#3DAA6E] flex items-center justify-center overflow-hidden">
+              {logoError ? (
+                <span className="text-[13px] font-bold text-white leading-4 text-center">
+                  BookYour<br />Event
+                </span>
+              ) : (
+                <img src="/logo.png" alt="BookYourEvent"
+                  style={{ width: 40, height: 40, objectFit: "contain" }}
+                  onError={() => setLogoError(true)} />
+              )}
+            </div>
+            <span className="hidden sm:block font-serif text-lg font-bold text-[#3E2F1C] dark:text-white">
+              BookYourEvent
+            </span>
           </button>
-        ))}
 
-        <div className="flex-1" />
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-[#5C4A2A] dark:text-zinc-200">
+            <button onClick={() => setTab("venues")}
+              className={`transition-colors ${tab === "venues" ? "text-[#3DAA6E]" : "hover:text-[#3DAA6E]"}`}>
+              Browse Venues
+            </button>
+            <button onClick={() => setTab("bookings")}
+              className={`transition-colors ${tab === "bookings" ? "text-[#3DAA6E]" : "hover:text-[#3DAA6E]"}`}>
+              My Bookings
+            </button>
+            <Link to="/about" className="hover:text-[#3DAA6E] transition-colors">About</Link>
+            <Link to="/help" className="hover:text-[#3DAA6E] transition-colors">Contact</Link>
+          </nav>
 
-        <button onClick={() => setDark((p) => !p)}
-          className="w-10 h-10 rounded-xl text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
-          <Icon d={dark ? ICONS.sun : ICONS.moon} size={18} />
-        </button>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="relative hidden sm:block">
+              <Icon d={ICONS.search} size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9C8B6A] dark:text-zinc-400 pointer-events-none" />
+              <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
+                placeholder="Search venues..."
+                className="w-48 lg:w-64 pl-9 pr-3 py-2 rounded-full border border-[#D1C4A8] bg-white
+                  text-sm text-[#3E2F1C] placeholder:text-[#9C8B6A]
+                  focus:outline-none focus:ring-2 focus:ring-[#C4973A]
+                  dark:bg-zinc-900 dark:text-white dark:border-zinc-700" />
+            </div>
 
-        <button onClick={() => setTab("profile")} className="mt-1">
-          <img src={user?.avatar || avatar(user?.name)} alt=""
-            className="w-9 h-9 rounded-full object-cover ring-2 ring-violet-400/40" />
-        </button>
+            <button onClick={() => setDark((p) => !p)}
+              className="w-9 h-9 rounded-full border border-[#D1C4A8] dark:border-zinc-700
+                text-[#5C4A2A] dark:text-zinc-200 hover:bg-white/70 dark:hover:bg-zinc-800 flex items-center justify-center">
+              <Icon d={dark ? ICONS.sun : ICONS.moon} size={16} />
+            </button>
 
-        <button onClick={() => { logout(); navigate("/login"); }} title="Logout"
-          className="w-10 h-10 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors mt-1 mb-1">
-          <Icon d={ICONS.logout} size={18} />
-        </button>
-      </aside>
+            <div ref={userMenuRef} className="relative">
+              <button onClick={() => setUserMenuOpen((p) => !p)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-full border border-[#D1C4A8] dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 hover:bg-[#FFF8ED] dark:hover:bg-zinc-800 transition-colors">
+                <img src={user?.avatar || avatar(user?.name)} alt=""
+                  className="w-8 h-8 rounded-full object-cover" />
+                <span className="hidden sm:block text-sm font-semibold text-[#3E2F1C] dark:text-white">
+                  {user?.name
+                    ? `${user.name.split(" ")[0]} ${user.name.split(" ")[1]?.[0] || ""}.`
+                    : "Account"}
+                </span>
+              </button>
 
-      {/* ── Main ────────────────────────────────────────────────── */}
-      <main className="ml-[68px] flex-1 min-h-screen p-6 lg:p-8">
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-[#E6DDCF] dark:border-zinc-700
+                  bg-white dark:bg-zinc-900 shadow-lg overflow-hidden">
+                  <button onClick={() => { setTab("profile"); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#3E2F1C] dark:text-zinc-200 hover:bg-[#FFF8ED] dark:hover:bg-zinc-800">
+                    Profile
+                  </button>
+                  <button onClick={() => { setTab("chat"); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#3E2F1C] dark:text-zinc-200 hover:bg-[#FFF8ED] dark:hover:bg-zinc-800 flex items-center justify-between">
+                    <span>Messages</span>
+                    {unreadChats && <span className="w-2 h-2 rounded-full bg-red-500" />}
+                  </button>
+                  <button onClick={() => { setTab("payments"); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-[#3E2F1C] dark:text-zinc-200 hover:bg-[#FFF8ED] dark:hover:bg-zinc-800">
+                    Payments
+                  </button>
+                  <button onClick={() => { logout(); navigate("/login"); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}
-            className="max-w-6xl mx-auto">
+            className="space-y-8">
 
-            {/* ── Overview ──────────────────────────────────────── */}
+            <div>
+              <h1 className="text-4xl font-serif font-bold text-[#3E2F1C] dark:text-white">Booker Dashboard</h1>
+              <p className="text-sm text-[#7A6645] dark:text-zinc-400 mt-1">Find and book the perfect venue</p>
+            </div>
+
+            {/* â”€â”€ Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "overview" && (
               <div className="space-y-6">
                 <HeroBanner name={user?.name} />
@@ -655,7 +719,7 @@ export default function BookerDashboard() {
                     </button>
                   </div>
                   {loading ? (
-                    <p className="text-center text-zinc-400 py-12 text-sm">Loading…</p>
+                    <p className="text-center text-zinc-400 py-12 text-sm">Loadingâ€¦</p>
                   ) : recentBookings.length === 0 ? (
                     <p className="text-center text-zinc-400 py-12 text-sm">No bookings yet</p>
                   ) : (
@@ -665,7 +729,7 @@ export default function BookerDashboard() {
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{b.venue?.name || "Venue"}</p>
                             <p className="text-xs text-zinc-400 mt-0.5">
-                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                              {formatDateIN(b.eventDate)} Â· {formatINR(b.bidAmount)} Â· {timeAgo(b.createdAt)}
                             </p>
                           </div>
                           <Badge status={b.status} />
@@ -677,71 +741,86 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Venues ────────────────────────────────────────── */}
+            {/* â”€â”€ Venues â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "venues" && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Browse Venues</h1>
-                  <div className="relative max-w-sm w-full">
-                    <Icon d={ICONS.search} size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <input value={venueSearch} onChange={(e) => setVenueSearch(e.target.value)}
-                      placeholder="Search by name or city…"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
-                        bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                        focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-zinc-400" />
-                  </div>
+              <div className="space-y-6">
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORY_PILLS.map((pill) => (
+                    <button key={pill} onClick={() => setVenueCategory(pill)}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors
+                        ${venueCategory === pill
+                          ? "bg-[#C4973A] text-white border-transparent"
+                          : "bg-white text-[#5C4A2A] border-[#D1C4A8] hover:border-[#C4973A]"}
+                        dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200`}>
+                      {pill}
+                    </button>
+                  ))}
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading venues…</p>
+                  <p className="text-center text-[#9C8B6A] dark:text-zinc-400 py-16 text-sm">Loading venuesâ€¦</p>
                 ) : filteredVenues.length === 0 ? (
-                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
-                    <p className="text-zinc-400">No venues found</p>
+                  <div className="py-16 text-center rounded-2xl border-2 border-dashed border-[#D1C4A8] dark:border-zinc-700">
+                    <p className="text-[#9C8B6A] dark:text-zinc-400">No venues found</p>
                     {venueSearch && (
-                      <button onClick={() => setVenueSearch("")} className="mt-2 text-sm text-violet-600 dark:text-violet-400 hover:underline">
+                      <button onClick={() => setVenueSearch("")}
+                        className="mt-2 text-sm text-[#3DAA6E] dark:text-emerald-400 hover:underline">
                         Clear search
                       </button>
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredVenues.map((v) => (
-                      <motion.div key={v._id} layout whileHover={{ y: -4 }}
-                        className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden group
-                          shadow-sm hover:shadow-xl hover:shadow-violet-500/10 transition-shadow">
-                        <div className="relative h-44 bg-zinc-100 dark:bg-zinc-800">
-                          {v.images?.[0] ? (
-                            <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredVenues.map((v) => {
+                      const ratingValue = Number(v.rating || v.avgRating || v.averageRating || 0);
+                      const starCount = Math.max(1, Math.min(5, Math.round(ratingValue || 4)));
+                      return (
+                        <motion.div key={v._id} layout whileHover={{ y: -4 }}
+                          className="rounded-xl bg-white dark:bg-zinc-900 overflow-hidden
+                            shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                          <div className="relative h-[200px] bg-zinc-100 dark:bg-zinc-800">
+                            {v.images?.[0] ? (
+                              <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon d={ICONS.venues} size={40} className="text-zinc-300 dark:text-zinc-600" />
+                              </div>
+                            )}
+                            {(v.venueType || v.type) && (
+                              <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-semibold bg-black/60 text-white">
+                                {v.venueType || v.type}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-5 space-y-2">
+                            <p className="text-xl font-bold text-[#3E2F1C] dark:text-white">{v.name}</p>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                              {v.location?.city || v.city || "â€”"}
+                            </p>
+                            <p className="text-sm text-[#5C4A2A] dark:text-zinc-300">
+                              <span className="font-semibold">Price per Hour:</span> {formatINR(v.pricePerHour)}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-[#5C4A2A] dark:text-zinc-300">Rating:</span>
+                              <span className="text-[#C4973A]">
+                                {"\u2605".repeat(starCount)}{"\u2606".repeat(5 - starCount)}
+                              </span>
                             </div>
-                          )}
-                          {(v.venueType || v.type) && (
-                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold bg-black/50 text-white backdrop-blur-sm">
-                              {v.venueType || v.type}
-                            </span>
-                          )}
-                        </div>
-                        <div className="p-4">
-                          <p className="font-bold text-zinc-900 dark:text-white truncate">{v.name}</p>
-                          <p className="text-sm text-zinc-400 mt-0.5">
-                            {v.location?.city || v.city || "—"} · {formatINR(v.pricePerHour)}/hr
-                          </p>
-                          <button onClick={() => navigate(`/venue/${v._id}`)}
-                            className="mt-3 w-full py-2 rounded-xl text-white text-sm font-bold hover:opacity-90 transition-opacity"
-                            style={{ background: G.violet }}>
-                            Book Now
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
+                            <button onClick={() => navigate(`/venue/${v._id}`)}
+                              className="mt-2 w-full py-2.5 rounded-lg text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                              style={{ background: "#C4973A" }}>
+                              View Details
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             )}
 
-            {/* ── My Bookings ───────────────────────────────────── */}
+            {/* â”€â”€ My Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "bookings" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">My Bookings</h1>
@@ -759,7 +838,7 @@ export default function BookerDashboard() {
                 </div>
 
                 {loading ? (
-                  <p className="text-center text-zinc-400 py-16 text-sm">Loading…</p>
+                  <p className="text-center text-zinc-400 py-16 text-sm">Loadingâ€¦</p>
                 ) : filteredBookings.length === 0 ? (
                   <div className="py-16 text-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700">
                     <p className="text-zinc-400">No bookings in this category</p>
@@ -776,7 +855,7 @@ export default function BookerDashboard() {
                               <Badge status={b.status} />
                             </div>
                             <p className="text-sm text-zinc-400 mt-1">
-                              {formatDateIN(b.eventDate)} · {formatINR(b.bidAmount)} · {timeAgo(b.createdAt)}
+                              {formatDateIN(b.eventDate)} Â· {formatINR(b.bidAmount)} Â· {timeAgo(b.createdAt)}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-wrap justify-end">
@@ -785,9 +864,9 @@ export default function BookerDashboard() {
                                 <div className="flex items-center gap-2">
                                   <input type="number" value={raiseBidAmount}
                                     onChange={(e) => setRaiseBidAmount(e.target.value)}
-                                    placeholder="New amount (₹)"
+                                    placeholder="New amount (â‚¹)"
                                     className="w-32 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700
-                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                                      bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#3DAA6E]" />
                                   <button onClick={() => handleRaiseBid(b._id)} className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
                                     <Icon d={ICONS.check} size={14} />
                                   </button>
@@ -818,7 +897,7 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Payments ──────────────────────────────────────── */}
+            {/* â”€â”€ Payments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "payments" && (
               <div className="space-y-5">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Payments</h1>
@@ -839,12 +918,12 @@ export default function BookerDashboard() {
                           {payments.map((p) => (
                             <tr key={p._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                               <td className="px-5 py-4 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">
-                                {truncate(p.booking?.venue?.name || p.venue?.name || "—", 22)}
+                                {truncate(p.booking?.venue?.name || p.venue?.name || "â€”", 22)}
                               </td>
                               <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{formatDateIN(p.createdAt)}</td>
                               <td className="px-5 py-4 font-bold text-violet-600 dark:text-violet-400 whitespace-nowrap">{formatINR(p.amount)}</td>
                               <td className="px-5 py-4"><Badge status={p.status || "paid"} /></td>
-                              <td className="px-5 py-4 font-mono text-xs text-zinc-400">{p.razorpayPaymentId || "—"}</td>
+                              <td className="px-5 py-4 font-mono text-xs text-zinc-400">{p.razorpayPaymentId || "â€”"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -855,17 +934,17 @@ export default function BookerDashboard() {
               </div>
             )}
 
-            {/* ── Chat ──────────────────────────────────────────── */}
+            {/* â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "chat" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Messages</h1>
                 <div style={{ height: "calc(100vh - 160px)" }}>
-                  <ChatPanel user={user} />
+                  <ChatPanel user={user} dark={dark} />
                 </div>
               </div>
             )}
 
-            {/* ── Profile ───────────────────────────────────────── */}
+            {/* â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {tab === "profile" && (
               <div className="max-w-xl space-y-5">
                 <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Profile</h1>
@@ -902,7 +981,7 @@ export default function BookerDashboard() {
                               onChange={(e) => setProfileForm((p) => ({ ...p, [k]: e.target.value }))}
                               className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700
                                 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm
-                                focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                                focus:outline-none focus:ring-2 focus:ring-[#3DAA6E]" />
                           </div>
                         ))}
                         <div className="flex gap-3 pt-1">
@@ -914,7 +993,7 @@ export default function BookerDashboard() {
                           <button onClick={handleSaveProfile} disabled={profileLoading}
                             className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
                             style={{ background: G.violet }}>
-                            {profileLoading ? "Saving…" : "Save Changes"}
+                            {profileLoading ? "Savingâ€¦" : "Save Changes"}
                           </button>
                         </div>
                       </motion.div>
@@ -922,7 +1001,6 @@ export default function BookerDashboard() {
                   </AnimatePresence>
                 </div>
 
-                {/* REMOVED: Language section — multi-language feature removed */}
 
                 <div className="flex flex-col gap-3">
                   <button onClick={handleSwitchRole}
@@ -945,3 +1023,6 @@ export default function BookerDashboard() {
     </div>
   );
 }
+
+
+

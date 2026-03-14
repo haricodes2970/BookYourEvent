@@ -1,0 +1,16 @@
+
+> bookyourevent-server@1.0.0 dev
+> nodemon Server.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node Server.js`[39m
+[2026-03-13T12:00:52.820Z] Server running on port 3000
+MongoDB Connected
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting child process[39m
+[32m[nodemon] starting `node Server.js`[39m
+[2026-03-13T15:26:30.317Z] Server running on port 3000
+MongoDB Connected

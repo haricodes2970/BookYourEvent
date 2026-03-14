@@ -21,6 +21,13 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
     }
   }, []);
 
+  const displayName = (person) => person?.username || person?.name || 'User';
+  const getId = (person) => {
+    if (!person) return '';
+    if (typeof person === 'string') return person;
+    return person._id || person.id || '';
+  };
+
   useEffect(() => {
     if (!isOpen || !otherUser?.id) {
       return;
@@ -171,7 +178,7 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
         >
           <div>
             <p style={{ margin: 0, fontWeight: 700, color: '#111827' }}>
-              {otherUser?.name || 'Chat'}
+              {displayName(otherUser)}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6b7280' }}>
               {otherUser?.role === 'venueOwner' ? 'Venue Owner' : 'User'}
@@ -211,8 +218,10 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
           )}
           {!loading &&
             messages.map((message) => {
-              const senderId = message?.sender?._id || message?.sender || '';
+              const sender = typeof message?.sender === 'object' ? message.sender : null;
+              const senderId = getId(sender) || message?.sender || '';
               const mine = sameUser(senderId, userId);
+              const senderLabel = mine ? 'You' : displayName(sender || otherUser);
               return (
                 <div
                   key={message?._id || `${senderId}-${message?.createdAt || Math.random()}`}
@@ -228,7 +237,17 @@ export default function ChatModal({ isOpen, otherUser, bookingId, onClose }) {
                     lineHeight: 1.45,
                   }}
                 >
-                  {message?.text || ''}
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: mine ? 'rgba(255,255,255,0.75)' : '#64748b',
+                    }}
+                  >
+                    {senderLabel}
+                  </p>
+                  <p style={{ margin: 0 }}>{message?.text || ''}</p>
                 </div>
               );
             })}
