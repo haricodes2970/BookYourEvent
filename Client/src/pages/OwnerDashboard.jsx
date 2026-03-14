@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/axiosInstance";
@@ -581,6 +581,7 @@ function ChatPanel({ dark }) {
 export default function OwnerDashboard() {
   const { user, logout, login } = useAuth();
   const navigate                = useNavigate();
+  const location                = useLocation();
   const { toasts, push }        = useToast();
 
   const [tab,      setTab]      = useState("overview");
@@ -605,6 +606,14 @@ export default function OwnerDashboard() {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem("ownerTheme", dark ? "dark" : "light");
   }, [dark]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextTab = params.get("tab");
+    if (nextTab && ["overview", "venues", "bookings", "chat", "profile"].includes(nextTab)) {
+      setTab(nextTab);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (user) setProfileForm({ name: user.name || "", username: user.username || "", phone: user.phone || "" });
@@ -696,7 +705,7 @@ export default function OwnerDashboard() {
   return (
     // FIXED: removed dynamic fontFamily â€” no more language-based font injection
     <div style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
-      className="min-h-screen bg-[#F6F7F9] dark:bg-zinc-950">
+      className={`min-h-screen bg-[#F6F7F9] dark:bg-zinc-950 ${dark ? "dark" : ""}`}>
 
       <Toast toasts={toasts} />
 

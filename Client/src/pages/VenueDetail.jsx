@@ -29,6 +29,15 @@ const EVENT_TYPES = ["Wedding", "Birthday", "Corporate Event", "Engagement",
 const TIME_SLOTS = generateTimeSlots(6, 24, 60);
 const PLATFORM_FEE_PCT = 0.02;
 
+const RAW_API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const FILE_BASE_URL = RAW_API_URL.endsWith('/api') ? RAW_API_URL.slice(0, -4) : RAW_API_URL;
+const normalizeImage = (src) => {
+  if (!src) return src;
+  if (/^(https?:)?\/\//.test(src) || src.startsWith("data:")) return src;
+  if (src.startsWith("/")) return `${FILE_BASE_URL}${src}`;
+  return `${FILE_BASE_URL}/${src}`;
+};
+
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 const avg = (arr) => arr.length ? (arr.reduce((s, x) => s + x, 0) / arr.length).toFixed(1) : "0.0";
 const avatar = (n) => `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(n || "U")}&backgroundColor=0d9488&fontColor=ffffff`;
@@ -246,6 +255,7 @@ function BookingForm({ venue, selectedDate, onDateChange, onSuccess, push }) {
         guestCount: Number(form.guests),
         eventType: form.eventType,
         specialRequests: form.specialRequests,
+        message: form.specialRequests,
         bidAmount: isInstant ? total : Number(form.bidAmount),
       };
       // FIXED: was "/api/bookings/create" — axiosInstance baseURL already includes /api
@@ -440,8 +450,10 @@ function ReviewsSection({ venueId, push }) {
     try {
       const res = await api.get(`/reviews/${venueId}`);
       setReviews(Array.isArray(res.data) ? res.data : res.data?.reviews || []);
-    } catch {}
-  }, [venueId]);
+    } catch (err) {
+      push(err.response?.data?.message || "Failed to load reviews", "error");
+    }
+  }, [venueId, push]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
@@ -679,7 +691,7 @@ export default function VenueDetail() {
     );
   }
 
-  const images = venue.images?.length ? venue.images : ["/placeholder-venue.jpg"];
+  const images = (venue.images?.length ? venue.images : ["/placeholder-venue.jpg"]).map(normalizeImage);
   const blockedDates = venue.blockedDates || [];
   const isInstant = venue.bookingType === "instant";
   const avgRating = venue.avgRating || 0;
@@ -892,7 +904,7 @@ export default function VenueDetail() {
                       className="flex-shrink-0 w-60 rounded-2xl border border-zinc-200 bg-white overflow-hidden hover:shadow-md transition-shadow group">
                       <div className="h-36 bg-zinc-100 overflow-hidden">
                         {v.images?.[0]
-                          ? <img src={v.images[0]} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ? <img src={normalizeImage(v.images[0])} alt={v.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-sm">No image</div>
                         }
                       </div>
